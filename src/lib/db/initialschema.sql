@@ -1,6 +1,6 @@
 -- Enable RLS and encryption
-ALTER
-DATABASE postgres SET encryption = 'on';
+-- NOTE: The following database-level encryption setting is environment-specific and not portable.
+-- ALTER DATABASE postgres SET encryption = 'on';
 
 --CHECKOUT/ACCOUNT RELATED TABLES
 ------------------------------------------------------------------------------------------------------------------------
@@ -31,8 +31,9 @@ CREATE TABLE customers
     verification_status VARCHAR(20)      DEFAULT 'unverified'
         CHECK (verification_status IN ('unverified', 'pending', 'verified', 'rejected', 'requires_review')),
     verification_level  VARCHAR(20)      DEFAULT 'none'
-        CHECK (verification_level IN ('none', 'basic', 'enhanced', 'dvs_verified')),
+        CHECK (verification_level IN ('none', 'manual', 'stripe_identity', 'dvs_verified')),
     stripe_customer_id  VARCHAR(255),
+
 
     -- Risk assessment
     risk_score          INTEGER          DEFAULT 0 CHECK (risk_score BETWEEN 0 AND 100),
@@ -56,6 +57,7 @@ CREATE TABLE identity_verifications
     stripe_verification_session_id VARCHAR(255) UNIQUE,
     verification_type              VARCHAR(50) NOT NULL, -- 'stripe_identity', 'manual', 'dvs'
     status                         VARCHAR(20) NOT NULL, -- 'processing', 'verified', 'failed', 'requires_input'
+
 
     -- Document details
     document_type                  VARCHAR(50),          -- 'driving_license', 'passport', 'id_card'
@@ -107,26 +109,64 @@ CREATE TABLE identity_verifications
 --     updated_at        TIMESTAMPTZ      DEFAULT NOW()
 -- );
 
+-- Document enums
+CREATE TYPE document_category AS ENUM (
+  'primary_photo',
+  'primary_non_photo',
+  'secondary',
+  'alternative'
+);
+
+CREATE TYPE document_type AS ENUM (
+  -- Primary photographic
+  'passport',
+  'drivers_license',
+  'proof_of_age_card',
+
+  -- Primary non-photographic
+  'birth_certificate',
+  'citizenship_certificate',
+  'pension_card',
+  'centrelink_card',
+
+  -- Secondary
+  'medicare_card',
+  'bank_statement',
+  'utility_bill',
+  'council_rates',
+  'government_notice',
+  'credit_card_statement',
+
+  -- Alternative
+  'referee_statement',
+  'expired_id',
+  'immicard',
+  'government_correspondence',
+  'foreign_birth_certificate'
+);
+
 -- Documents storage table (references to Supabase Storage)
-CREATE TABLE customer_documents
-(
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    customer_id     UUID REFERENCES customers (id) ON DELETE CASCADE,
-    verification_id UUID REFERENCES identity_verifications (id),
+CREATE TABLE customer_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID REFERENCES customers (id) ON DELETE CASCADE,
+  verification_id UUID REFERENCES identity_verifications (id),
 
-    -- Document metadata
-    document_type   VARCHAR(50)  NOT NULL,
-    storage_path    VARCHAR(500) NOT NULL,                                 -- Supabase Storage path
-    file_name       VARCHAR(255),
-    file_size       INTEGER,
-    mime_type       VARCHAR(100),
+  -- Document classification
+  document_category document_category,
+  document_type document_type,
 
-    -- Retention
-    uploaded_at     TIMESTAMPTZ      DEFAULT NOW(),
-    expires_at      TIMESTAMPTZ      DEFAULT (NOW() + INTERVAL '7 years'), -- AUSTRAC requirement
+  -- Document metadata
+  storage_path VARCHAR(500) NOT NULL, -- Supabase Storage path
+  file_name VARCHAR(255),
+  file_size INTEGER,
+  mime_type VARCHAR(100),
 
-    -- Metadata
-    created_at      TIMESTAMPTZ      DEFAULT NOW()
+  -- Retention
+  uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 years'), -- AUSTRAC requirement
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Transactions table
@@ -321,3 +361,29 @@ SELECT
 --       WHERE staff_users.user_id = auth.uid()
 --     )
 --   );
+
+-- Manual verification requirements table
+CREATE TABLE verification_requirements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID REFERENCES customers (id) ON DELETE CASCADE,
+  verification_method VARCHAR(50),
+  is_complete BOOLEAN DEFAULT FALSE,
+  required_documents JSONB,
+  submitted_documents JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+// for clerk integration
+ALTER TABLE customers ADD COLUMN clerk_user_id TEXT UNIQUE;
+CREATE INDEX idx_customers_clerk_user_id ON customers (clerk_user_id);
+
+DROP POLICY IF EXISTS "Customers can view own data" ON customers;
+
+CREATE POLICY "Customers can view own data" ON customers
+    FOR SELECT
+    USING (clerk_user_id = (auth.jwt() ->> 'sub'));
+
+ALTER TABLE customers
+    ALTER COLUMN clerk_user_id
+     SET DEFAULT (auth.jwt() ->> 'sub');

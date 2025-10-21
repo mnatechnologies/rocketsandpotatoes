@@ -65,7 +65,7 @@ export default function MetalsPricing() {
           <h1 className="text-3xl md:text-5xl font-bold mb-3">
             Live Precious Metals Pricing
           </h1>
-          <p className="text-gray-500 text-sm">
+          <p suppressHydrationWarning={true} className="text-gray-500 text-sm">
             Last updated: {formatTime(lastUpdated)} • Updates every 5 minutes
           </p>
         </div>
