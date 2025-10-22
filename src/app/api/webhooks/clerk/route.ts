@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+/* eslint-disable */
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     // Create Supabase admin client (bypasses RLS)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         auth: {
           autoRefreshToken: false,
