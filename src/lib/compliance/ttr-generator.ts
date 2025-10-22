@@ -36,6 +36,7 @@ export async function generateTTR(data: TTRData) {
     customer_address: JSON.stringify(transaction.customers.residential_address),
 
     // Part D - Verification method
+    // review
     verification_method: 'Electronic verification via Stripe Identity',
     identification_document_type: 'See verification records',
 

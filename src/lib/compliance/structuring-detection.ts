@@ -16,8 +16,8 @@ export async function detectStructuring(
   if (!recentTransactions || recentTransactions.length === 0) return false;
 
 
-
-  //tx = transaction. getting lazy
+// to review
+// tx = transaction. getting lazy
   const suspiciousTransactions = recentTransactions.filter(
     tx => tx.amount >=4000 && tx.amount <  5000
   );
