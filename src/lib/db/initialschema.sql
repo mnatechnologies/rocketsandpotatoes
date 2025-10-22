@@ -317,7 +317,7 @@ CREATE TABLE products
     purity      VARCHAR(255),
     rating      VARCHAR(255),
     image       VARCHAR(255),
-    stock       BOOLEAN,
+    stock       BOOLEAN
 );
 
 

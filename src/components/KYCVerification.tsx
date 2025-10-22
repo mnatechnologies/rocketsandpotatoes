@@ -3,46 +3,68 @@
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
+// Testing flag - set to true to enable console logging
+const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
 
+function log(...args: any[]) {
+  if (TESTING_MODE) {
+    console.log('[KYC_VERIFICATION]', ...args);
+  }
+}
 
 export function KYCVerification({ customerId }: { customerId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleVerify = async () => {
+    log('Starting KYC verification for customer:', customerId);
     setLoading(true);
     setError(null);
 
     try {
       // 1. Create verification session
+      log('Step 1: Initiating verification session...');
       const response = await fetch('/api/kyc/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customerId }),
       });
 
-      const { clientSecret } = await response.json();
+      log('Verification session API response status:', response.status);
 
-      // 2. Load Stripe Identity
-      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-      if (!stripe) {
-        throw new Error('Failed to load Stripe');
+      if (!response.ok) {
+        const errorData = await response.json();
+        log('Error response from API:', errorData);
+        throw new Error(errorData.error || 'Failed to create verification session');
       }
 
-      // 3. Start verification flow
-      const { error: identityError } = await stripe.verifyIdentity(clientSecret);
+      const data = await response.json();
+      log('Verification session data:', data);
 
-      if (identityError) {
-        setError(identityError.message || 'Verification failed');
-      } else {
-        // Success - redirect to payment
-        window.location.href = '/checkout/payment';
+      const { verificationUrl, verificationSessionId, status } = data;
+
+      if (status === 'already_verified') {
+        log('Customer is already verified');
+        setError('You are already verified.');
+        return;
       }
-    } catch (error) {
-      setError('Verification failed. Please try again.');
+
+      if (!verificationUrl) {
+        log('No verification URL received');
+        throw new Error('No verification URL provided');
+      }
+
+      log('Step 2: Redirecting to Stripe Identity verification URL:', verificationUrl);
+      
+      // Redirect to Stripe Identity verification
+      window.location.href = verificationUrl;
+
+    } catch (error: any) {
+      log('Error during KYC verification:', error);
+      setError(error.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
+      log('KYC verification process completed');
     }
   };
 

@@ -4,36 +4,112 @@
 import { useState, useEffect } from 'react';
 import { KYCVerification } from './KYCVerification';
 import {Product} from "@/types/product";
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import { PaymentForm } from './PaymentForm';
+
+// Testing flag - set to true to enable console logging
+const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
+
+function log(...args: any[]) {
+  if (TESTING_MODE) {
+    console.log('[CHECKOUT_FLOW]', ...args);
+  }
+}
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface Props {
   customerId: string;
   amount: number;
-  productDetails: Product
+  productDetails: Product;
+  cartItems?: any[];
+  customerEmail?: string;
+  onSuccess?: (orderId: string) => void;
 }
-export function CheckoutFlow({ customerId, amount, productDetails }: Props) {
+export function CheckoutFlow({ customerId, amount, productDetails, cartItems, customerEmail, onSuccess }: Props) {
   const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'payment'>('validate');
   const [validationResult, setValidationResult] = useState<any>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
 
-
+  // Automatically trigger validation on component mount
+  useEffect(() => {
+    log('CheckoutFlow mounted', { customerId, amount, productDetails });
+    validateTransaction();
+  }, [customerId, amount, productDetails]);
 
   const validateTransaction = async () => {
-    const response = await fetch('/api/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customerId, amount, productDetails }),
-    });
+    if (isValidating) {
+      log('Validation already in progress, skipping...');
+      return;
+    }
 
+    log('Starting transaction validation...');
+    setIsValidating(true);
 
-    const result = await response.json();
-    setValidationResult(result);
+    try {
+      const requestBody = { customerId, amount, productDetails };
+      log('Sending validation request:', requestBody);
 
-    if (result.status === 'kyc_required') {
-      setStep('kyc');
-    } else if (result.status === 'requires_review') {
-      // Show pending review message
-      setStep('review');
-    } else {
-      setStep('payment');
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      log('Validation response status:', response.status);
+
+      const result = await response.json();
+      log('Validation result:', result);
+      setValidationResult(result);
+
+      if (result.status === 'kyc_required') {
+        log('KYC required - redirecting to KYC verification');
+        setStep('kyc');
+      } else if (result.status === 'requires_review') {
+        log('Transaction requires manual review');
+        setStep('review');
+      } else {
+        log('Transaction approved - proceeding to payment');
+        await createPaymentIntent();
+        setStep('payment');
+      }
+    } catch (error) {
+      log('Error during validation:', error);
+      // Optionally handle error state
+    } finally {
+      setIsValidating(false);
+      log('Validation complete');
+    }
+  };
+
+  const createPaymentIntent = async () => {
+    log('Creating payment intent...');
+    try {
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency: 'aud',
+          customerId,
+          customerEmail,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create payment intent');
+      }
+
+      const data = await response.json();
+      log('Payment intent created:', data.paymentIntentId);
+      setClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId);
+    } catch (error) {
+      log('Error creating payment intent:', error);
+      throw error;
     }
   };
 
@@ -66,5 +142,24 @@ export function CheckoutFlow({ customerId, amount, productDetails }: Props) {
     );
   }
 
-  return <div>Proceed to payment...</div>;
+  if (step === 'payment') {
+    if (!clientSecret) {
+      return <div>Preparing payment...</div>;
+    }
+
+    return (
+      <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <PaymentForm
+          amount={amount}
+          customerId={customerId}
+          productDetails={productDetails}
+          cartItems={cartItems}
+          paymentIntentId={paymentIntentId!}
+          onSuccess={onSuccess}
+        />
+      </Elements>
+    );
+  }
+
+  return <div>Processing...</div>;
 }

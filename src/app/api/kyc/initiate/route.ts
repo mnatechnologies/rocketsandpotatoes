@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
     .eq('id', customerId);
 
   return NextResponse.json({
-    sessionId: session.id,
+    verificationSessionId: session.id,
     clientSecret: session.client_secret,
-    url: session.url,
+    verificationUrl: session.url,
   });
 }
