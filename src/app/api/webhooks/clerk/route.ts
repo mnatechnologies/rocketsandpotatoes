@@ -58,10 +58,22 @@ export async function POST(req: NextRequest) {
 
     log('Processing user:', { id, email: email_addresses[0]?.email_address });
 
-    // Create Supabase admin client (bypasses RLS)
+    // Create Supabase admin client with service role key (bypasses RLS)
+    // NOTE: You need to add SUPABASE_SERVICE_ROLE_KEY to your .env file
+    // Get this from your Supabase project settings > API > service_role key (secret)
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseServiceKey) {
+      log('Error: SUPABASE_SERVICE_ROLE_KEY not configured');
+      return NextResponse.json(
+        { error: 'Server configuration error: Missing service role key' },
+        { status: 500 }
+      );
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseServiceKey,
       {
         auth: {
           autoRefreshToken: false,

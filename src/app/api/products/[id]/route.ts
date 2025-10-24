@@ -17,7 +17,7 @@ export async function GET(
   const productId = params.id;
   log('Fetching product with ID:', productId);
 
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
 
   try {
     const { data: product, error } = await supabase

@@ -387,3 +387,15 @@ CREATE POLICY "Customers can view own data" ON customers
 ALTER TABLE customers
     ALTER COLUMN clerk_user_id
      SET DEFAULT (auth.jwt() ->> 'sub');
+
+
+CREATE TABLE metal_prices (
+                              metal VARCHAR(50) PRIMARY KEY,
+                              price_per_gram DECIMAL(15, 4),
+                              currency VARCHAR(3),
+                              last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+- Add a premium/markup column to products:
+
+ALTER TABLE products ADD COLUMN premium_percentage DECIMAL(5, 2) DEFAULT 5.00;

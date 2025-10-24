@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.7",
-    "@stripe/react-stripe-js": "github:stripe/react-stripe-js",
+    "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.1.0",
     "@supabase/supabase-js": "^2.75.1",
     "lucide-react": "^0.545.0",

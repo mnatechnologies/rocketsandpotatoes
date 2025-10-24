@@ -14,7 +14,7 @@ function log(...args: any[]) {
 }
 
 export default async function ProductsPage() {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
   
   log('Fetching products from database');
   
@@ -40,7 +40,7 @@ export default async function ProductsPage() {
   log(`Successfully fetched ${products?.length || 0} products`);
 
   // Group products by category
-  const productsByCategory = products?.reduce((acc, product) => {
+  const productsByCategory = products?.reduce((acc:Record<string, Product[]>, product: Product) => {
     const category = product.category || 'other';
     if (!acc[category]) {
       acc[category] = [];
