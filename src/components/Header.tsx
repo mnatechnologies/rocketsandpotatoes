@@ -36,8 +36,8 @@ export default function Header() {
   }, []);
 
   const navItems = [
-    { name: "Products", href: "/#products" },
-    { name: "Pricing", href: "/#pricing" },
+    { name: "Products", href: "/products" },
+    { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/#about" },
     { name: "Contact", href: "/#contact" },
   ];
@@ -85,15 +85,17 @@ export default function Header() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-3">
-            <button className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
-              Cart (0)
-            </button>
-            <button className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
-              Login
-            </button>
-            <button className="inline-flex items-center justify-center h-9 px-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">
-              Sign Up
-            </button>
+            <Link href={'/cart'}>
+              <button className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
+                Cart (0)
+              </button>
+            </Link>
+            {/*<button className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">*/}
+            {/*  Login*/}
+            {/*</button>*/}
+            {/*<button className="inline-flex items-center justify-center h-9 px-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">*/}
+            {/*  Sign Up*/}
+            {/*</button>*/}
           </div>
 
           {/* Mobile menu button */}
@@ -132,14 +134,14 @@ export default function Header() {
                   {item.name}
                 </Link>
               ))}
-              <div className="pt-4 space-y-2">
-                <button className="w-full inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
-                  Login
-                </button>
-                <button className="w-full inline-flex items-center justify-center h-9 px-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">
-                  Sign Up
-                </button>
-              </div>
+              {/*<div className="pt-4 space-y-2">*/}
+              {/*  <button className="w-full inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">*/}
+              {/*    Login*/}
+              {/*  </button>*/}
+              {/*  <button className="w-full inline-flex items-center justify-center h-9 px-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">*/}
+              {/*    Sign Up*/}
+              {/*  </button>*/}
+              {/*</div>*/}
             </div>
           </div>
         )}

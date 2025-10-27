@@ -1,11 +1,22 @@
 import {NextRequest, NextResponse} from "next/server";
 import {createVerificationSession} from "@/lib/stripe/identity";
 import { createServerSupabase } from "@/lib/supabase/server";
+import {createClient} from "@supabase/supabase-js";
+
 /* eslint-disable */
 
 export async function POST(req: NextRequest) {
   const { customerId } = await (req as any).json();
-  const supabase = createServerSupabase();
+  const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+  );
 
   // Create Stripe Identity verification session
   const session = await createVerificationSession(customerId);

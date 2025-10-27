@@ -5,7 +5,7 @@ import { auth } from '@clerk/nextjs/server'
 export async function createServerSupabase() {
   const { getToken } = await auth()
 
-  const supabase = createClient(
+   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -19,6 +19,4 @@ export async function createServerSupabase() {
       },
     },
   )
-
-  return supabase
 }

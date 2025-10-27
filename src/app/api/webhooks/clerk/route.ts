@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+
 /* eslint-disable */
 
 // Testing flag - set to true to enable console logging
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
 
       log('Customer data prepared:', customerData);
 
-      // Upsert customer record
+      // Insert customer record
       const { data, error } = await supabase
         .from('customers')
         .upsert(customerData, {

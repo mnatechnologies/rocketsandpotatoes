@@ -1,12 +1,23 @@
 import Stripe from 'stripe'
-import { createServerSupabase } from '@/lib/supabase/server'
+import {createClient} from "@supabase/supabase-js";
 /* eslint-disable */
 /*@ts-ignore */
 
 // Use a stable API version string
-export const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-09-30.clover',
 })
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+);
 
 // Minimal audit logger to avoid runtime errors if helper is missing
 async function logAuditEvent(event: {
@@ -16,7 +27,6 @@ async function logAuditEvent(event: {
   description?: string
   metadata?: any
 }) {
-  const supabase = createServerSupabase()
   try {
     await supabase.from('audit_logs').insert({
       ...event,
@@ -29,7 +39,7 @@ async function logAuditEvent(event: {
 
 export async function createVerificationSession(customerId: string) {
   // Create a Stripe Identity Verification Session for document verification
-  const session = await stripe.identity.verificationSessions.create({
+  return await stripe.identity.verificationSessions.create({
     type: 'document',
     metadata: {
       customer_id: customerId,
@@ -43,8 +53,6 @@ export async function createVerificationSession(customerId: string) {
       },
     },
   })
-
-  return session
 }
 
 export async function retrieveVerificationSession(sessionId: string) {
@@ -58,7 +66,6 @@ export async function processVerificationResult(sessionId: string, customerId: s
 
   const vo = session.verified_outputs
   const report = session.last_verification_report
-  const supabase = createServerSupabase()
 
   // @ts-ignore
 

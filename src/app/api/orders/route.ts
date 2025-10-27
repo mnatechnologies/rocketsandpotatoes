@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+// import { createServerSupabase } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@supabase/supabase-js';
 
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+);
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
 
@@ -47,7 +58,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = createServerSupabase();
 
     // Verify customer belongs to authenticated user
     const { data: customer, error: customerError } = await supabase

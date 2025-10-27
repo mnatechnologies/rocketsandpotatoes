@@ -108,6 +108,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       const data = await response.json();
       log('Payment intent created:', data.paymentIntentId);
       setClientSecret(data.clientSecret);
+      log('Client secret:', data.clientSecret);
       setPaymentIntentId(data.paymentIntentId);
     } catch (error) {
       log('Error creating payment intent:', error);
@@ -149,19 +150,31 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       return <div>Preparing payment...</div>;
     }
 
-    return (
-      <Elements stripe={stripePromise} options={{ clientSecret }}>
-        <PaymentForm
-          amount={amount}
-          customerId={customerId}
-          productDetails={productDetails}
-          cartItems={cartItems}
-          paymentIntentId={paymentIntentId!}
-          onSuccess={onSuccess}
-        />
-      </Elements>
-    );
+    if (step === 'payment' && clientSecret) {
+      return (
+          <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'stripe'
+                }
+              }}
+              key={clientSecret} // Force re-render when clientSecret changes
+          >
+            <PaymentForm
+                amount={amount}
+                customerId={customerId}
+                productDetails={productDetails}
+                cartItems={cartItems}
+                paymentIntentId={paymentIntentId!}
+                onSuccess={onSuccess}
+            />
+          </Elements>
+      );
+    }
+
+    return <div>Processing...</div>;
   }
 
-  return <div>Processing...</div>;
 }

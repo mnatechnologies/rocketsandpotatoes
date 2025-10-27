@@ -1,11 +1,21 @@
-import { createServerSupabase } from "@/lib/supabase/server";
-
+// import { createServerSupabase } from "@/lib/supabase/server";
+import {createClient} from "@supabase/supabase-js";
 // this function is to handle multiple transactions below thresehold and will serve as a check in the checkout process.
 export async function detectStructuring(
   customerId: string,
   currentAmount: number,
 ) :Promise<boolean> {
-  const supabase = createServerSupabase()
+  // const supabase = createServerSupabase()
+  const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+  );
   const {data: recentTransactions} = await supabase
     .from('transactions')
     .select('amount, created_at')

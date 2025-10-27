@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable */
 import { useState } from 'react';
-import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
+import { useStripe, useElements, PaymentElement, Elements } from '@stripe/react-stripe-js';
 import { Product } from '@/types/product';
 
 // Testing flag - set to true to enable console logging
@@ -35,12 +35,19 @@ export function PaymentForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
+
+  const handlePaymentElementReady = () => {
+    log('PaymentElement is ready');
+    setIsPaymentElementReady(true);
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     log('Payment form submitted');
 
-    if (!stripe || !elements) {
+    if (!stripe || !elements || !isPaymentElementReady) {
       log('Stripe not loaded yet');
       return;
     }
@@ -49,6 +56,8 @@ export function PaymentForm({
     setError(null);
 
     try {
+
+
       log('Step 1: Confirming payment with Stripe...');
       
       // Confirm the payment with Stripe
@@ -57,8 +66,9 @@ export function PaymentForm({
         confirmParams: {
           return_url: `${window.location.origin}/order-confirmation`,
         },
-        redirect: 'if_required', // Don't redirect, handle success here
+        redirect: 'if_required', //
       });
+
 
       if (stripeError) {
         log('Stripe payment error:', stripeError);
@@ -67,8 +77,11 @@ export function PaymentForm({
         return;
       }
 
+
+
       if (paymentIntent?.status === 'succeeded') {
         log('Step 2: Payment succeeded, creating order...');
+
         
         // Create order in database
         const orderResponse = await fetch('/api/orders', {
@@ -135,13 +148,15 @@ export function PaymentForm({
         </p>
       </div>
     );
+
   }
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">Payment Details</h3>
-        <PaymentElement />
+        <PaymentElement onReady={handlePaymentElementReady} />
       </div>
 
       {error && (

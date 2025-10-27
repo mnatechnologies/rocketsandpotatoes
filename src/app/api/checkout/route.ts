@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {  calculateRiskScore, getRiskLevel } from '@/lib/compliance/risk-scoring';
 import {getComplianceRequirements} from "@/lib/compliance/thresholds";
 import {detectStructuring} from "@/lib/compliance/structuring-detection";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
 /* eslint-disable */
 
 // Testing flag - set to true to enable console logging
@@ -16,11 +17,22 @@ function log(...args: any[]) {
 
 export async function POST(req: NextRequest) {
   log('Checkout validation request received');
+
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+            },
+        }
+    );
   
   const { customerId, amount, productDetails } = await (req as any).json();
   log('Request data:', { customerId, amount, productDetails });
-  
-  const supabase = createServerSupabase();
+
+
 
   // 1. Check compliance thresholds
   const requirements = getComplianceRequirements(amount);

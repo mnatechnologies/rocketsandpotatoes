@@ -52,7 +52,7 @@ export default function CheckoutPage() {
 
     log('Fetching customer ID for Clerk user:', user.id);
     try {
-      const response = await fetch('/api/customer/me');
+      const response = await fetch('/api/customer');
       if (!response.ok) {
         throw new Error('Failed to fetch customer data');
       }

@@ -16,6 +16,33 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## 🔔 Important: Clerk Webhook Setup
+
+This project uses **Clerk** for authentication and webhooks to sync user data to **Supabase**. 
+
+### Quick Setup (Required for Webhooks to Work)
+
+1. **Start your dev server**: `npm run dev`
+2. **Find your ngrok URL**: Look for this line in the console:
+   ```
+   Forwarding to: localhost:3000 from ingress at: https://xxxx.ngrok-free.app
+   ```
+3. **Update Clerk webhook**: Go to [Clerk Dashboard](https://dashboard.clerk.com) → Webhooks and set the endpoint URL to:
+   ```
+   https://your-ngrok-url.ngrok-free.app/api/webhooks/clerk
+   ```
+
+### Helper Tools
+
+- **Check ngrok status**: Run `node check-ngrok.js` to see your current ngrok URL
+- **Full guide**: See [CLERK_WEBHOOK_SETUP.md](./CLERK_WEBHOOK_SETUP.md) for detailed instructions and troubleshooting
+
+### Common Issue
+
+If you see **"requests to this IP range are blocked"** in Clerk Dashboard:
+- This means Clerk can't reach localhost
+- Solution: Update the webhook URL with your ngrok URL (see guide above)
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
