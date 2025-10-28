@@ -3,7 +3,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import {processVerificationResult, stripe} from "@/lib/stripe/identity";
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
   const sig = (req as any).headers.get('stripe-signature')!;
   const body = await (req as any).text();
 

@@ -3,10 +3,11 @@ import {  calculateRiskScore, getRiskLevel } from '@/lib/compliance/risk-scoring
 import {getComplianceRequirements} from "@/lib/compliance/thresholds";
 import {detectStructuring} from "@/lib/compliance/structuring-detection";
 import { createClient } from "@supabase/supabase-js";
+// import { createServerSupabase } from "@/lib/supabase/server";
 
 /* eslint-disable */
 
-// Testing flag - set to true to enable console logging
+
 const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
 
 function log(...args: any[]) {
@@ -18,6 +19,7 @@ function log(...args: any[]) {
 export async function POST(req: NextRequest) {
   log('Checkout validation request received');
 
+    //subject to removal once I actually get createServerSupabase workin with clerk lmao
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
    customerAge: Math.floor((Date.now() - new Date(customer.created_at).getTime()) / (1000 * 60 * 60 * 24)),
    previousTransactionCount: previousTransactions?.length || 0,
    isInternational: customer?.residential_address?.country !== 'AU',
-    // @ts-ignore
+    // @ts-ignore fuck linting
    hasMultipleRecentTransactions: previousTransactions && previousTransactions.length >= 3,
    unusualPattern: isStructuring,
  });

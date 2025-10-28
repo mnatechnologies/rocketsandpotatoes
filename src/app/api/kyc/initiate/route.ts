@@ -7,7 +7,9 @@ import {createClient} from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
   const { customerId } = await (req as any).json();
-  const supabase = createClient(
+    //subject to removal once I actually get createServerSupabase workin with clerk lmao
+
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
@@ -18,7 +20,7 @@ export async function POST(req: NextRequest) {
       }
   );
 
-  // Create Stripe Identity verification session
+
   const session = await createVerificationSession(customerId);
 
   // Update customer status to pending
