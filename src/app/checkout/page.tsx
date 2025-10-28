@@ -161,9 +161,9 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-background/50 py-12">
       <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Checkout</h1>
+        <h1 className="text-4xl font-bold text-primary my-8">Checkout</h1>
 
         {/* Order Summary */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -205,7 +205,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Checkout Flow Component */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6 text-black ">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Payment & Verification</h2>
           <CheckoutFlow
             customerId={customerId}

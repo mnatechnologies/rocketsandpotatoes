@@ -32,7 +32,7 @@ export default function Hero() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <a href="#products" className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">
+              <a href="/products" className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">
                 Shop Now
                 <svg className="ml-2 h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </a>
@@ -97,12 +97,12 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-        <div className="w-6 h-10 border-2 border-primary/30 rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-primary rounded-full mt-2"></div>
-        </div>
-      </div>
+      {/*/!* Scroll indicator *!/*/}
+      {/*<div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">*/}
+      {/*  <div className="w-6 h-10 border-2 border-primary/30 rounded-full flex justify-center">*/}
+      {/*    <div className="w-1 h-3 bg-primary rounded-full mt-2"></div>*/}
+      {/*  </div>*/}
+      {/*</div>*/}
     </section>
   );
 }

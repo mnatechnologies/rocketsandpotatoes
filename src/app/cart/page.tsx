@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Product } from '@/types/product';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
+import {useReducer} from "react";
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
@@ -27,6 +28,7 @@ export default function CartPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const hasAddedProduct = useRef(false);
 
   useEffect(() => {
     log('Cart page mounted, loading cart from localStorage');
@@ -35,8 +37,17 @@ export default function CartPage() {
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        setCart(parsedCart);
-        log('Cart loaded:', parsedCart);
+        const cartWithUrls = parsedCart.map((item: CartItem) => ({
+          ...item,
+          product: {
+            ...item.product,
+            image_url: item.product.image_url?.startsWith('http')
+                ? item.product.image_url
+                : `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${item.product.image_url?.trim()}`
+          }
+        }));
+        setCart(cartWithUrls);
+        log('Cart loaded:', cartWithUrls);
       } catch (error) {
         log('Error parsing cart:', error);
       }
@@ -44,8 +55,9 @@ export default function CartPage() {
 
     // Check if adding a product via URL param
     const productId = searchParams.get('add');
-    if (productId) {
+    if (productId && !hasAddedProduct.current) {
       log('Adding product from URL:', productId);
+      hasAddedProduct.current = true;
       addToCart(productId);
     }
 
@@ -62,6 +74,16 @@ export default function CartPage() {
       const product: Product = await response.json();
       log('Product fetched:', product);
 
+      const trimmedImageUrl = product.image_url?.trim();
+      const fullImageUrl = trimmedImageUrl
+          ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
+          : null;
+
+      const productWithUrl = {
+        ...product,
+        image_url: fullImageUrl
+      };
+
       setCart((prevCart) => {
         const existingItem = prevCart.find((item) => item.product.id === productId);
         let newCart;
@@ -75,7 +97,7 @@ export default function CartPage() {
           );
         } else {
           log('Adding new product to cart');
-          newCart = [...prevCart, { product, quantity: 1 }];
+          newCart = [...prevCart, { product: productWithUrl, quantity: 1 }];
         }
 
         localStorage.setItem('cart', JSON.stringify(newCart));
@@ -160,9 +182,9 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-background/50 py-12 mt-10">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
+        <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 
         {cart.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
@@ -206,18 +228,18 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start gap-4">
+                  <div className="flex text-primary font-bold md:flex-col items-center md:items-end justify-between md:justify-start gap-4">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
+                        className="w-8 h-8 cursor-pointer rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
                       >
                         -
                       </button>
                       <span className="w-12 text-center font-semibold">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
+                        className="w-8 h-8 cursor-pointer rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
                       >
                         +
                       </button>
@@ -225,7 +247,7 @@ export default function CartPage() {
 
                     <button
                       onClick={() => removeFromCart(item.product.id)}
-                      className="text-red-600 hover:text-red-800 font-medium text-sm"
+                      className="cursor-pointer text-red-600 hover:text-red-800 font-medium text-sm"
                     >
                       Remove
                     </button>
@@ -267,7 +289,7 @@ export default function CartPage() {
 
                 <button
                   onClick={handleCheckout}
-                  className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg transition-colors mb-4"
+                  className="cursor-pointer w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg transition-colors mb-4"
                 >
                   Proceed to Checkout
                 </button>
