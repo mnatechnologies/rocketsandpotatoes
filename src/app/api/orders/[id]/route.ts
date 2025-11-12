@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+// import { createServerSupabase } from '@/lib/supabase/server';
+import {createClient} from "@supabase/supabase-js";
 import { auth } from '@clerk/nextjs/server';
 /* eslint-disable */
 
@@ -14,8 +15,9 @@ function log(...args: any[]) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise <{ id: string }> }
 ) {
+  const { id: orderId } = await params;
   log('Order fetch request received for ID:', params.id);
 
   try {
@@ -29,8 +31,18 @@ export async function GET(
 
     log('Authenticated user ID:', userId);
 
-    const orderId = params.id;
-    const supabase = createServerSupabase();
+    // const supabase = createServerSupabase();
+    //subject to removal once I actually get createServerSupabase workin with clerk lmao
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
 
     // Fetch the transaction/order
     const { data: order, error: orderError } = await supabase
