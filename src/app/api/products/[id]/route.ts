@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+//import { createServerSupabase } from '@/lib/supabase/server';
+import {createClient} from "@supabase/supabase-js";
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
@@ -12,12 +13,23 @@ function log(...args: any[]) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const productId = params.id;
+  const {id: productId} = await params;
   log('Fetching product with ID:', productId);
 
-  const supabase = await createServerSupabase();
+  //const supabase = await createServerSupabase();
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
 
   try {
     const { data: product, error } = await supabase
