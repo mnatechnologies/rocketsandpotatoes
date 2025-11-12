@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from "@/lib/supabase/server";
+import {createClient} from "@supabase/supabase-js";
+//import { createServerSupabase } from "@/lib/supabase/server";
 //
 
 export async function POST(req: NextRequest) {
   const formData = await (req as any).formData();
-  const supabase = createServerSupabase();
+  //const supabase = createServerSupabase();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
   const file = formData.get('file') as File;
   const customerId = formData.get(')customerId') as string;
   const documentType = formData.get('documentType') as string;

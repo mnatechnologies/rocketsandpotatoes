@@ -1,6 +1,8 @@
-import { createServerSupabase } from "@/lib/supabase/server";
+//import { createServerSupabase } from "@/lib/supabase/server";
+
 import {NextResponse, NextRequest} from 'next/server'
 /* eslint-disable */
+import {createClient} from "@supabase/supabase-js";
 
 interface ManualVerificationRequest {
   customerId: string;
@@ -9,7 +11,18 @@ interface ManualVerificationRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createServerSupabase();
+  //const supabase = createServerSupabase();
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
   const { customerId, verificationMethod, documents } = await request.json();
 
   if (!customerId || !verificationMethod || !documents) {
