@@ -169,6 +169,9 @@ export async function calculateBulkPricing(
   })).filter(p => p.metal_type !== null);
 
   const groupedByMetal = processedProducts.reduce((acc, product) => {
+    if (!product.metal_type) {
+      return acc;
+    }
     if (!acc[product.metal_type]) {
       acc[product.metal_type] = [];
     }
