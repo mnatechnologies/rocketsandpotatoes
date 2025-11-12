@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { KYCVerification } from './KYCVerification';
 import {Product} from "@/types/product";
 import { loadStripe } from '@stripe/stripe-js';
-// @ts-expect-error
+
 import { Elements  } from "@stripe/react-stripe-js";
 import { PaymentForm } from './PaymentForm';
 
