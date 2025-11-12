@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
+import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 
 interface TickerPrice {
   metal: string;
@@ -11,151 +13,118 @@ interface TickerPrice {
 
 export default function PriceTicker() {
   const [prices, setPrices] = useState<TickerPrice[]>([
-    { metal: "GOLD", price: 2850.25, change: 12.5, changePercent: 0.44 },
-    { metal: "SILVER", price: 42.18, change: -0.82, changePercent: -1.91 },
-    { metal: "PLATINUM", price: 1248.75, change: 8.25, changePercent: 0.67 },
-    { metal: "PALLADIUM", price: 1156.5, change: -15.3, changePercent: -1.31 },
+    { metal: "GOLD", price: 0, change: 0, changePercent: 0 },
+    { metal: "SILVER", price: 0, change: 0, changePercent: 0 },
+    { metal: "PLATINUM", price: 0, change: 0, changePercent: 0 },
+    { metal: "PALLADIUM", price: 0, change: 0, changePercent: 0 },
   ]);
+
   const [isScrolled, setIsScrolled] = useState(false);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  
-  const handleScroll = () => {
-    setIsScrolled(window.scrollY > 50);
+  const [isLoading, setIsLoading] = useState(true);
+
+   const fetchPrices = async () => {
+    try {
+      const response = await fetch('/api/metals?baseCurrency=USD');
+      const result = await response.json();
+
+      console.log('API Response:', result); // Debug log
+
+      if (result.success && result.data) {
+        const newPrices: TickerPrice[] = result.data.map((quote: any) => {
+          console.log('Quote data:', quote); // Debug log
+          const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
+          return {
+            metal: metalInfo.ticker,
+            price: quote.price,
+            change: quote.change,
+            changePercent: quote.changePercent
+          };
+        });
+
+        console.log('Mapped prices:', newPrices); // Debug log
+        setPrices(newPrices);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error fetching prices:', error);
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 600000); // 5 minutes
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
-  
+
     window.addEventListener('scroll', handleScroll);
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPrices((prev) =>
-        prev.map((p) => {
-          const changeAmount = (Math.random() - 0.5) * 10;
-          const newPrice = Math.max(0, p.price + changeAmount);
-          const newChange = changeAmount;
-          const newChangePercent = (changeAmount / p.price) * 100;
-          return {
-            ...p,
-            price: parseFloat(newPrice.toFixed(2)),
-            change: parseFloat(newChange.toFixed(2)),
-            changePercent: parseFloat(newChangePercent.toFixed(2)),
-          };
-        })
-      );
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
- 
-  useEffect(() => {
-    const scrollInterval = setInterval(() => {
-      setScrollPosition((prev) => {
-        const screenWidth = window.innerWidth;
-        const itemWidth = 204;
-        const spacing = 24; 
-        const totalContentWidth = (4 * itemWidth) + (3 * spacing); 
-        
-        const maxScroll = Math.max(0, totalContentWidth - screenWidth + 50);
-        
-        if (maxScroll <= 0) {
-          return 0; 
-        }
-        
-        if (prev >= maxScroll) {
-          return 0; 
-        }
-        return prev + 1; 
-      });
-    }, 50); 
-
-    return () => clearInterval(scrollInterval);
-  }, []); 
-
 
   const formatPrice = (value: number) =>
-    new Intl.NumberFormat("en-AU", {
-      style: "currency",
-      currency: "AUD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value);
+
+  if (isLoading) {
+    return (
+        <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-r from-primary/12 via-primary/6 to-primary/12 backdrop-blur-sm" data-ticker>
+          <div className="py-3">
+            <div className="container mx-auto px-4 text-center">
+              <span className="text-sm text-muted-foreground">Loading prices...</span>
+            </div>
+          </div>
+        </div>
+    );
+  }
 
   return (
-
-    <div className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${isScrolled ? 'bg-gradient-to-r from-primary/25 via-primary/15 to-primary/25 backdrop-blur-sm shadow-sm' : 'bg-gradient-to-r from-primary/12 via-primary/6 to-primary/12 backdrop-blur-sm'}`} data-ticker>
-      <div className="py-3">
-        <div className="hidden xl:block">
+      <div
+          className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+              isScrolled
+                  ? 'bg-gradient-to-r from-primary/25 via-primary/15 to-primary/25 backdrop-blur-sm shadow-sm'
+                  : 'bg-gradient-to-r from-primary/12 via-primary/6 to-primary/12 backdrop-blur-sm'
+          }`}
+          data-ticker
+      >
+        <div className="py-3">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center">
-              <div className="flex items-center space-x-3 text-sm">
-                <span className="text-primary font-semibold text-xs uppercase tracking-wide">Live Prices</span>
+            <div className="flex items-center justify-center overflow-x-auto">
+              <div className="flex items-center space-x-3 md:space-x-6 text-sm">
+              <span className="text-primary font-semibold text-xs uppercase tracking-wide whitespace-nowrap">
+                Live Prices
+              </span>
                 {prices.map((price) => (
-                  <div key={price.metal} className="flex items-center space-x-2 whitespace-nowrap">
-                    <span className="font-bold text-foreground">{price.metal}</span>
-                    <span className="text-foreground font-semibold">{formatPrice(price.price)}</span>
-                    <div className={`flex items-center space-x-1 ${price.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        {price.change >= 0 ? (
-                          <polyline points="23 4 23 10 17 10" />
-                        ) : (
-                          <polyline points="1 20 1 14 7 14" />
-                        )}
-                      </svg>
-                      <span className="text-xs font-medium">
-                        {price.change >= 0 ? "+" : ""}
-                        {price.change} ({price.changePercent >= 0 ? "+" : ""}
-                        {price.changePercent}%)
-                      </span>
+                    <div key={price.metal} className="flex items-center space-x-2 whitespace-nowrap">
+                      <span className="font-bold text-foreground">{price.metal}</span>
+                      <span className="text-foreground font-semibold">{formatPrice(price.price)}</span>
+                      <div className={`flex items-center space-x-1 ${price.change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          {price.change >= 0 ? (
+                              <polyline points="18 15 12 9 6 15" />
+                          ) : (
+                              <polyline points="6 9 12 15 18 9" />
+                          )}
+                        </svg>
+                        <span className="text-xs font-medium">
+                      {price.changePercent >= 0 ? "+" : ""}
+                          {price.changePercent.toFixed(2)}%
+                    </span>
+                      </div>
                     </div>
-                  </div>
                 ))}
               </div>
             </div>
           </div>
         </div>
-
-         {/* Mobile/Tablet layout */}
-        <div className="xl:hidden">
-          <div className="relative overflow-hidden">
-            <div 
-              className="flex items-center space-x-6 py-3 transition-transform duration-75 ease-linear"
-              style={{ transform: `translateX(-${scrollPosition}px)` }}
-            >
-              {/* Duplicate content for seamless loop */}
-              {[...prices, ...prices].map((price, index) => (
-                <div key={`${price.metal}-${index}`} className="flex items-center space-x-2 whitespace-nowrap flex-shrink-0">
-                  <span className="font-bold text-foreground text-sm">{price.metal}</span>
-                  <span className="text-foreground font-semibold text-sm">{formatPrice(price.price)}</span>
-                  <div className={`flex items-center space-x-1 ${price.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      {price.change >= 0 ? (
-                        <polyline points="23 4 23 10 17 10" />
-                      ) : (
-                        <polyline points="1 20 1 14 7 14" />
-                      )}
-                    </svg>
-                    <span className="text-xs font-medium">
-                      {price.change >= 0 ? "+" : ""}
-                      {price.change} ({price.changePercent >= 0 ? "+" : ""}
-                      {price.changePercent}%)
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
   );
 }

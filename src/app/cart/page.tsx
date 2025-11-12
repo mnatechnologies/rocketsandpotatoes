@@ -6,7 +6,6 @@ import { Product } from '@/types/product';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
-import {useReducer} from "react";
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
@@ -20,11 +19,13 @@ function log(...args: any[]) {
 interface CartItem {
   product: Product;
   quantity: number;
+  livePrice?: number
 }
 
 export default function CartPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPrices, setLoadingPrices] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isLoaded } = useUser();
@@ -48,6 +49,7 @@ export default function CartPage() {
         }));
         setCart(cartWithUrls);
         log('Cart loaded:', cartWithUrls);
+        fetchLivePrices(cartWithUrls)
       } catch (error) {
         log('Error parsing cart:', error);
       }
@@ -63,6 +65,43 @@ export default function CartPage() {
 
     setLoading(false);
   }, [searchParams]);
+
+  const fetchLivePrices = async (cartItems: CartItem[]) => {
+    if (cartItems.length === 0) return;
+
+    setLoadingPrices(true);
+    try {
+      const productIds = cartItems.map(item => item.product.id).join(',');
+      const response = await fetch(`/api/products/pricing?ids=${productIds}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch pricing');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        log('Live prices fetched:', data.data);
+
+        // Update cart with live prices
+        setCart(prevCart => prevCart.map(item => {
+          const updatedProduct = data.data.find((p: any) => p.id === item.product.id);
+          if (updatedProduct && updatedProduct.calculated_price) {
+            return {
+              ...item,
+              livePrice: updatedProduct.calculated_price
+            };
+          }
+          return item;
+        }));
+      }
+    } catch (error) {
+      log('Error fetching live prices:', error);
+      // Continue with static prices
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
 
   const addToCart = async (productId: string) => {
     log('Fetching product:', productId);
@@ -102,6 +141,8 @@ export default function CartPage() {
 
         localStorage.setItem('cart', JSON.stringify(newCart));
         log('Cart updated:', newCart);
+
+        fetchLivePrices(newCart);
         return newCart;
       });
 
@@ -147,7 +188,10 @@ export default function CartPage() {
   };
 
   const getTotalPrice = () => {
-    const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const total = cart.reduce((sum, item) =>{
+      const price = item.livePrice ?? item.product.price;
+     return  sum + price * item.quantity
+    }, 0);
     log('Total price calculated:', total);
     return total;
   };
@@ -186,6 +230,12 @@ export default function CartPage() {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 
+        {loadingPrices && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+            <p className="text-blue-800">Updating prices with live market data...</p>
+          </div>
+        )}
+
         {cart.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <p className="text-xl text-gray-600 mb-6">Your cart is empty</p>
@@ -200,64 +250,77 @@ export default function CartPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
-              {cart.map((item) => (
-                <div
-                  key={item.product.id}
-                  className="bg-white rounded-lg shadow-md p-6 flex flex-col md:flex-row gap-4"
-                >
-                  <div className="relative w-full md:w-32 h-32 bg-gray-100 rounded flex-shrink-0">
-                    <Image
-                      src={item.product.image_url || '/images/placeholder-product.jpg'}
-                      alt={item.product.name}
-                      fill
-                      className="object-cover rounded"
-                      sizes="128px"
-                    />
-                  </div>
+              {cart.map((item) => {
+                const displayPrice = item.livePrice ?? item.product.price;
+                const hasPriceChange = item.livePrice && item.livePrice !== item.product.price;
 
-                  <div className="flex-grow">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {item.product.name}
-                    </h3>
-                    <div className="flex gap-4 text-sm text-gray-600 mb-2">
-                      <span>Weight: {item.product.weight}</span>
-                      <span>Purity: {item.product.purity}</span>
+                return (
+                  <div
+                    key={item.product.id}
+                    className="bg-white rounded-lg shadow-md p-6 flex flex-col md:flex-row gap-4"
+                  >
+                    <div className="relative w-full md:w-32 h-32 bg-gray-100 rounded flex-shrink-0">
+                      <Image
+                        src={item.product.image_url || '/images/placeholder-product.jpg'}
+                        alt={item.product.name}
+                        fill
+                        className="object-cover rounded"
+                        sizes="128px"
+                      />
                     </div>
-                    <div className="text-xl font-bold text-gray-900">
-                      ${item.product.price.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
-                    </div>
-                  </div>
 
-                  <div className="flex text-primary font-bold md:flex-col items-center md:items-end justify-between md:justify-start gap-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex-grow">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {item.product.name}
+                      </h3>
+                      <div className="flex gap-4 text-sm text-gray-600 mb-2">
+                        <span>Weight: {item.product.weight}</span>
+                        <span>Purity: {item.product.purity}</span>
+                      </div>
+                      <div className="text-xl font-bold text-gray-900">
+                        ${displayPrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                        {hasPriceChange && (
+                          <span className={`text-sm ml-2 ${
+                            item.livePrice! > item.product.price ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            ({item.livePrice! > item.product.price ? '↑' : '↓'}
+                            ${Math.abs(item.livePrice! - item.product.price).toFixed(2)})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex text-primary font-bold md:flex-col items-center md:items-end justify-between md:justify-start gap-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          className="w-8 h-8 cursor-pointer rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
+                        >
+                          -
+                        </button>
+                        <span className="w-12 text-center font-semibold">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          className="w-8 h-8 cursor-pointer rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+
                       <button
-                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                        className="w-8 h-8 cursor-pointer rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
+                        onClick={() => removeFromCart(item.product.id)}
+                        className="cursor-pointer text-red-600 hover:text-red-800 font-medium text-sm"
                       >
-                        -
+                        Remove
                       </button>
-                      <span className="w-12 text-center font-semibold">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                        className="w-8 h-8 cursor-pointer rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold"
-                      >
-                        +
-                      </button>
-                    </div>
 
-                    <button
-                      onClick={() => removeFromCart(item.product.id)}
-                      className="cursor-pointer text-red-600 hover:text-red-800 font-medium text-sm"
-                    >
-                      Remove
-                    </button>
-
-                    <div className="text-lg font-bold text-gray-900 md:mt-auto">
-                      ${(item.product.price * item.quantity).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                      <div className="text-lg font-bold text-gray-900 md:mt-auto">
+                        ${(displayPrice * item.quantity).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               <button
                 onClick={clearCart}
@@ -305,6 +368,9 @@ export default function CartPage() {
                   <p className="mb-2">✓ Secure checkout</p>
                   <p className="mb-2">✓ Compliance verification included</p>
                   <p>✓ Insured shipping available</p>
+                  {loadingPrices && (
+                    <p className="mt-2 text-blue-600">⟳ Updating prices...</p>
+                  )}
                 </div>
               </div>
             </div>
