@@ -115,18 +115,18 @@ export default function CartPage() {
 
       const trimmedImageUrl = product.image_url?.trim();
       const fullImageUrl = trimmedImageUrl
-          ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
-          : null;
+        ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
+        : '/anblogo.png'; // Use placeholder instead of null
 
-      const productWithUrl = {
+      const productWithUrl: Product = {
         ...product,
-        image_url: fullImageUrl
+        image_url: fullImageUrl // Now guaranteed to be a string
       };
 
       setCart((prevCart) => {
         const existingItem = prevCart.find((item) => item.product.id === productId);
         let newCart;
-        
+
         if (existingItem) {
           log('Product already in cart, incrementing quantity');
           newCart = prevCart.map((item) =>
@@ -141,8 +141,6 @@ export default function CartPage() {
 
         localStorage.setItem('cart', JSON.stringify(newCart));
         log('Cart updated:', newCart);
-
-        fetchLivePrices(newCart);
         return newCart;
       });
 
