@@ -1,4 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
+import {createClient} from "@supabase/supabase-js";
 
 interface TTRData {
   transactionId: string;
@@ -8,7 +9,18 @@ interface TTRData {
 }
 
 export async function generateTTR(data: TTRData) {
-  const supabase = createServerSupabase()
+  // const supabase = createServerSupabase();
+  //subject to removal once I actually get createServerSupabase workin with clerk lmao
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
   const { data: transaction } = await supabase
     .from('transactions')
     .select(`
