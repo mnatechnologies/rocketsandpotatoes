@@ -143,12 +143,20 @@ export async function calculateProductPrice(
 }
 
 export async function calculateBulkPricing(
-  products: Array<{any[]
+  products: Array<{
+    id: string;
+    price?: number;
+    base_price?: number;
+    metal_type?: string;
+    weight?: string;
+    weight_grams?: number;
+    category?: string;
+    name?: string;
+  }>,
   //   id: string;
   //   metal_type: MetalSymbol;
   //   weight_grams: number;
   //
-    }>,
   config?: PricingConfig
 ): Promise<Map<string, number>> {
   const priceMap = new Map<string, number>();
