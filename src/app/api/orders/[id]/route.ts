@@ -18,7 +18,7 @@ export async function GET(
   { params }: { params: Promise <{ id: string }> }
 ) {
   const { id: orderId } = await params;
-  log('Order fetch request received for ID:', params.id);
+  log('Order fetch request received for ID:', orderId);
 
   try {
     // Get authenticated user from Clerk
