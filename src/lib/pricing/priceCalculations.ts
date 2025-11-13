@@ -168,33 +168,42 @@ export async function calculateBulkPricing(
     original: product
   })).filter(p => p.metal_type !== null);
 
-  const groupedByMetal = processedProducts.reduce((acc, product) => {
-    if (!product.metal_type) {
-      return acc;
-    }
-    if (!acc[product.metal_type]) {
-      acc[product.metal_type] = [];
-    }
-    acc[product.metal_type].push(product);
-    return acc
-  }, {} as Record<MetalSymbol, typeof processedProducts>);
+  // Get unique metal types needed
+  const uniqueMetals = Array.from(new Set(
+    processedProducts.map(p => p.metal_type).filter(Boolean)
+  )) as MetalSymbol[];
 
-  for (const [metalType, metalProducts] of Object.entries(groupedByMetal)) {
-    for (const product of metalProducts) {
-      try {
-        const { calculatedPrice } = await calculateProductPrice(
-          metalType as MetalSymbol,
-          product.weight_grams,
-          config
-        );
-        priceMap.set(product.id, calculatedPrice);
-      } catch (error) {
-        console.error(`Error pricing product ${product.id}:`, error);
-        const basePrice = product.original.price || product.original.base_price || 0;
+  // ⚡ FETCH ONCE for all metals
+  const quotes = await fetchMetalsQuotes({
+    baseCurrency: 'USD',
+    symbols: uniqueMetals
+  });
 
-        priceMap.set(product.id, basePrice)
-      }
+  // Create a lookup map
+  const metalPrices = new Map(
+    quotes.map(q => [q.symbol, q.price / 31.1035]) // price per gram
+  );
+
+  // Calculate prices for all products using cached metal prices
+  for (const product of processedProducts) {
+    try {
+      if (!product.metal_type) continue;
+
+      const spotPricePerGram = metalPrices.get(product.metal_type);
+      if (!spotPricePerGram) continue;
+
+      const spotCost = spotPricePerGram * product.weight_grams;
+      const cfg = config || DEFAULT_CONFIG;
+      const markupAmount = spotCost * (cfg.markup_percentage / 100);
+      const calculatedPrice = spotCost + markupAmount + cfg.base_fee;
+
+      priceMap.set(product.id, Math.round(calculatedPrice * 100) / 100);
+    } catch (error) {
+      console.error(`Error pricing product ${product.id}:`, error);
+      const basePrice = product.original.price || product.original.base_price || 0;
+      priceMap.set(product.id, basePrice);
     }
   }
-  return priceMap
+
+  return priceMap;
 }

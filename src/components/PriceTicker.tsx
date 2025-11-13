@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
+import { useMetalPrices } from '@/contexts/MetalPricesContext';
 
 interface TickerPrice {
   metal: string;
@@ -12,16 +13,23 @@ interface TickerPrice {
 }
 
 export default function PriceTicker() {
-  const [prices, setPrices] = useState<TickerPrice[]>([
-    { metal: "GOLD", price: 0, change: 0, changePercent: 0 },
-    { metal: "SILVER", price: 0, change: 0, changePercent: 0 },
-    { metal: "PLATINUM", price: 0, change: 0, changePercent: 0 },
-    { metal: "PALLADIUM", price: 0, change: 0, changePercent: 0 },
-  ]);
+  // Use shared prices from context - no more individual fetching!
+  const { prices: contextPrices, isLoading, error, lastUpdated } = useMetalPrices();
+
+  // Transform context prices to match the component's expected format
+  const prices: TickerPrice[] = contextPrices.map((quote) => {
+    const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
+    return {
+      metal: metalInfo.ticker,
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent
+    };
+  });
 
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
+  /* ===== COMMENTED OUT - Now using shared context instead of individual fetch =====
    const fetchPrices = async () => {
     try {
       const response = await fetch('/api/metals?baseCurrency=USD');
@@ -56,6 +64,7 @@ export default function PriceTicker() {
     const interval = setInterval(fetchPrices, 600000); // 5 minutes
     return () => clearInterval(interval);
   }, []);
+  ===== END COMMENTED OUT CODE ===== */
 
   useEffect(() => {
     const handleScroll = () => {

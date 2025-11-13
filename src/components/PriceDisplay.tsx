@@ -1,7 +1,7 @@
 
 "use client";
-import { useEffect, useState } from "react";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
+import { useMetalPrices } from '@/contexts/MetalPricesContext';
 
 interface MetalPrice {
   metal: string;
@@ -11,6 +11,21 @@ interface MetalPrice {
 }
 
 export default function MetalsPricing() {
+  // Use shared prices from context - no more individual fetching!
+  const { prices: contextPrices, isLoading, error, lastUpdated, refetch } = useMetalPrices();
+
+  // Transform context prices to match the component's expected format
+  const prices: MetalPrice[] = contextPrices.map((quote) => {
+    const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
+    return {
+      metal: metalInfo.ticker,
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent
+    };
+  });
+
+  /* ===== COMMENTED OUT - Now using shared context instead of individual fetch =====
   const [prices, setPrices] = useState<MetalPrice[]>([
     { metal: "GOLD", price: 0, change: 0, changePercent: 0 },
     { metal: "SILVER", price: 0, change: 0, changePercent: 0 },
@@ -74,6 +89,7 @@ export default function MetalsPricing() {
 
     return () => clearInterval(interval);
   }, []);
+  ===== END COMMENTED OUT CODE ===== */
 
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("en-US", {
@@ -100,7 +116,7 @@ export default function MetalsPricing() {
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Prices</h2>
             <p className="text-red-300">{error}</p>
             <button
-              onClick={fetchPrices}
+              onClick={refetch}
               className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
             >
               Retry
@@ -124,7 +140,7 @@ export default function MetalsPricing() {
               "Loading prices..."
             ) : (
               <>
-                Last updated: {formatTime(lastUpdated)} • Updates every 5 minutes
+                Last updated: {lastUpdated ? formatTime(lastUpdated) : 'Never'} • Updates every 5 minutes
               </>
             )}
           </p>

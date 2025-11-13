@@ -1,4 +1,5 @@
 const API_HOST = "https://api.metalpriceapi.com/v1";
+import { getCachedData, setCachedData } from './cache';
 
 const METALS = [
   {symbol: "XAU", label: "gold", ticker: "GOLD"},
@@ -38,9 +39,13 @@ const getHistoricalDates = (days = 14) => {
 }
 
 const fetchJson = async <T>(url: string) => {
+  const cached = getCachedData(url);
+  if (cached) {
+    console.log('✓ Using cached data for:', url);
+    return cached as T;
+  }
 
-
-  const res = await fetch(url, { cache: "no-store", next: { revalidate: 0 } });
+  const res = await fetch(url, { next: { revalidate: 300 } });
 
 
 
@@ -57,7 +62,7 @@ const fetchJson = async <T>(url: string) => {
     console.error('❌ API Error:', errorInfo);
     throw new Error(`MetalpriceAPI error: ${errorInfo}`);
   }
-
+  setCachedData(url, data)
   return data as T;
 };
 

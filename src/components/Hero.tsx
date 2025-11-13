@@ -1,6 +1,31 @@
+"use client";
+
 import Image from "next/image";
+import { useMetalPrices } from '@/contexts/MetalPricesContext';
+import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 
 export default function Hero() {
+  // Use shared prices from context
+  const { prices: contextPrices, isLoading } = useMetalPrices();
+
+  // Get Gold and Silver prices (in USD, need to convert to AUD)
+  const goldPrice = contextPrices.find(p => p.symbol === 'XAU')?.price || 0;
+  const silverPrice = contextPrices.find(p => p.symbol === 'XAG')?.price || 0;
+
+  // Convert USD to AUD (approximate conversion rate - you may want to make this dynamic)
+  const USD_TO_AUD = 1.53; // Update this rate as needed
+  const goldAUD = goldPrice * USD_TO_AUD;
+  const silverAUD = silverPrice * USD_TO_AUD;
+
+  const formatPrice = (value: number) => {
+    if (value === 0 || isLoading) return '---';
+    return new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: "AUD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 lg:pt-40">
       {/* Background Image */}
@@ -77,11 +102,15 @@ export default function Hero() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-center">
                     <div className="bg-card/50 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-primary">$2,650</div>
+                      <div className={`text-2xl font-bold text-primary ${isLoading ? 'animate-pulse' : ''}`}>
+                        {formatPrice(goldAUD)}
+                      </div>
                       <div className="text-sm text-muted-foreground">Gold AUD/oz</div>
                     </div>
                     <div className="bg-card/50 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-secondary">$31.22</div>
+                      <div className={`text-2xl font-bold text-secondary ${isLoading ? 'animate-pulse' : ''}`}>
+                        {formatPrice(silverAUD)}
+                      </div>
                       <div className="text-sm text-muted-foreground">Silver AUD/oz</div>
                     </div>
                   </div>
