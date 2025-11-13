@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Product } from '@/types/product';
 import Image from 'next/image';
@@ -22,14 +22,18 @@ interface CartItem {
   livePrice?: number
 }
 
-export default function CartPage() {
+// Separate the component that uses useSearchParams
+function CartContent() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingPrices, setLoadingPrices] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const {user, isLoaded} = useUser();
   const hasAddedProduct = useRef(false);
+
+  // ... rest of your existing component code (all the useEffect, functions, and JSX)
+  // (Keep everything exactly as it is from line 24 onwards)
 
   useEffect(() => {
     log('Cart page mounted, loading cart from localStorage');
@@ -43,8 +47,8 @@ export default function CartPage() {
           product: {
             ...item.product,
             image_url: item.product.image_url?.startsWith('http')
-                ? item.product.image_url
-                : `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${item.product.image_url?.trim()}`
+              ? item.product.image_url
+              : `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${item.product.image_url?.trim()}`
           }
         }));
         setCart(cartWithUrls);
@@ -116,11 +120,11 @@ export default function CartPage() {
       const trimmedImageUrl = product.image_url?.trim();
       const fullImageUrl = trimmedImageUrl
         ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
-        : '/anblogo.png'; // Use placeholder instead of null
+        : '/anblogo.png';
 
       const productWithUrl: Product = {
         ...product,
-        image_url: fullImageUrl // Now guaranteed to be a string
+        image_url: fullImageUrl
       };
 
       setCart((prevCart) => {
@@ -131,12 +135,12 @@ export default function CartPage() {
           log('Product already in cart, incrementing quantity');
           newCart = prevCart.map((item) =>
             item.product.id === productId
-              ? { ...item, quantity: item.quantity + 1 }
+              ? {...item, quantity: item.quantity + 1}
               : item
           );
         } else {
           log('Adding new product to cart');
-          newCart = [...prevCart, { product: productWithUrl, quantity: 1 }];
+          newCart = [...prevCart, {product: productWithUrl, quantity: 1}];
         }
 
         localStorage.setItem('cart', JSON.stringify(newCart));
@@ -144,7 +148,6 @@ export default function CartPage() {
         return newCart;
       });
 
-      // Remove the query param
       router.replace('/cart');
     } catch (error) {
       log('Error adding to cart:', error);
@@ -161,7 +164,7 @@ export default function CartPage() {
 
     setCart((prevCart) => {
       const newCart = prevCart.map((item) =>
-        item.product.id === productId ? { ...item, quantity: newQuantity } : item
+        item.product.id === productId ? {...item, quantity: newQuantity} : item
       );
       localStorage.setItem('cart', JSON.stringify(newCart));
       log('Cart updated:', newCart);
@@ -186,9 +189,9 @@ export default function CartPage() {
   };
 
   const getTotalPrice = () => {
-    const total = cart.reduce((sum, item) =>{
+    const total = cart.reduce((sum, item) => {
       const price = item.livePrice ?? item.product.price;
-     return  sum + price * item.quantity
+      return sum + price * item.quantity
     }, 0);
     log('Total price calculated:', total);
     return total;
@@ -204,7 +207,7 @@ export default function CartPage() {
       log('User not loaded yet');
       return;
     }
-    
+
     if (!user) {
       log('User not authenticated, redirecting to sign-in');
       router.push('/sign-in?redirect_url=/cart');
@@ -225,6 +228,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-background/50 py-12 mt-10">
+      {/* ... rest of your JSX exactly as it is ... */}
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 
@@ -276,7 +280,7 @@ export default function CartPage() {
                         <span>Purity: {item.product.purity}</span>
                       </div>
                       <div className="text-xl font-bold text-gray-900">
-                        ${displayPrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                        ${displayPrice.toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD
                         {hasPriceChange && (
                           <span className={`text-sm ml-2 ${
                             item.livePrice! > item.product.price ? 'text-red-600' : 'text-green-600'
@@ -288,7 +292,8 @@ export default function CartPage() {
                       </div>
                     </div>
 
-                    <div className="flex text-primary font-bold md:flex-col items-center md:items-end justify-between md:justify-start gap-4">
+                    <div
+                      className="flex text-primary font-bold md:flex-col items-center md:items-end justify-between md:justify-start gap-4">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
@@ -313,7 +318,7 @@ export default function CartPage() {
                       </button>
 
                       <div className="text-lg font-bold text-gray-900 md:mt-auto">
-                        ${(displayPrice * item.quantity).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                        ${(displayPrice * item.quantity).toLocaleString('en-AU', {minimumFractionDigits: 2})}
                       </div>
                     </div>
                   </div>
@@ -336,7 +341,7 @@ export default function CartPage() {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
                     <span>Items ({getTotalItems()})</span>
-                    <span>${getTotalPrice().toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                    <span>${getTotalPrice().toLocaleString('en-AU', {minimumFractionDigits: 2})}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
@@ -344,7 +349,7 @@ export default function CartPage() {
                   </div>
                   <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
                     <span>Total</span>
-                    <span>${getTotalPrice().toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD</span>
+                    <span>${getTotalPrice().toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD</span>
                   </div>
                 </div>
 
@@ -376,5 +381,17 @@ export default function CartPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading cart...</div>
+      </div>
+    }>
+      <CartContent />
+    </Suspense>
   );
 }
