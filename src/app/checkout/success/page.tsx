@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -13,7 +13,7 @@ function log(...args: any[]) {
   }
 }
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
@@ -21,7 +21,7 @@ export default function CheckoutSuccessPage() {
 
   useEffect(() => {
     log('Success page mounted');
-    
+
     // Get order ID from URL params
     const orderId = searchParams.get('order_id');
     const paymentIntentId = searchParams.get('payment_intent');
@@ -157,7 +157,7 @@ export default function CheckoutSuccessPage() {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-1">Compliance Verification</h3>
                 <p className="text-gray-600">
-                  Your order will be reviewed for compliance with Australian regulations. 
+                  Your order will be reviewed for compliance with Australian regulations.
                   This typically takes 1-2 business days.
                 </p>
               </div>
@@ -169,7 +169,7 @@ export default function CheckoutSuccessPage() {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-1">Secure Shipping</h3>
                 <p className="text-gray-600">
-                  Once approved, your precious metals will be securely packaged and shipped 
+                  Once approved, your precious metals will be securely packaged and shipped
                   with full insurance and tracking.
                 </p>
               </div>
@@ -181,7 +181,7 @@ export default function CheckoutSuccessPage() {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-1">Delivery</h3>
                 <p className="text-gray-600">
-                  Your order will arrive within 3-5 business days after shipping. 
+                  Your order will arrive within 3-5 business days after shipping.
                   Signature may be required upon delivery.
                 </p>
               </div>
@@ -228,5 +228,17 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading order details...</div>
+      </div>
+    }>
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }
