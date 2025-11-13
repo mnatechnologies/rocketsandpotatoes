@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
@@ -35,7 +35,7 @@ interface Order {
   };
 }
 
-export default function OrderConfirmationPage() {
+function OrderConfirmationContent() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function OrderConfirmationPage() {
 
   useEffect(() => {
     log('Order confirmation page mounted');
-    
+
     if (!isLoaded) {
       log('User auth not loaded yet');
       return;
@@ -72,7 +72,7 @@ export default function OrderConfirmationPage() {
   const fetchOrder = async (orderId: string) => {
     try {
       const response = await fetch(`/api/orders/${orderId}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch order');
       }
@@ -150,9 +150,9 @@ export default function OrderConfirmationPage() {
             </p>
             <p className="text-gray-600 text-sm">
               Placed on {new Date(order.created_at).toLocaleString('en-AU', {
-                dateStyle: 'long',
-                timeStyle: 'short',
-              })}
+              dateStyle: 'long',
+              timeStyle: 'short',
+            })}
             </p>
           </div>
 
@@ -178,8 +178,8 @@ export default function OrderConfirmationPage() {
                   </div>
                   <p className="font-semibold text-gray-900">
                     ${((item.product?.price || item.price) * (item.quantity || 1)).toLocaleString('en-AU', {
-                      minimumFractionDigits: 2,
-                    })}
+                    minimumFractionDigits: 2,
+                  })}
                   </p>
                 </div>
               ))}
@@ -268,5 +268,20 @@ export default function OrderConfirmationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OrderConfirmationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl mb-4">Loading order details...</div>
+          <div className="text-gray-600">Please wait</div>
+        </div>
+      </div>
+    }>
+      <OrderConfirmationContent />
+    </Suspense>
   );
 }
