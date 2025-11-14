@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { clearPricingTimer } from '@/lib/pricing/pricingTimer';
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
@@ -40,6 +41,10 @@ function CheckoutSuccessContent() {
     // Clear cart from localStorage
     log('Clearing cart from localStorage');
     localStorage.removeItem('cart');
+    
+    // Clear pricing timer
+    clearPricingTimer();
+    log('Pricing timer cleared');
 
     // Fetch order details if we have an order ID
     if (orderId) {

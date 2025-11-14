@@ -44,3 +44,4 @@ next-env.d.ts
 /.clerk/
 /src/lib/compliance/tests/
 /src/test
+/PRICING_TIMER_IMPLEMENTATION.md

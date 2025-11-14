@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useStripe, useElements, PaymentElement, Elements } from '@stripe/react-stripe-js';
 import { Product } from '@/types/product';
+import { clearPricingTimer } from '@/lib/pricing/pricingTimer';
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
@@ -112,6 +113,10 @@ export function PaymentForm({
         // Clear cart from localStorage
         log('Clearing cart from localStorage');
         localStorage.removeItem('cart');
+        
+        // Clear pricing timer
+        clearPricingTimer();
+        log('Pricing timer cleared');
 
         // Call success callback if provided
         if (onSuccess) {

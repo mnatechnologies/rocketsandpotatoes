@@ -6,6 +6,15 @@ import { Product } from '@/types/product';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
+import { 
+  startPricingTimer, 
+  isTimerActive, 
+  lockPrices, 
+  getLockedPrice,
+  clearPricingTimer,
+  formatRemainingTime,
+  getRemainingTime
+} from '@/lib/pricing/pricingTimer';
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
@@ -27,6 +36,8 @@ function CartContent() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingPrices, setLoadingPrices] = useState(false);
+  const [timerDisplay, setTimerDisplay] = useState<string>('');
+  const [showTimer, setShowTimer] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const {user, isLoaded} = useUser();
@@ -54,7 +65,16 @@ function CartContent() {
         }));
         setCart(cartWithUrls);
         log('Cart loaded:', cartWithUrls);
-        fetchLivePrices(cartWithUrls)
+        
+        // Check if timer is active and use locked prices, otherwise fetch live prices
+        if (isTimerActive()) {
+          log('Timer is active, using locked prices');
+          setShowTimer(true);
+          applyLockedPrices(cartWithUrls);
+        } else {
+          log('Timer inactive, fetching live prices');
+          fetchLivePrices(cartWithUrls);
+        }
       } catch (error) {
         log('Error parsing cart:', error);
       }
@@ -70,6 +90,41 @@ function CartContent() {
 
     setLoading(false);
   }, [searchParams]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (!showTimer) return;
+
+    const updateTimer = () => {
+      if (isTimerActive()) {
+        setTimerDisplay(formatRemainingTime());
+      } else {
+        setShowTimer(false);
+        setTimerDisplay('');
+        log('Timer expired, prices will update on next fetch');
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [showTimer]);
+
+  const applyLockedPrices = (cartItems: CartItem[]) => {
+    log('Applying locked prices to cart');
+    setCart(prevCart => prevCart.map(item => {
+      const lockedPrice = getLockedPrice(item.product.id);
+      if (lockedPrice) {
+        log(`Using locked price for ${item.product.id}:`, lockedPrice.price);
+        return {
+          ...item,
+          livePrice: lockedPrice.price
+        };
+      }
+      return item;
+    }));
+  };
 
   const fetchLivePrices = async (cartItems: CartItem[]) => {
     if (cartItems.length === 0) return;
@@ -87,6 +142,15 @@ function CartContent() {
 
       if (data.success && data.data) {
         log('Live prices fetched:', data.data);
+
+        // Lock the prices for the timer period
+        const pricesToLock = data.data.map((p: any) => ({
+          productId: p.id,
+          price: p.calculated_price,
+          spotPricePerGram: p.base_price
+        }));
+        lockPrices(pricesToLock);
+        log('Prices locked for timer period');
 
         // Update cart with live prices
         setCart(prevCart => prevCart.map(item => {
@@ -142,6 +206,13 @@ function CartContent() {
         } else {
           log('Adding new product to cart');
           newCart = [...prevCart, {product: productWithUrl, quantity: 1}];
+          
+          // Start timer when first product is added
+          if (prevCart.length === 0) {
+            log('First product added, starting pricing timer');
+            startPricingTimer();
+            setShowTimer(true);
+          }
         }
 
         localStorage.setItem('cart', JSON.stringify(newCart));
@@ -149,6 +220,15 @@ function CartContent() {
         log('Cart updated:', newCart);
         return newCart;
       });
+
+      // Fetch live prices for the added product
+      const updatedCart = await new Promise<CartItem[]>((resolve) => {
+        setCart((prevCart) => {
+          resolve(prevCart);
+          return prevCart;
+        });
+      });
+      fetchLivePrices(updatedCart);
 
       router.replace('/cart');
     } catch (error) {
@@ -182,6 +262,15 @@ function CartContent() {
       localStorage.setItem('cart', JSON.stringify(newCart));
       window.dispatchEvent(new Event('cartUpdated'));
       log('Cart updated:', newCart);
+      
+      // Clear pricing timer if cart becomes empty
+      if (newCart.length === 0) {
+        log('Cart is now empty, clearing pricing timer');
+        clearPricingTimer();
+        setShowTimer(false);
+        setTimerDisplay('');
+      }
+      
       return newCart;
     });
   };
@@ -191,6 +280,12 @@ function CartContent() {
     setCart([]);
     localStorage.removeItem('cart');
     window.dispatchEvent(new Event('cartUpdated'));
+    
+    // Clear pricing timer when cart is emptied
+    clearPricingTimer();
+    setShowTimer(false);
+    setTimerDisplay('');
+    log('Pricing timer cleared');
   };
 
   const getTotalPrice = () => {
@@ -235,6 +330,17 @@ function CartContent() {
     <div className="min-h-screen bg-background/50 py-12 mt-10">
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
+
+        {showTimer && timerDisplay && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+            <p className="text-green-800 font-semibold">
+              🔒 Prices locked for: <span className="text-xl font-bold">{timerDisplay}</span>
+            </p>
+            <p className="text-green-700 text-sm mt-1">
+              Your prices are guaranteed for the next {timerDisplay} minutes
+            </p>
+          </div>
+        )}
 
         {loadingPrices && (
           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
@@ -285,14 +391,9 @@ function CartContent() {
                       </div>
                       <div className="text-xl font-bold text-gray-900">
                         ${displayPrice.toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD
-                        {hasPriceChange && (
-                          <span className={`text-sm ml-2 ${
-                            item.livePrice! > item.product.price ? 'text-red-600' : 'text-green-600'
-                          }`}>
-                            ({item.livePrice! > item.product.price ? '↑' : '↓'}
-                            ${Math.abs(item.livePrice! - item.product.price).toFixed(2)})
-                          </span>
-                        )}
+                        <div className="text-xs text-green-600 font-medium mt-1">
+                          ✓ Live Market Price
+                        </div>
                       </div>
                     </div>
 
