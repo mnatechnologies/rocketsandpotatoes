@@ -10,11 +10,44 @@ import {
   SignedOut,
   UserButton,
 } from '@clerk/nextjs';
+import {ShoppingCartIcon} from "lucide-react";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [tickerHeight, setTickerHeight] = useState(56);
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    const updateCartCount = () => {
+      try {
+        const cart = localStorage.getItem('cart');
+        if (cart) {
+          const items = JSON.parse(cart);
+          const count = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+          setCartCount(count);
+        } else {
+          setCartCount(0);
+        }
+      } catch (error) {
+        console.error('Error reading cart:', error);
+        setCartCount(0);
+      }
+    };
+
+    updateCartCount();
+    
+    // Listen for storage events from other tabs
+    window.addEventListener('storage', updateCartCount);
+    
+    // Listen for custom cart update events from same page
+    window.addEventListener('cartUpdated', updateCartCount);
+    
+    return () => {
+      window.removeEventListener('storage', updateCartCount);
+      window.removeEventListener('cartUpdated', updateCartCount);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -92,16 +125,23 @@ export default function Header() {
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center space-x-3 " >
+
               <Link href={'/cart'}>
-                <button className=" cursor-pointer inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
-                  Cart
+                <button className=" mt-2 relative cursor-pointer inline-flex items-center...">
+                  <ShoppingCartIcon/>
+                  {cartCount > 0 && (
+                    <span
+                      className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                  )}
                 </button>
               </Link>
 
               {/* Clerk Authentication Components */}
               <SignedOut>
                 <SignInButton>
-                  <button className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
+                  <button className="bg-[#6c47ff] text-white rounded-full font-medium text-sm h-9 px-4 cursor-pointer hover:opacity-95 transition-opacity">
                     Login
                   </button>
                 </SignInButton>

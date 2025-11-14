@@ -32,6 +32,7 @@ function CartContent() {
   const {user, isLoaded} = useUser();
   const hasAddedProduct = useRef(false);
 
+
   // ... rest of your existing component code (all the useEffect, functions, and JSX)
   // (Keep everything exactly as it is from line 24 onwards)
 
@@ -144,6 +145,7 @@ function CartContent() {
         }
 
         localStorage.setItem('cart', JSON.stringify(newCart));
+        window.dispatchEvent(new Event('cartUpdated'));
         log('Cart updated:', newCart);
         return newCart;
       });
@@ -167,6 +169,7 @@ function CartContent() {
         item.product.id === productId ? {...item, quantity: newQuantity} : item
       );
       localStorage.setItem('cart', JSON.stringify(newCart));
+      window.dispatchEvent(new Event('cartUpdated'));
       log('Cart updated:', newCart);
       return newCart;
     });
@@ -177,6 +180,7 @@ function CartContent() {
     setCart((prevCart) => {
       const newCart = prevCart.filter((item) => item.product.id !== productId);
       localStorage.setItem('cart', JSON.stringify(newCart));
+      window.dispatchEvent(new Event('cartUpdated'));
       log('Cart updated:', newCart);
       return newCart;
     });
@@ -186,6 +190,7 @@ function CartContent() {
     log('Clearing entire cart');
     setCart([]);
     localStorage.removeItem('cart');
+    window.dispatchEvent(new Event('cartUpdated'));
   };
 
   const getTotalPrice = () => {
@@ -228,7 +233,6 @@ function CartContent() {
 
   return (
     <div className="min-h-screen bg-background/50 py-12 mt-10">
-      {/* ... rest of your JSX exactly as it is ... */}
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 

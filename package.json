@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.7",
+    "@icons-pack/react-simple-icons": "^13.8.0",
     "@ngrok/ngrok": "^1.5.2",
     "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.1.0",

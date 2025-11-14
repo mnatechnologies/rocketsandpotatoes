@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       .select('*');
 
     if (productIds && productIds.length > 0) {
-      const { data: products, error } = await query.in('id', productIds);
+      query = query.in('id', productIds);
     }
 
     const { data: products, error } = await query;

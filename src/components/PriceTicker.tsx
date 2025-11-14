@@ -83,6 +83,15 @@ export default function PriceTicker() {
         maximumFractionDigits: 2,
       }).format(value);
 
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  };
+
   if (isLoading) {
     return (
         <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-r from-primary/12 via-primary/6 to-primary/12 backdrop-blur-sm" data-ticker>
@@ -130,6 +139,11 @@ export default function PriceTicker() {
                       </div>
                     </div>
                 ))}
+                {lastUpdated && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    Updated {formatTime(lastUpdated)}
+                  </span>
+                )}
               </div>
             </div>
           </div>

@@ -8,7 +8,7 @@ export interface Product {
     calculated_price?: number;
     currency: string;
     weight: string;
-    weight_grams: string;
+    weight_grams: number;
     category: string;
     purity: string;
     rating: number;

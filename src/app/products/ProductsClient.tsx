@@ -4,6 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { Product } from '@/types/product';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useMetalPrices } from '@/contexts/MetalPricesContext';
+import { MetalSymbol } from '@/lib/metals-api/metalsApi';
+import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 
 interface ProductsClientProps {
     products: Product[];
@@ -21,39 +24,50 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name'>('price-asc');
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
-    const [loadingPrices, setLoadingPrices] = useState(true);
-    const [priceError, setPriceError] = useState<string | null>(null);
+    
+    // Use shared metal prices from context
+    const { prices: metalPrices, isLoading: loadingPrices, error, lastUpdated } = useMetalPrices();
+    const priceError = error ? 'Using static prices' : null;
 
-    // Fetch dynamic pricing on mount
+    // Calculate product prices when metal prices change
     useEffect(() => {
-        const fetchPricing = async () => {
-            try {
-                setLoadingPrices(true);
-                const productIds = products.map(p => p.id).join(',');
-                const response = await fetch(`/api/products/pricing?ids=${productIds}`);
+        if (loadingPrices || !metalPrices || metalPrices.length === 0) {
+            return;
+        }
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch pricing');
-                }
+        // Create a map of metal prices (price per troy ounce) for calculateBulkPricingFromCache
+        const metalPriceMap = new Map<MetalSymbol, number>(
+            metalPrices.map(price => [price.symbol, price.price])
+        );
 
-                const data = await response.json();
+        // Use centralized pricing calculation from priceCalculations.ts
+        const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
 
-                if (data.success && data.data) {
-                    setProductsWithPricing(data.data);
-                } else {
-                    throw new Error(data.error || 'Unknown error');
-                }
-            } catch (error) {
-                console.error('Error fetching dynamic pricing:', error);
-                setPriceError('Using static prices');
-                setProductsWithPricing(products);
-            } finally {
-                setLoadingPrices(false);
+        // Map the results back to products with pricing
+        const productsWithCalculatedPrices: ProductWithDynamicPrice[] = products.map(product => {
+            const priceInfo = priceMap.get(product.id);
+            
+            if (!priceInfo) {
+                // Fallback to base price if calculation failed
+                return {
+                    ...product,
+                    calculated_price: product.price,
+                    price_difference: 0,
+                };
             }
-        };
 
-        fetchPricing();
-    }, [products]);
+            const priceDifference = priceInfo.calculatedPrice - product.price;
+
+            return {
+                ...product,
+                calculated_price: priceInfo.calculatedPrice,
+                price_difference: Math.round(priceDifference * 100) / 100,
+                spot_price_per_gram: priceInfo.spotPricePerGram,
+            };
+        });
+
+        setProductsWithPricing(productsWithCalculatedPrices);
+    }, [products, metalPrices, loadingPrices]);
 
     // Get unique categories from products
     const categories = useMemo(() => {
@@ -193,7 +207,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {categoryProducts.map((product) => (
-                      <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} />
+                      <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} lastUpdated={lastUpdated} />
                     ))}
                 </div>
             </div>
@@ -210,9 +224,18 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 }
 
 
-function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPrice; loadingPrices: boolean }) {
+function ProductCard({ product, loadingPrices, lastUpdated }: { product: ProductWithDynamicPrice; loadingPrices: boolean; lastUpdated: Date | null }) {
     const displayPrice = product.calculated_price ?? product.price;
-    const hasPriceChange = product.price_difference !== undefined && product.price_difference !== 0;
+
+    const formatTime = (date: Date | null) => {
+        if (!date) return 'N/A';
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+        });
+    };
 
     return (
       <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
@@ -272,28 +295,22 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                             <div className="text-2xl font-bold text-gray-900">
                                 ${displayPrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                             </div>
-                            <div className="text-xs text-gray-500">AUD</div>
-                            {hasPriceChange && (
-                              <div className={`text-xs font-medium mt-1 ${
-                                product.price_difference! > 0 ? 'text-green-600' : 'text-red-600'
-                              }`}>
-                                  {product.price_difference! > 0 ? '↑' : '↓'}
-                                  ${Math.abs(product.price_difference!).toFixed(2)}
-                              </div>
-                            )}
+                            <div className="text-xs text-gray-500">USD</div>
+                            <div className="text-xs text-green-600 font-medium mt-1">
+                                ✓ Live Market Price
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                Updated {formatTime(lastUpdated)}
+                            </div>
                         </>
                       )}
                   </div>
 
                   <Link
                     href={`/cart?add=${product.id}`}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                      product.stock
-                        ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className="px-4 py-2 rounded-lg font-semibold transition-colors bg-yellow-500 hover:bg-yellow-600 text-white"
                   >
-                      {product.stock ? 'Add to Cart' : 'Unavailable'}
+                      Add to Cart
                   </Link>
               </div>
           </div>

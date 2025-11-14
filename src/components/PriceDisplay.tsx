@@ -128,7 +128,7 @@ export default function MetalsPricing() {
   }
 
   return (
-    <div className="bg-black text-white p-4 md:p-8">
+    <div id= 'pricing' className="bg-black text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">

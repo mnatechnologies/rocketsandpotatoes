@@ -207,3 +207,67 @@ export async function calculateBulkPricing(
 
   return priceMap;
 }
+
+/**
+ * Client-side version of calculateBulkPricing that uses metal prices from MetalPricesContext
+ * instead of fetching them from the API. This avoids duplicate API calls.
+ */
+export function calculateBulkPricingFromCache(
+  products: Array<{
+    id: string;
+    price?: number;
+    base_price?: number;
+    metal_type?: string;
+    weight?: string;
+    weight_grams?: number;
+    category?: string;
+    name?: string;
+  }>,
+  metalPrices: Map<MetalSymbol, number>, // price per troy ounce
+  config?: PricingConfig
+): Map<string, { calculatedPrice: number; spotPricePerGram: number }> {
+  const priceMap = new Map<string, { calculatedPrice: number; spotPricePerGram: number }>();
+
+  const processedProducts = products.map(product => ({
+    id: product.id,
+    metal_type: extractMetalType(product),
+    weight_grams: extractWeightGrams(product),
+    original: product
+  })).filter(p => p.metal_type !== null);
+
+  // Convert metal prices from per troy ounce to per gram
+  const metalPricesPerGram = new Map(
+    Array.from(metalPrices.entries()).map(([symbol, pricePerOz]) => 
+      [symbol, pricePerOz / 31.1035]
+    )
+  );
+
+  // Calculate prices for all products using cached metal prices
+  for (const product of processedProducts) {
+    try {
+      if (!product.metal_type) continue;
+
+      const spotPricePerGram = metalPricesPerGram.get(product.metal_type);
+      if (!spotPricePerGram) continue;
+
+      const spotCost = spotPricePerGram * product.weight_grams;
+      const cfg = config || DEFAULT_CONFIG;
+      const markupAmount = spotCost * (cfg.markup_percentage / 100);
+      const calculatedPrice = spotCost + markupAmount + cfg.base_fee;
+
+      priceMap.set(product.id, {
+        calculatedPrice: Math.round(calculatedPrice * 100) / 100,
+        spotPricePerGram: Math.round(spotPricePerGram * 100) / 100
+      });
+    } catch (error) {
+      console.error(`Error pricing product ${product.id}:`, error);
+      const basePrice = product.original.price || product.original.base_price || 0;
+      priceMap.set(product.id, {
+        calculatedPrice: basePrice,
+        spotPricePerGram: 0
+      });
+    }
+  }
+
+  return priceMap;
+}
