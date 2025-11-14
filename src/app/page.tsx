@@ -1,7 +1,5 @@
 import Hero from "@/components/Hero";
 import MetalsPricing from "@/components/PriceDisplay";
-import PriceTicker from "@/components/PriceTicker";
-import ProductShowcase from "@/components/ProductShowcase";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import { createServerSupabase } from '@/lib/supabase/server';
 import FeaturedProductsWrapper from "@/components/FeaturedProductsWrapper";
@@ -35,7 +33,7 @@ export default async function Home() {
     <div className="min-h-screen">
       <Hero />
       <MetalsPricing />
-      <FeaturedProductsWrapper products={featuredProducts} />
+      <FeaturedProductsWrapper products={featuredProducts}/>
     </div>
   );
 }
