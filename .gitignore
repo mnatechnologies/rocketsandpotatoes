@@ -45,3 +45,4 @@ next-env.d.ts
 /src/lib/compliance/tests/
 /src/test
 /PRICING_TIMER_IMPLEMENTATION.md
+/.junie/guidelines.md
