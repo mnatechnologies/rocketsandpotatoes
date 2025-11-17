@@ -16,7 +16,7 @@ interface MetalPricesContextType {
   isLoading: boolean;
   error: string | null;
   lastUpdated: Date | null;
-  dataTimeStamp: Date | null
+  dataTimestamp: Date | null
   refetch: () => Promise<void>;
 }
 
