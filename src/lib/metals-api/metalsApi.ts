@@ -24,6 +24,7 @@ interface metalsQuote {
   price: number;
   change: number;
   changePercent: number;
+  timestamp?: string;
 }
 
 const getHistoricalDates = (days = 14) => {
@@ -96,8 +97,15 @@ export const fetchMetalsQuotes = async (
     success: boolean;
     base: string;
     rates: Record<MetalSymbol, number>
+    timestamp?: number
   }>(`${API_HOST}/latest?${params}`);
   console.log('✓ Latest rates received:', latest.rates);
+
+  const dataTimestamp = latest.timestamp
+    ? new Date(latest.timestamp * 1000).toISOString()
+    : new Date().toISOString();
+  console.log('📅 Data timestamp:', dataTimestamp);
+
 
   let previousRates: Record<MetalSymbol, number> | null = null;
 
@@ -107,7 +115,7 @@ export const fetchMetalsQuotes = async (
       console.log(`  Trying date: ${date}`);
       const historical = await fetchJson<{
         success: boolean;
-        rates: Record<MetalSymbol, number>
+        rates: Record<MetalSymbol, number>;
       }>(`${API_HOST}/${date}?${params}`);
       previousRates = historical.rates;
       console.log(`✓ Historical data found for ${date}:`, historical.rates);
@@ -140,6 +148,7 @@ export const fetchMetalsQuotes = async (
       price,
       change: parseFloat(change.toFixed(2)),
       changePercent: parseFloat(changePercent.toFixed(2)),
+      timestamp: dataTimestamp
     }
   })
 }

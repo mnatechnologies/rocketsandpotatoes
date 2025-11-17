@@ -8,6 +8,7 @@ interface MetalPrice {
   price: number;
   change: number;
   changePercent: number;
+  timestamp?: string;
 }
 
 interface MetalPricesContextType {
@@ -15,6 +16,7 @@ interface MetalPricesContextType {
   isLoading: boolean;
   error: string | null;
   lastUpdated: Date | null;
+  dataTimeStamp: Date | null
   refetch: () => Promise<void>;
 }
 
@@ -25,6 +27,7 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [dataTimestamp, setDataTimestamp] = useState<Date | null>(null)
 
   const fetchPrices = async () => {
     try {
@@ -39,6 +42,10 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
       if (result.success && result.data) {
         setPrices(result.data);
         setLastUpdated(new Date());
+
+      if (result.timestamp) {
+        setDataTimestamp(new Date(result.timestamp));
+      }
       } else {
         throw new Error('Invalid response format');
       }
@@ -58,7 +65,7 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <MetalPricesContext.Provider value={{ prices, isLoading, error, lastUpdated, refetch: fetchPrices }}>
+    <MetalPricesContext.Provider value={{ prices, isLoading, error, lastUpdated, dataTimestamp, refetch: fetchPrices }}>
   {children}
   </MetalPricesContext.Provider>
 );

@@ -26,7 +26,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
     
     // Use shared metal prices from context
-    const { prices: metalPrices, isLoading: loadingPrices, error, lastUpdated } = useMetalPrices();
+    const { prices: metalPrices, isLoading: loadingPrices, error, dataTimestamp } = useMetalPrices();
     const priceError = error ? 'Using static prices' : null;
 
     // Calculate product prices when metal prices change
@@ -207,7 +207,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {categoryProducts.map((product) => (
-                      <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} lastUpdated={lastUpdated} />
+                      <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} dataTimestamp={dataTimestamp} />
                     ))}
                 </div>
             </div>
@@ -224,16 +224,18 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 }
 
 
-function ProductCard({ product, loadingPrices, lastUpdated }: { product: ProductWithDynamicPrice; loadingPrices: boolean; lastUpdated: Date | null }) {
+function ProductCard({ product, loadingPrices, dataTimestamp }: { product: ProductWithDynamicPrice; loadingPrices: boolean; dataTimestamp: Date }) {
     const displayPrice = product.calculated_price ?? product.price;
 
-    const formatTime = (date: Date | null) => {
-        if (!date) return 'N/A';
-        return date.toLocaleTimeString('en-US', {
+    const formatDateTime = (date: Date) => {
+        return date.toLocaleString("en-AU", {
+            timeZone: 'Australia/Sydney',
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
+            timeZoneName: 'short'
         });
     };
 
@@ -300,7 +302,7 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
                                 ✓ Live Market Price
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                                Updated {formatTime(lastUpdated)}
+                                Updated {formatDateTime(dataTimestamp)}
                             </div>
                         </>
                       )}

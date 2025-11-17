@@ -399,3 +399,14 @@ CREATE TABLE metal_prices (
 - Add a premium/markup column to products:
 
 ALTER TABLE products ADD COLUMN premium_percentage DECIMAL(5, 2) DEFAULT 5.00;
+
+ALTER TABLE transactions
+    ADD COLUMN IF NOT EXISTS review_status VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS review_notes TEXT,
+    ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_transactions_review
+    ON transactions(flagged_for_review, review_status)
+    WHERE flagged_for_review = true;
+

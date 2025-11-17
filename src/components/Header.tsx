@@ -75,11 +75,36 @@ export default function Header() {
     };
   }, []);
 
+  useEffect(() => {
+
+    const updateHeaderHeight = () => {
+      const ticker = document.querySelector('[data-ticker]') as HTMLElement;
+      const header = document.querySelector('[data-header]') as HTMLElement;
+
+      if (ticker && header) {
+        const totalHeight = ticker.offsetHeight + header.offsetHeight;
+        document.documentElement.style.setProperty('--header-total-height', `${totalHeight}px`);
+      }
+    };
+
+    updateHeaderHeight();
+    // Update on resize and after a short delay to ensure everything is rendered
+    setTimeout(updateHeaderHeight, 0);
+    setTimeout(updateHeaderHeight, 100);
+
+    window.addEventListener('resize', updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, [tickerHeight]);
+
   const navItems = [
     { name: "Products", href: "/products" },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/#about" },
     { name: "Contact", href: "/#contact" },
+    { name: "Admin", href: '/admin/reviews'}
   ];
 
   return (
@@ -159,7 +184,7 @@ export default function Header() {
             {/* Mobile menu button */}
             <div className="md:hidden">
               <button
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth"
+                  className=" cursor-pointer inline-flex items-center justify-center h-9 w-9 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth"
                   onClick={() => setIsMenuOpen((v) => !v)}
                   aria-label="Toggle menu"
               >
@@ -194,7 +219,13 @@ export default function Header() {
                   ))}
                   <Link href={'/cart'}>
                     <button className=" cursor-pointer inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
-                      Cart
+                      <ShoppingCartIcon/>
+                      {cartCount > 0 && (
+                        <span
+                          className= "bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                      )}
                     </button>
                   </Link>
                   {/* Mobile Authentication */}

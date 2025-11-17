@@ -2,6 +2,7 @@
 "use client";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
+import {useEffect, useState} from "react";
 
 interface MetalPrice {
   metal: string;
@@ -10,9 +11,37 @@ interface MetalPrice {
   changePercent: number;
 }
 
+function getMarketStatus() {
+  const now = new Date();
+  const utcDay = now.getUTCDay();
+  const utcHour = now.getUTCHours();
+
+  if (utcDay === 0 || utcDay === 6) {
+    return { isOpen: false, reason: 'Weekend' };
+  }
+
+  if (utcDay === 5 && utcHour >= 21) {
+    return { isOpen: false, reason: 'Weekend' };
+  }
+
+  if (utcDay === 1 && utcHour < 22) {
+    return { isOpen: false, reason: 'Weekend' };
+  }
+
+  return { isOpen: true, reason: 'Live' };
+}
+
 export default function MetalsPricing() {
   // Use shared prices from context - no more individual fetching!
-  const { prices: contextPrices, isLoading, error, lastUpdated, refetch } = useMetalPrices();
+  const { prices: contextPrices, isLoading, error, dataTimestamp, refetch } = useMetalPrices();
+  const [marketStatus, setMarketStatus] = useState(getMarketStatus())
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMarketStatus(getMarketStatus());
+    }, 60000);
+    return () => clearInterval(interval)
+  }, []);
 
   // Transform context prices to match the component's expected format
   const prices: MetalPrice[] = contextPrices.map((quote) => {
@@ -99,6 +128,20 @@ export default function MetalsPricing() {
       maximumFractionDigits: 2,
     }).format(value);
 
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleString("en-AU", {
+      timeZone: 'Australia/Sydney',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      timeZoneName: 'short'
+     })
+  }
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -132,16 +175,27 @@ export default function MetalsPricing() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-5xl font-bold mb-3">
-            Live Precious Metals Pricing
-          </h1>
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <h1 className="text-3xl md:text-5xl font-bold">
+              {marketStatus.isOpen ? 'Live' : 'Latest'} Precious Metals Pricing
+            </h1>
+            {!marketStatus.isOpen && (
+              <span className="px-3 py-1 bg-orange-500/20 text-orange-500 rounded-full text-sm font-medium">
+                Markets Closed
+              </span>
+            )}
+          </div>
           <p suppressHydrationWarning={true} className="text-gray-500 text-sm">
             {isLoading ? (
               "Loading prices..."
+            ) : dataTimestamp ? (
+              marketStatus.isOpen ? (
+                <>Last updated: {formatDateTime(dataTimestamp)} • Updates every 5 minutes</>
+              ) : (
+                <>Prices from: {formatDateTime(dataTimestamp)} • Markets closed for weekend</>
+              )
             ) : (
-              <>
-                Last updated: {lastUpdated ? formatTime(lastUpdated) : 'Never'} • Updates every 5 minutes
-              </>
+              "Real-time market data"
             )}
           </p>
         </div>

@@ -9,7 +9,12 @@
     "lint": "eslint",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "dry-run": "dotenvx run -- tsx src/scripts/dry-run-checkout.ts",
+    "dry-run:single": "tsx src/scripts/dry-run-checkout.ts",
+    "test:checkout": "dotenvx run -- vitest run src/test/checkout-flow.test.ts",
+    "test:checkout:watch": "dotenvx run -- vitest watch src/test/checkout-flow.test.ts",
+    "seed-test": "dotenvx run -- tsx src/test/seed-test-data.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.7",
@@ -26,6 +31,7 @@
     "svix": "^1.77.0"
   },
   "devDependencies": {
+    "@dotenvx/dotenvx": "^1.51.1",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.10.0",

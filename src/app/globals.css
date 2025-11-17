@@ -135,6 +135,8 @@
     @apply bg-background text-foreground;
     background: var(--gradient-dark);
     min-height: 100vh;
+    padding-top: var(--header-total-height, 120px); /* 120px is fallback (56px ticker + 64px header) */
+
   }
 
   /* Custom scrollbar */

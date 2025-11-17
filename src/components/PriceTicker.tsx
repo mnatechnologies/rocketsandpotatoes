@@ -12,9 +12,98 @@ interface TickerPrice {
   changePercent: number;
 }
 
+function getMarketStatus() {
+  const now = new Date();
+
+  // Convert to Australian Eastern Time
+  const australiaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+  const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
+
+  // Markets are closed on weekends (Saturday and Sunday in US time)
+  if (utcDay === 0 || utcDay === 6) {
+    return {
+      isOpen: false,
+      reason: 'Weekend',
+      nextOpen: getNextMarketOpen(now)
+    };
+  }
+
+  // Friday evening US time = Saturday morning Australia
+  if (utcDay === 5) {
+    const utcHour = now.getUTCHours();
+    if (utcHour >= 21) { // 5pm ET Friday
+      return {
+        isOpen: false,
+        reason: 'Weekend',
+        nextOpen: getNextMarketOpen(now)
+      };
+    }
+  }
+
+  // Sunday evening US time = Monday morning Australia
+  if (utcDay === 1) {
+    const utcHour = now.getUTCHours();
+    if (utcHour < 22) { // Before 6pm ET Sunday
+      return {
+        isOpen: false,
+        reason: 'Weekend',
+        nextOpen: getNextMarketOpen(now)
+      };
+    }
+  }
+
+  return { isOpen: true, reason: 'Live', nextOpen: null };
+}
+function getNextMarketOpen(now: Date): string {
+  const utcDay = now.getUTCDay();
+  const utcHour = now.getUTCHours();
+
+  // If it's Friday evening or Saturday, market opens Sunday 6pm ET (Monday morning AEDT)
+  if (utcDay === 5 || utcDay === 6) {
+    const daysUntilSunday = utcDay === 5 ? 2 : 1;
+    const nextOpen = new Date(now);
+    nextOpen.setUTCDate(now.getUTCDate() + daysUntilSunday);
+    nextOpen.setUTCHours(22, 0, 0, 0); // 6pm ET = 22:00 UTC (10am AEDT Monday)
+
+    return nextOpen.toLocaleString('en-AU', {
+      timeZone: 'Australia/Sydney',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+  }
+
+  // If it's Sunday before market open
+  if (utcDay === 0 || (utcDay === 1 && utcHour < 22)) {
+    const nextOpen = new Date(now);
+    if (utcDay === 0) {
+      nextOpen.setUTCDate(now.getUTCDate() + 1);
+    }
+    nextOpen.setUTCHours(22, 0, 0, 0);
+
+    return nextOpen.toLocaleString('en-AU', {
+      timeZone: 'Australia/Sydney',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+  }
+
+  return '';
+}
+
 export default function PriceTicker() {
   // Use shared prices from context - no more individual fetching!
-  const { prices: contextPrices, isLoading, error, lastUpdated } = useMetalPrices();
+  const { prices: contextPrices, isLoading, error, dataTimestamp } = useMetalPrices();
+  const [marketStatus, setMarketStatus] = useState(getMarketStatus());
+  const [isScrolled, setIsScrolled] = useState(false);
+
 
   // Transform context prices to match the component's expected format
   const prices: TickerPrice[] = contextPrices.map((quote) => {
@@ -27,7 +116,7 @@ export default function PriceTicker() {
     };
   });
 
-  const [isScrolled, setIsScrolled] = useState(false);
+
 
   /* ===== COMMENTED OUT - Now using shared context instead of individual fetch =====
    const fetchPrices = async () => {
@@ -75,6 +164,13 @@ export default function PriceTicker() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMarketStatus(getMarketStatus)
+    }, 60000);
+    return () => clearInterval(interval)
+  }, []);
+
   const formatPrice = (value: number) =>
       new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -83,14 +179,19 @@ export default function PriceTicker() {
         maximumFractionDigits: 2,
       }).format(value);
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleString("en-AU", {
+      timeZone: 'Australia/Sydney',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
     });
   };
+
+
 
   if (isLoading) {
     return (
@@ -117,9 +218,17 @@ export default function PriceTicker() {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-center overflow-x-auto">
               <div className="flex items-center space-x-3 md:space-x-6 text-sm">
-              <span className="text-primary font-semibold text-xs uppercase tracking-wide whitespace-nowrap">
-                Live Prices
-              </span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-primary font-semibold text-xs uppercase tracking-wide whitespace-nowrap">
+                    {marketStatus.isOpen ? 'Live Prices' : 'Last Prices'}
+                  </span>
+                  {!marketStatus.isOpen && (
+                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-600 rounded text-xs font-medium">
+                      {marketStatus.reason}
+                    </span>
+                  )}
+                </div>
+
                 {prices.map((price) => (
                     <div key={price.metal} className="flex items-center space-x-2 whitespace-nowrap">
                       <span className="font-bold text-foreground">{price.metal}</span>
@@ -139,9 +248,13 @@ export default function PriceTicker() {
                       </div>
                     </div>
                 ))}
-                {lastUpdated && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    Updated {formatTime(lastUpdated)}
+                {dataTimestamp && (
+                  <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                    {marketStatus.isOpen ? (
+                      <>Updated {formatTime(dataTimestamp)}</>
+                    ) : (
+                      <>From {formatDateTime(dataTimestamp)}</>
+                    )}
                   </span>
                 )}
               </div>
