@@ -107,7 +107,7 @@ function TransactionReviewCard({
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-xl font-semibold">{transaction.customer.full_name}</h3>
+          <h3 className="text-xl font-semibold">{transaction.customer.first_name} {transaction.customer.last_name}</h3>
           <p className="text-gray-600">{transaction.customer.email}</p>
           <p className="text-sm text-gray-500 mt-1">
             ID: {transaction.id.slice(0, 13)}...
