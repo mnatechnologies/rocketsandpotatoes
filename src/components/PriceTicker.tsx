@@ -251,7 +251,7 @@ export default function PriceTicker() {
                 {dataTimestamp && (
                   <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
                     {marketStatus.isOpen ? (
-                      <>Updated {formatTime(dataTimestamp)}</>
+                      <>Updated {formatDateTime(dataTimestamp)}</>
                     ) : (
                       <>From {formatDateTime(dataTimestamp)}</>
                     )}
