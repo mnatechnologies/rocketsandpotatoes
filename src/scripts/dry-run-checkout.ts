@@ -1,5 +1,5 @@
-
-import { TEST_SCENARIOS, TEST_CARDS } from '@/test/test-config';
+// @ts-ignore
+import {TEST_SCENARIOS, TEST_CARDS} from "@/test/test-config";
 
 async function runDryTest(scenarioName: keyof typeof TEST_SCENARIOS) {
   console.log(`\n${'='.repeat(60)}`);
