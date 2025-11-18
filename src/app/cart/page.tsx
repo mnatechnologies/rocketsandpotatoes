@@ -1,137 +1,62 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useEffect, useRef, Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Product } from '@/types/product';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
-import { 
-  startPricingTimer, 
-  isTimerActive, 
-  lockPrices, 
-  getLockedPrice,
-  clearPricingTimer,
-  formatRemainingTime,
-  getRemainingTime
-} from '@/lib/pricing/pricingTimer';
-
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CART_PAGE]', ...args);
-  }
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-  livePrice?: number
-}
+import { useCart } from '@/contexts/CartContext';
+import { lockPrices } from '@/lib/pricing/pricingTimer';
 
 // Separate the component that uses useSearchParams
 function CartContent() {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    cart,
+    addToCart: addToCartContext,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    getCartTotal,
+    getCartCount,
+    getLockedPriceForProduct,
+    isLoading,
+    timerRemaining,
+    timerFormatted,
+    isTimerExpired
+  } = useCart();
+  
   const [loadingPrices, setLoadingPrices] = useState(false);
-  const [timerDisplay, setTimerDisplay] = useState<string>('');
-  const [showTimer, setShowTimer] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const {user, isLoaded} = useUser();
+  const { user, isLoaded } = useUser();
   const hasAddedProduct = useRef(false);
+  const hasFetchedPrices = useRef(false);
 
 
-  // ... rest of your existing component code (all the useEffect, functions, and JSX)
-  // (Keep everything exactly as it is from line 24 onwards)
-
+  // Fetch live prices on mount if cart has items
   useEffect(() => {
-    log('Cart page mounted, loading cart from localStorage');
-    // Load cart from localStorage
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        const cartWithUrls = parsedCart.map((item: CartItem) => ({
-          ...item,
-          product: {
-            ...item.product,
-            image_url: item.product.image_url?.startsWith('http')
-              ? item.product.image_url
-              : `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${item.product.image_url?.trim()}`
-          }
-        }));
-        setCart(cartWithUrls);
-        log('Cart loaded:', cartWithUrls);
-        
-        // Check if timer is active and use locked prices, otherwise fetch live prices
-        if (isTimerActive()) {
-          log('Timer is active, using locked prices');
-          setShowTimer(true);
-          applyLockedPrices(cartWithUrls);
-        } else {
-          log('Timer inactive, fetching live prices');
-          fetchLivePrices(cartWithUrls);
-        }
-      } catch (error) {
-        log('Error parsing cart:', error);
-      }
+    if (!isLoading && cart.length > 0 && !hasFetchedPrices.current) {
+      hasFetchedPrices.current = true;
+      fetchLivePrices();
     }
+  }, [isLoading, cart.length]);
 
-    // Check if adding a product via URL param
+  // Handle adding product from URL parameter
+  useEffect(() => {
     const productId = searchParams.get('add');
     if (productId && !hasAddedProduct.current) {
-      log('Adding product from URL:', productId);
       hasAddedProduct.current = true;
       addToCart(productId);
     }
-
-    setLoading(false);
   }, [searchParams]);
 
-  // Timer countdown effect
-  useEffect(() => {
-    if (!showTimer) return;
-
-    const updateTimer = () => {
-      if (isTimerActive()) {
-        setTimerDisplay(formatRemainingTime());
-      } else {
-        setShowTimer(false);
-        setTimerDisplay('');
-        log('Timer expired, prices will update on next fetch');
-      }
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [showTimer]);
-
-  const applyLockedPrices = (cartItems: CartItem[]) => {
-    log('Applying locked prices to cart');
-    setCart(prevCart => prevCart.map(item => {
-      const lockedPrice = getLockedPrice(item.product.id);
-      if (lockedPrice) {
-        log(`Using locked price for ${item.product.id}:`, lockedPrice.price);
-        return {
-          ...item,
-          livePrice: lockedPrice.price
-        };
-      }
-      return item;
-    }));
-  };
-
-  const fetchLivePrices = async (cartItems: CartItem[]) => {
-    if (cartItems.length === 0) return;
+  const fetchLivePrices = async () => {
+    if (cart.length === 0) return;
 
     setLoadingPrices(true);
     try {
-      const productIds = cartItems.map(item => item.product.id).join(',');
+      const productIds = cart.map(item => item.product.id).join(',');
       const response = await fetch(`/api/products/pricing?ids=${productIds}`);
 
       if (!response.ok) {
@@ -141,8 +66,6 @@ function CartContent() {
       const data = await response.json();
 
       if (data.success && data.data) {
-        log('Live prices fetched:', data.data);
-
         // Lock the prices for the timer period
         const pricesToLock = data.data.map((p: any) => ({
           productId: p.id,
@@ -150,37 +73,21 @@ function CartContent() {
           spotPricePerGram: p.base_price
         }));
         lockPrices(pricesToLock);
-        log('Prices locked for timer period');
-
-        // Update cart with live prices
-        setCart(prevCart => prevCart.map(item => {
-          const updatedProduct = data.data.find((p: any) => p.id === item.product.id);
-          if (updatedProduct && updatedProduct.calculated_price) {
-            return {
-              ...item,
-              livePrice: updatedProduct.calculated_price
-            };
-          }
-          return item;
-        }));
       }
     } catch (error) {
-      log('Error fetching live prices:', error);
-      // Continue with static prices
+      console.error('[CART] Error fetching live prices:', error);
     } finally {
       setLoadingPrices(false);
     }
   };
 
   const addToCart = async (productId: string) => {
-    log('Fetching product:', productId);
     try {
       const response = await fetch(`/api/products/${productId}`);
       if (!response.ok) {
         throw new Error('Product not found');
       }
       const product: Product = await response.json();
-      log('Product fetched:', product);
 
       const trimmedImageUrl = product.image_url?.trim();
       const fullImageUrl = trimmedImageUrl
@@ -192,133 +99,33 @@ function CartContent() {
         image_url: fullImageUrl
       };
 
-      setCart((prevCart) => {
-        const existingItem = prevCart.find((item) => item.product.id === productId);
-        let newCart;
-
-        if (existingItem) {
-          log('Product already in cart, incrementing quantity');
-          newCart = prevCart.map((item) =>
-            item.product.id === productId
-              ? {...item, quantity: item.quantity + 1}
-              : item
-          );
-        } else {
-          log('Adding new product to cart');
-          newCart = [...prevCart, {product: productWithUrl, quantity: 1}];
-          
-          // Start timer when first product is added
-          if (prevCart.length === 0) {
-            log('First product added, starting pricing timer');
-            startPricingTimer();
-            setShowTimer(true);
-          }
-        }
-
-        localStorage.setItem('cart', JSON.stringify(newCart));
-        window.dispatchEvent(new Event('cartUpdated'));
-        log('Cart updated:', newCart);
-        return newCart;
-      });
-
-      // Fetch live prices for the added product
-      const updatedCart = await new Promise<CartItem[]>((resolve) => {
-        setCart((prevCart) => {
-          resolve(prevCart);
-          return prevCart;
-        });
-      });
-      fetchLivePrices(updatedCart);
+      // Use context to add product
+      addToCartContext(productWithUrl, 1);
+      
+      // Fetch live prices after adding
+      setTimeout(() => fetchLivePrices(), 100);
 
       router.replace('/cart');
     } catch (error) {
-      log('Error adding to cart:', error);
+      console.error('[CART] Error adding to cart:', error);
       alert('Failed to add product to cart');
     }
   };
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
-    log('Updating quantity for product:', productId, 'to:', newQuantity);
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-
-    setCart((prevCart) => {
-      const newCart = prevCart.map((item) =>
-        item.product.id === productId ? {...item, quantity: newQuantity} : item
-      );
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      window.dispatchEvent(new Event('cartUpdated'));
-      log('Cart updated:', newCart);
-      return newCart;
-    });
-  };
-
-  const removeFromCart = (productId: string) => {
-    log('Removing product from cart:', productId);
-    setCart((prevCart) => {
-      const newCart = prevCart.filter((item) => item.product.id !== productId);
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      window.dispatchEvent(new Event('cartUpdated'));
-      log('Cart updated:', newCart);
-      
-      // Clear pricing timer if cart becomes empty
-      if (newCart.length === 0) {
-        log('Cart is now empty, clearing pricing timer');
-        clearPricingTimer();
-        setShowTimer(false);
-        setTimerDisplay('');
-      }
-      
-      return newCart;
-    });
-  };
-
-  const clearCart = () => {
-    log('Clearing entire cart');
-    setCart([]);
-    localStorage.removeItem('cart');
-    window.dispatchEvent(new Event('cartUpdated'));
-    
-    // Clear pricing timer when cart is emptied
-    clearPricingTimer();
-    setShowTimer(false);
-    setTimerDisplay('');
-    log('Pricing timer cleared');
-  };
-
-  const getTotalPrice = () => {
-    const total = cart.reduce((sum, item) => {
-      const price = item.livePrice ?? item.product.price;
-      return sum + price * item.quantity
-    }, 0);
-    log('Total price calculated:', total);
-    return total;
-  };
-
-  const getTotalItems = () => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
-  };
-
   const handleCheckout = () => {
-    log('Proceeding to checkout');
     if (!isLoaded) {
-      log('User not loaded yet');
       return;
     }
 
     if (!user) {
-      log('User not authenticated, redirecting to sign-in');
       router.push('/sign-in?redirect_url=/cart');
       return;
     }
 
-    log('User authenticated, proceeding to checkout');
     router.push('/checkout');
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl">Loading cart...</div>
@@ -331,14 +138,20 @@ function CartContent() {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 
-        {showTimer && timerDisplay && (
+        {timerRemaining > 0 && !isTimerExpired && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
             <p className="text-green-800 font-semibold">
-              🔒 Prices locked for: <span className="text-xl font-bold">{timerDisplay}</span>
+              🔒 Prices locked for: <span className="text-xl font-bold">{timerFormatted}</span>
             </p>
             <p className="text-green-700 text-sm mt-1">
-              Your prices are guaranteed for the next {timerDisplay} minutes
+              Your prices are guaranteed for the next {timerFormatted}
             </p>
+          </div>
+        )}
+
+        {isTimerExpired && cart.length > 0 && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+            <p className="text-red-800 font-semibold">⏰ Price lock expired - prices will update on next page load</p>
           </div>
         )}
 
@@ -363,8 +176,9 @@ function CartContent() {
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
               {cart.map((item) => {
-                const displayPrice = item.livePrice ?? item.product.price;
-                const hasPriceChange = item.livePrice && item.livePrice !== item.product.price;
+                const lockedPrice = getLockedPriceForProduct(item.product.id);
+                const displayPrice = lockedPrice ?? item.product.price;
+                const isPriceLocked = lockedPrice !== null;
 
                 return (
                   <div
@@ -391,9 +205,16 @@ function CartContent() {
                       </div>
                       <div className="text-xl font-bold text-gray-900">
                         ${displayPrice.toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD
-                        <div className="text-xs text-green-600 font-medium mt-1">
-                          ✓ Live Market Price
-                        </div>
+                        {isPriceLocked && (
+                          <div className="text-xs text-green-600 font-medium mt-1">
+                            🔒 Price Locked
+                          </div>
+                        )}
+                        {!isPriceLocked && (
+                          <div className="text-xs text-blue-600 font-medium mt-1">
+                            ⟳ Live Market Price
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -445,8 +266,8 @@ function CartContent() {
 
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
-                    <span>Items ({getTotalItems()})</span>
-                    <span>${getTotalPrice().toLocaleString('en-AU', {minimumFractionDigits: 2})}</span>
+                    <span>Items ({getCartCount()})</span>
+                    <span>${getCartTotal().toLocaleString('en-AU', {minimumFractionDigits: 2})}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
@@ -454,7 +275,7 @@ function CartContent() {
                   </div>
                   <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
                     <span>Total</span>
-                    <span>${getTotalPrice().toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD</span>
+                    <span>${getCartTotal().toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD</span>
                   </div>
                 </div>
 

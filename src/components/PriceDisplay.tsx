@@ -33,7 +33,7 @@ function getMarketStatus() {
 
 export default function MetalsPricing() {
   // Use shared prices from context - no more individual fetching!
-  const { prices: contextPrices, isLoading, error, dataTimestamp, refetch } = useMetalPrices();
+  const { prices: contextPrices, isLoading, error, lastUpdated, refetch } = useMetalPrices();
   const [marketStatus, setMarketStatus] = useState(getMarketStatus())
 
   useEffect(() => {
@@ -180,11 +180,11 @@ export default function MetalsPricing() {
           <p suppressHydrationWarning={true} className="text-gray-500 text-sm">
             {isLoading ? (
               "Loading prices..."
-            ) : dataTimestamp ? (
+            ) : lastUpdated ? (
               marketStatus.isOpen ? (
-                <>Last updated: {formatDateTime(dataTimestamp)} • Updates every 5 minutes</>
+                <>Last updated: {formatDateTime(lastUpdated)} • Updates every 5 minutes</>
               ) : (
-                <>Prices from: {formatDateTime(dataTimestamp)} • Markets closed for weekend</>
+                <>Prices from: {formatDateTime(lastUpdated)} • Markets closed for weekend</>
               )
             ) : (
               "Real-time market data"

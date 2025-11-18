@@ -11,43 +11,17 @@ import {
   UserButton,
 } from '@clerk/nextjs';
 import {ShoppingCartIcon} from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [tickerHeight, setTickerHeight] = useState(56);
-  const [cartCount, setCartCount] = useState(0);
+  const { getCartCount } = useCart();
+  const cartCount = getCartCount()
 
-  useEffect(() => {
-    const updateCartCount = () => {
-      try {
-        const cart = localStorage.getItem('cart');
-        if (cart) {
-          const items = JSON.parse(cart);
-          const count = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
-          setCartCount(count);
-        } else {
-          setCartCount(0);
-        }
-      } catch (error) {
-        console.error('Error reading cart:', error);
-        setCartCount(0);
-      }
-    };
 
-    updateCartCount();
-    
-    // Listen for storage events from other tabs
-    window.addEventListener('storage', updateCartCount);
-    
-    // Listen for custom cart update events from same page
-    window.addEventListener('cartUpdated', updateCartCount);
-    
-    return () => {
-      window.removeEventListener('storage', updateCartCount);
-      window.removeEventListener('cartUpdated', updateCartCount);
-    };
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {

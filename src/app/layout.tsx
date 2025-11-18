@@ -5,6 +5,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PriceTicker from "@/components/PriceTicker";
 import {MetalPricesProvider} from "@/contexts/MetalPricesContext";
+import { CartProvider } from "@/contexts/CartContext";
+
 import {
   ClerkProvider,
   } from '@clerk/nextjs'
@@ -34,10 +36,12 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <MetalPricesProvider>
-            <PriceTicker />
-            <Header />
-            {children}
-            <Footer />
+            <CartProvider>
+              <PriceTicker />
+              <Header />
+              {children}
+              <Footer />
+            </CartProvider>
           </MetalPricesProvider>
         </body>
       </html>

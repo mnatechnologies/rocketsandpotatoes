@@ -72,6 +72,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (requirements.requiresTTR) {
+    log('TTR required for transaction over $10,000');
+    return NextResponse.json({
+      status: 'ttr_required',
+      message: 'Threshold Transaction Report required for transactions over $10,000',
+      requirements,
+      riskScore: 0,
+      riskLevel: "undefined",
+    });
+  }
+
   // 4. Check for structuring
   const isStructuring = await detectStructuring(customerId, amount);
   log('Structuring detection result:', isStructuring);
@@ -99,7 +110,7 @@ export async function POST(req: NextRequest) {
   log('Risk assessment:', { riskScore, riskLevel });
 
   // 6. Flag for manual review if high risk
-  const requiresReview = riskLevel === 'high' || isStructuring || requirements.requiresEnhancedDD;
+  const requiresReview = riskLevel === 'high' || customer.risk_level === "high" || isStructuring || requirements.requiresEnhancedDD;
   log('Requires manual review:', requiresReview);
 
   const response = {

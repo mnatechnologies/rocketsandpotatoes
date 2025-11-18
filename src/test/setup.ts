@@ -1,7 +1,8 @@
 // INSTRUCTIONS FOR TESTING:
 // ALL TO BE DONE IN TERMINAL
+
 // # Seed test data first
-// npm run tsx scripts/seed-test-data.ts
+// npm run seed-test
 //
 // # Run all dry run scenarios
 // npm run dry-run

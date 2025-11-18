@@ -100,7 +100,7 @@ function getNextMarketOpen(now: Date): string {
 
 export default function PriceTicker() {
   // Use shared prices from context - no more individual fetching!
-  const { prices: contextPrices, isLoading, error, dataTimestamp } = useMetalPrices();
+  const { prices: contextPrices, isLoading, error, lastUpdated } = useMetalPrices();
   const [marketStatus, setMarketStatus] = useState(getMarketStatus());
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -216,7 +216,7 @@ export default function PriceTicker() {
       >
         <div className="py-3">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center overflow-x-auto">
+            <div className="flex items-center justify-start overflow-x-auto">
               <div className="flex items-center space-x-3 md:space-x-6 text-sm">
                 <div className="flex items-center space-x-2">
                   <span className="text-primary font-semibold text-xs uppercase tracking-wide whitespace-nowrap">
@@ -248,12 +248,12 @@ export default function PriceTicker() {
                       </div>
                     </div>
                 ))}
-                {dataTimestamp && (
+                {lastUpdated && (
                   <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
                     {marketStatus.isOpen ? (
-                      <>Updated {formatDateTime(dataTimestamp)}</>
+                      <>Updated {formatDateTime(lastUpdated)}</>
                     ) : (
-                      <>From {formatDateTime(dataTimestamp)}</>
+                      <>From {formatDateTime(lastUpdated)}</>
                     )}
                   </span>
                 )}

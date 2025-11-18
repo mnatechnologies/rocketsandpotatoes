@@ -54,7 +54,7 @@ function extractMetalType(product: any): MetalSymbol | null {
    }
   }
 
-  // Try to extract from category or name
+  // try to extract from category or name
   const searchText = (product.category || product.name || '').toLowerCase();
 
   if (searchText.includes('gold')) return 'XAU';
@@ -88,59 +88,6 @@ function extractWeightGrams(product: any): number {
   return 31.1035;
 }
 
-export async function calculateProductPrice(
-  metalType: MetalSymbol,
-  weightGrams: number,
-  config: PricingConfig = DEFAULT_CONFIG
-): Promise<{
-  calculatedPrice: number;
-  spotPricePerGram: number;
-  markupAmount: number;
-  breakdown: {
-    spotCost: number;
-    markup: number;
-    baseFee: number;
-    total: number;
-  }
-}> {
-  try {
-    const quotes = await fetchMetalsQuotes({
-      baseCurrency: 'USD',
-      symbols: [metalType]
-    });
-
-    const metalData = quotes.find(quote => quote.symbol === metalType);
-
-    if (!metalData) {
-      throw new Error(`Price not found for ${metalType}`);
-    }
-    // prices are coming in via troy ounce (31.1035g)
-
-    const GRAMS_PER_TROY_OUNCE = 31.1035;
-    const spotPricePerGram = metalData.price / GRAMS_PER_TROY_OUNCE
-
-    const spotCost = spotPricePerGram * weightGrams;
-
-    const markupAmount = spotCost *  (config.markup_percentage / 100);
-
-    const calculatedPrice = spotCost + markupAmount + config.base_fee;
-
-    return {
-      calculatedPrice: Math.round(calculatedPrice * 100) / 100,
-      spotPricePerGram: Math.round(spotPricePerGram * 100) / 100,
-      markupAmount: Math.round(markupAmount * 100) / 100,
-      breakdown: {
-        spotCost: Math.round(spotCost * 100) / 100,
-        markup: Math.round(markupAmount * 100) / 100,
-        baseFee: config.base_fee,
-        total: Math.round(calculatedPrice * 100) / 100
-      },
-    }
-  } catch (error) {
-    console.error('Error calculating price:', error )
-    throw error
-  }
-}
 
 export async function calculateBulkPricing(
   products: Array<{

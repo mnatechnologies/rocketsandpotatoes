@@ -25,6 +25,7 @@ interface metalsQuote {
   change: number;
   changePercent: number;
   timestamp?: string;
+  lastUpdated?: string
 }
 
 const getHistoricalDates = (days = 14) => {
@@ -148,7 +149,7 @@ export const fetchMetalsQuotes = async (
       price,
       change: parseFloat(change.toFixed(2)),
       changePercent: parseFloat(changePercent.toFixed(2)),
-      timestamp: dataTimestamp
+      lastUpdated: dataTimestamp
     }
   })
 }

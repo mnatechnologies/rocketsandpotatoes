@@ -26,7 +26,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
     
     // Use shared metal prices from context
-    const { prices: metalPrices, isLoading: loadingPrices, error, dataTimestamp } = useMetalPrices();
+    const { prices: metalPrices, isLoading: loadingPrices, error, lastUpdated } = useMetalPrices();
     const priceError = error ? 'Using static prices' : null;
 
     // Calculate product prices when metal prices change
@@ -207,7 +207,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {categoryProducts.map((product) => (
-                      <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} dataTimestamp={dataTimestamp as Date} />
+                      <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} lastUpdated={lastUpdated as Date} />
                     ))}
                 </div>
             </div>
@@ -224,7 +224,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 }
 
 
-function ProductCard({ product, loadingPrices, dataTimestamp }: { product: ProductWithDynamicPrice; loadingPrices: boolean; dataTimestamp: Date }) {
+function ProductCard({ product, loadingPrices, lastUpdated }: { product: ProductWithDynamicPrice; loadingPrices: boolean; lastUpdated: Date }) {
     const displayPrice = product.calculated_price ?? product.price;
 
     const formatDateTime = (date: Date) => {
@@ -302,7 +302,7 @@ function ProductCard({ product, loadingPrices, dataTimestamp }: { product: Produ
                                 ✓ Live Market Price
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                                Updated {formatDateTime(dataTimestamp)}
+                                Updated {formatDateTime(lastUpdated)}
                             </div>
                         </>
                       )}

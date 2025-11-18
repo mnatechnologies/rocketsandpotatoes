@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
         const quotes = await fetchMetalsQuotes({symbols, baseCurrency})
 
-        const dataTimeStamp = quotes[0]?.timestamp
+        const dataTimeStamp = quotes[0]?.lastUpdated
 
         return NextResponse.json({success: true, data: quotes, timestamp: dataTimeStamp});
     } catch (error) {

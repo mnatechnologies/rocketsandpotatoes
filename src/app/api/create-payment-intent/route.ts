@@ -19,17 +19,27 @@ export async function POST(req: NextRequest) {
   log('Payment intent creation request received');
 
   try {
-    // Get authenticated user from Clerk
-    const { userId } = await auth();
-    
-    if (!userId) {
-      log('Unauthorized - no userId from Clerk');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { amount, currency = 'aud', customerId, customerEmail, clerkUserId } = await req.json();
+
+    // Optional: Try to get Clerk userId, but don't require it
+    const { userId: clerkUserIdFromAuth } = await auth();
+    const finalClerkUserId = clerkUserIdFromAuth || clerkUserId;
+
+    log('Request params:', { amount, currency, customerId, finalClerkUserId });
+
+    // Validate required fields
+    if (!amount || amount <= 0) {
+      log('Invalid amount:', amount);
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
-    log('Authenticated user ID:', userId);
+    if (!customerId) {
+      log('Missing customerId');
+      return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
+    }
 
-    const { amount, currency = 'aud', customerId, customerEmail } = await req.json();
+
+    log('Authenticated user ID:', finalClerkUserId, customerId);
 
     log('Payment intent params:', { amount, currency, customerId });
 
@@ -58,7 +68,7 @@ export async function POST(req: NextRequest) {
           email: customerEmail,
           metadata: {
             supabase_customer_id: customerId,
-            clerk_user_id: userId,
+            clerk_user_id: finalClerkUserId,
           },
         });
         stripeCustomerId = customer.id;
@@ -76,7 +86,7 @@ export async function POST(req: NextRequest) {
       },
       metadata: {
         supabase_customer_id: customerId,
-        clerk_user_id: userId,
+        clerk_user_id: finalClerkUserId,
       },
     });
 
