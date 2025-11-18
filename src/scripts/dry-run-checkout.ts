@@ -1,5 +1,5 @@
 
-
+//@ts-ignore
 import {TEST_SCENARIOS} from "@/test/test-config";
 
 async function runDryTest(scenarioName: keyof typeof TEST_SCENARIOS) {
