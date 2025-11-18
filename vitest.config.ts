@@ -4,11 +4,14 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+    ],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
       reportsDirectory: 'coverage',
     },
-    setupFiles: ['src/test/setup.ts'],
   },
 });
