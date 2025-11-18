@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
+import { ShoppingCartIcon } from "lucide-react";
 
 interface ProductsClientProps {
     products: Product[];
@@ -286,6 +287,13 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
                   {product.description}
               </p>
 
+              <Link
+                href={`/products/${product.id}`}
+                className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-gold"
+              >
+                  View Details
+              </Link>
+
               <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <div>
                       {loadingPrices ? (
@@ -312,7 +320,7 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
                     href={`/cart?add=${product.id}`}
                     className="px-4 py-2 rounded-lg font-semibold transition-colors bg-yellow-500 hover:bg-yellow-600 text-white"
                   >
-                      Add to Cart
+                      <ShoppingCartIcon/>
                   </Link>
               </div>
           </div>

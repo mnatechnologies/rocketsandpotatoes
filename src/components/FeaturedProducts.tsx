@@ -72,13 +72,21 @@ export default function FeaturedProducts({ products }: FeaturedProductsProps) {
                   <div className="text-xs text-muted-foreground">USD</div>
                 </div>
 
-                {/* Add to Cart Button */}
-                <Link
-                  href={`/cart?add=${product.id}`}
-                  className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-gold"
-                >
-                  Add to Cart
-                </Link>
+                {/* Buttons */}
+                <div className='grid grid-cols-2 gap-2'>
+                  <Link
+                    href={`/cart?add=${product.id}`}
+                    className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-gold"
+                  >
+                    Add to Cart
+                  </Link>
+                  <Link
+                    href={`/products/${product.id}`}
+                    className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-gold"
+                  >
+                    View Details
+                  </Link>
+                </div>
               </div>
             </div>
           ))}

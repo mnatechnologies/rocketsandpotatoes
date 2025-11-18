@@ -1,5 +1,4 @@
 import { createServerSupabase } from '@/lib/supabase/server';
-import { Product } from '@/types/product';
 import ProductsClient from './ProductsClient';
 /* eslint-disable  */
 
