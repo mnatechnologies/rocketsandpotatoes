@@ -123,6 +123,54 @@ export async function POST(req: NextRequest) {
 
     log('Transaction created successfully:', transaction.id);
 
+    try {
+      // Fetch customer details
+      const { data: customerData } = await supabase
+        .from('customers')
+        .select('email, first_name, last_name')
+        .eq('id', customerId)
+        .single();
+
+      if (customerData) {
+        // Format items for email
+        const emailItems = cartItems.map((item: any) => ({
+          name: item.name,
+          quantity: item.quantity || 1,
+          price: item.price * (item.quantity || 1),
+          weight: item.weight,
+          purity: item.purity,
+        }));
+
+        // Send email notification
+        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-order-confirmation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderNumber: transaction.id,
+            customerName: `${customerData.first_name} ${customerData.last_name}`,
+            customerEmail: customerData.email,
+            orderDate: new Date().toLocaleDateString('en-AU', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }),
+            items: emailItems,
+            subtotal: amount,
+            total: amount,
+            currency: currency,
+            paymentMethod: paymentMethod === 'card' ? 'Credit/Debit Card' : paymentMethod,
+            requiresKYC: requiresKYC,
+            requiresTTR: requiresTTR,
+          }),
+        });
+
+        log('Order confirmation email sent to:', customerData.email);
+      }
+    } catch (emailError) {
+      // Don't fail the order if email fails
+      log('Failed to send confirmation email:', emailError);
+    }
+
     // Log audit event
     await supabase.from('audit_logs').insert({
       action_type: 'order_created',
