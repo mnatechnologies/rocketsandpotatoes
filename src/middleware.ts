@@ -9,7 +9,9 @@ const isPublicRoute = createRouteMatcher([
   '/api/metals(.*)',
   '/api/products(.*)',
   '/api/checkout(.*)',
-  '/api/create-payment-intent'
+  '/api/create-payment-intent',
+  '/kyc-return',
+  '/api/kyc/webhook'
 ]);
 
 export default clerkMiddleware( async (auth, request) => {

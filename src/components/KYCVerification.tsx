@@ -97,6 +97,12 @@ export function KYCVerification({ customerId }: { customerId: string }) {
         </div>
       )}
 
+      {error && (
+        <button onClick={handleVerify} className="mt-4">
+          Try Again
+        </button>
+      )}
+
       <button
         onClick={handleVerify}
         disabled={loading}

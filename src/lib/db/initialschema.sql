@@ -410,3 +410,37 @@ CREATE INDEX IF NOT EXISTS idx_transactions_review
     ON transactions(flagged_for_review, review_status)
     WHERE flagged_for_review = true;
 
+ALTER TABLE identity_verifications
+    ADD COLUMN IF NOT EXISTS given_name VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS family_name VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+
+-- Add address columns
+ALTER TABLE identity_verifications
+    ADD COLUMN IF NOT EXISTS address_line1 VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS address_line2 VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS address_city VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS address_state VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS address_postal_code VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS address_country VARCHAR(2);
+
+-- Add ID number columns
+ALTER TABLE identity_verifications
+    ADD COLUMN IF NOT EXISTS id_number_type VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS id_number_country VARCHAR(2),
+    ADD COLUMN IF NOT EXISTS id_number_last4 VARCHAR(4);
+
+-- Add individual check status columns
+ALTER TABLE identity_verifications
+    ADD COLUMN IF NOT EXISTS document_check_status VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS selfie_check_status VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS id_number_check_status VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS id_number_check_passed BOOLEAN;
+
+-- Add comments for documentation
+COMMENT ON COLUMN identity_verifications.given_name IS 'First name from verified document';
+COMMENT ON COLUMN identity_verifications.family_name IS 'Last name from verified document';
+COMMENT ON COLUMN identity_verifications.date_of_birth IS 'Date of birth from verified document';
+COMMENT ON COLUMN identity_verifications.address_city IS 'City from verified address';
+COMMENT ON COLUMN identity_verifications.id_number_type IS 'Type of ID number (e.g., license_number, passport_number)';
+COMMENT ON COLUMN identity_verifications.id_number_last4 IS 'Last 4 digits of ID number';

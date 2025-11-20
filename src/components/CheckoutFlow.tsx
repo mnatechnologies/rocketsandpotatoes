@@ -87,6 +87,21 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     }
   };
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('kyc_status') === 'complete') {
+      log('Returned from KYC verification, re-validating...');
+
+      // Clear the URL parameters to prevent re-triggering
+      window.history.replaceState({}, '', '/checkout');
+
+      // Wait a moment for any async processes to complete
+      setTimeout(() => {
+        validateTransaction();
+      }, 1000);
+    }
+  }, []);
+
   const createPaymentIntent = async () => {
     log('Creating payment intent...');
     try {

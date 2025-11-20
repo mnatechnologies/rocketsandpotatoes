@@ -4,7 +4,7 @@ import {createClient} from "@supabase/supabase-js";
 /*@ts-ignore */
 
 // Use a stable API version string
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+export const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
   apiVersion: '2025-09-30.clover',
 })
 
@@ -38,6 +38,7 @@ async function logAuditEvent(event: {
 }
 
 export async function createVerificationSession(customerId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   // Create a Stripe Identity Verification Session for document verification
   return await stripe.identity.verificationSessions.create({
     type: 'document',
@@ -45,6 +46,7 @@ export async function createVerificationSession(customerId: string) {
       customer_id: customerId,
       purpose: 'austrac_kyc',
     },
+    return_url: `${baseUrl}/kyc-return?kyc_status=complete&customer_id=${customerId}`,
     options: {
       document: {
         allowed_types: ['driving_license', 'passport'],
@@ -92,7 +94,7 @@ export async function processVerificationResult(sessionId: string, customerId: s
     address_postal_code: vo?.address?.postal_code ?? null,
     address_country: vo?.address?.country ?? null,
 
-    // ID number summary (Stripe generally won’t provide the full number)
+    // ID number summary (Stripe generally won't provide the full number)
     // @ts-ignore
     id_number_type: vo?.id_number?.type ?? null,
     // @ts-ignore
@@ -120,9 +122,13 @@ export async function processVerificationResult(sessionId: string, customerId: s
     verified_at: session.status === 'verified' ? new Date().toISOString() : null,
   }
 
+  // CHANGED: Use upsert instead of insert
   const { data, error } = await supabase
     .from('identity_verifications')
-    .insert(verificationData)
+    .upsert(verificationData, {
+      onConflict: 'stripe_verification_session_id',
+      ignoreDuplicates: false
+    })
     .select()
     .single()
 

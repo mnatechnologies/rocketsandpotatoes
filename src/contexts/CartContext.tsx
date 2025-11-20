@@ -82,21 +82,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Load cart from localStorage on mount
   useEffect(() => {
-    const loadCart = () => {
-      try {
-        const savedCart = localStorage.getItem(CART_STORAGE_KEY);
-        if (savedCart) {
-          const parsedCart = JSON.parse(savedCart);
-          setCart(parsedCart);
-          console.log('[CART_CONTEXT] Cart loaded from localStorage:', parsedCart.length, 'items');
-        }
-      } catch (error) {
-        console.error('[CART_CONTEXT] Error loading cart:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadCart = () => {
+    try {
+      let savedCart = localStorage.getItem(CART_STORAGE_KEY);
 
+      // Fallback to sessionStorage if localStorage is empty
+      if (!savedCart) {
+        savedCart = sessionStorage.getItem(CART_STORAGE_KEY);
+        if (savedCart) {
+          console.log('[CART_CONTEXT] Restored cart from sessionStorage');
+        }
+      }
+
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        setCart(parsedCart);
+        console.log('[CART_CONTEXT] Cart loaded:', parsedCart.length, 'items');
+      }
+    } catch (error) {
+      console.error('[CART_CONTEXT] Error loading cart:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
     loadCart();
   }, []);
 
@@ -104,7 +112,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading) {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-      // Dispatch custom event for other components to listen to
+      sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)); // ADD THIS
       window.dispatchEvent(new Event('cartUpdated'));
       console.log('[CART_CONTEXT] Cart saved to localStorage:', cart.length, 'items');
     }

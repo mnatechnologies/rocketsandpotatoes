@@ -29,6 +29,24 @@ export async function POST(req: NextRequest) {
     .update({ verification_status: 'pending' })
     .eq('id', customerId);
 
+  const { data: verificationRecord, error: insertError } = await supabase
+    .from('identity_verifications')
+    .insert({
+      customer_id: customerId,
+      stripe_verification_session_id: session.id,
+      verification_type: 'stripe_identity',
+      status: 'processing', // Stripe initial status
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error('[KYC_INITIATE] Error creating verification record:', insertError);
+    // Continue anyway - the webhook can still process it
+  } else {
+    console.log('[KYC_INITIATE] Verification record created:', verificationRecord.id);
+  }
+
   return NextResponse.json({
     verificationSessionId: session.id,
     clientSecret: session.client_secret,

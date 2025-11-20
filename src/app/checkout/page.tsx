@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { CheckoutFlow } from '@/components/CheckoutFlow';
 import { Product } from '@/types/product';
+import {CartItem, useCart} from '@/contexts/CartContext';
 
 // Testing flag - set to true to enable console logging
 const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
@@ -15,17 +16,13 @@ function log(...args: any[]) {
   }
 }
 
-interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
 export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { user, isLoaded } = useUser();
   const router = useRouter();
+  const { getLockedPriceForProduct } = useCart();
 
   useEffect(() => {
     log('Checkout page mounted');
@@ -86,17 +83,25 @@ export default function CheckoutPage() {
   };
 
   const getTotalAmount = () => {
-    const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    log('Total amount calculated:', total);
+    const total = cart.reduce((sum, item) => {
+      // Use locked price if available, fallback to stored price
+      const lockedPrice = getLockedPriceForProduct(item.product.id);
+      const price = lockedPrice ?? item.product.price;
+      return sum + (price * item.quantity);
+    }, 0);
+    log('Total amount calculated with locked prices:', total);
     return total;
   };
 
   const getMainProduct = (): Product | null => {
     if (cart.length === 0) return null;
-    // Return the highest value item as the main product for compliance checks
-    const sorted = [...cart].sort((a, b) => 
-      (b.product.price * b.quantity) - (a.product.price * a.quantity)
-    );
+
+    const sorted = [...cart].sort((a, b) => {
+      const priceA = getLockedPriceForProduct(a.product.id) ?? a.product.price;
+      const priceB = getLockedPriceForProduct(b.product.id) ?? b.product.price;
+      return (priceB * b.quantity) - (priceA * a.quantity);
+    });
+
     log('Main product for compliance:', sorted[0]?.product.name);
     return sorted[0]?.product || null;
   };
@@ -169,18 +174,22 @@ export default function CheckoutPage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Summary</h2>
           <div className="space-y-3">
-            {cart.map((item) => (
-              <div key={item.product.id} className="flex justify-between text-gray-700">
-                <span>
-                  {item.product.name} x {item.quantity}
-                </span>
-                <span className="font-semibold">
-                  ${(item.product.price * item.quantity).toLocaleString('en-AU', { 
-                    minimumFractionDigits: 2 
-                  })}
-                </span>
-              </div>
-            ))}
+            {cart.map((item) => {
+              const lockedPrice = getLockedPriceForProduct(item.product.id);
+              const displayPrice = lockedPrice ?? item.product.price;
+              return (
+                <div key={item.product.id} className="flex justify-between text-gray-700">
+                  <span>
+                    {item.product.name} x {item.quantity}
+                  </span>
+                  <span className="font-semibold">
+                    ${(displayPrice * item.quantity).toLocaleString('en-AU', {
+                    minimumFractionDigits: 2
+                    })}
+                  </span>
+                </div>
+              );
+            })}
             <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
               <span>Total</span>
               <span>
