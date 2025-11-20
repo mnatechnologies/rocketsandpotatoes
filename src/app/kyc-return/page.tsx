@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 
-export default function KYCReturnPage() {
+// Inner component that uses useSearchParams
+function KYCReturnContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn, user } = useUser();
@@ -145,5 +146,20 @@ export default function KYCReturnPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Outer wrapper component with Suspense boundary
+export default function KYCReturnPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl mb-4">Loading...</div>
+        </div>
+      </div>
+    }>
+      <KYCReturnContent />
+    </Suspense>
   );
 }
