@@ -232,7 +232,7 @@ export default function CheckoutPage() {
             cartItems={cart}
             customerEmail={user?.primaryEmailAddress?.emailAddress}
             onSuccess={(orderId) => {
-              log('Payment successful, redirecting to confirmation');
+              logger.log('Payment successful, redirecting to confirmation');
               router.push(`/order-confirmation?orderId=${orderId}`);
             }}
           />
