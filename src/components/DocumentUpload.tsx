@@ -32,17 +32,35 @@ export function DocumentUploadFlow({ customerId  }: Props) {
   const [verificationMethod, setVerificationMethod] = useState<'auto' | 'manual'>('auto');
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
+  const [uploadResults, setUploadResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   const handleMethodSelection = (method: 'auto' | 'manual') => {
     setVerificationMethod(method);
   };
 
   const handleDocumentTypeSelect = (category: string, docType: string) => {
-    setSelectedDocuments([...selectedDocuments, { category, docType }]);
+    setSelectedDocuments(prev => {
+      if (category === 'primary_photo' || category === 'primary_non_photo') {
+        const withoutPrimary = prev.filter(
+          doc => doc.category !== 'primary_photo' && doc.category !== 'primary_non_photo'
+        );
+        return [...withoutPrimary, { category, docType }];
+      }
+      // For secondary documents (checkboxes), check if already exists
+      const exists = prev.some(doc => doc.docType === docType);
+      if (exists) {
+        return prev; // Already selected, don't add duplicate
+      }
+
+      // Add secondary document
+      return [...prev, { category, docType }];
+    });
   };
 
   const handleFileUpload = async (docType: string, category: string, file: File) => {
-    setUploadedFiles({ ...uploadedFiles, [docType]: file });
+    // Mark as uploading
+    setUploadingFiles(prev => ({ ...prev, [docType]: true }));
 
     const formData = new FormData();
     formData.append('file', file);
@@ -62,31 +80,62 @@ export function DocumentUploadFlow({ customerId  }: Props) {
 
       const result = await response.json();
       logger.log('Upload successful:', result);
+
+      // Store the uploaded file
+      setUploadedFiles(prev => ({ ...prev, [docType]: file }));
+
+      // Store success message
+      setUploadResults(prev => ({
+        ...prev,
+        [docType]: {
+          success: true,
+          message: result.message || 'Document uploaded successfully!'
+        }
+      }));
+
     } catch (error) {
       logger.error('Upload error:', error);
-      setUploadedFiles(prev => {
+
+      // Store error message
+      setUploadResults(prev => ({
+        ...prev,
+        [docType]: {
+          success: false,
+          message: 'Failed to upload document. Please try again.'
+        }
+      }));
+
+    } finally {
+      // Remove uploading state
+      setUploadingFiles(prev => {
         const updated = { ...prev };
         delete updated[docType];
         return updated;
       });
-      alert('Failed to upload document. Please try again.');
     }
   };
 
-  const handleSubmit = async () => {
-    // Submit for manual review
-    await fetch('/api/kyc/manual-ver', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerId,
-        verificationMethod: 'manual_document',
-        documents: selectedDocuments.map(doc => ({
-          category: doc.category,
-          type: doc.docType,
-          uploaded: !!uploadedFiles[doc.docType],
-        })),
-      }),
+  const handleRemoveDocument = (docType: string) => {
+
+    setSelectedDocuments(prev => prev.filter(doc => doc.docType !== docType));
+
+    setUploadedFiles(prev => {
+      const updated = { ...prev };
+      delete updated[docType];
+      return updated;
+    });
+
+    setUploadResults(prev => {
+      const updated = { ...prev };
+      delete updated[docType];
+      return updated;
+    });
+
+
+    setUploadingFiles(prev => {
+      const updated = { ...prev };
+      delete updated[docType];
+      return updated;
     });
   };
 
@@ -106,7 +155,7 @@ export function DocumentUploadFlow({ customerId  }: Props) {
         >
           <h3 className="font-bold mb-2">Quick Verification</h3>
           <p className="text-sm text-gray-600">
-            Use passport or driver's license (2 minutes)
+            Use passport or driver&#39;s license (2 minutes)
           </p>
         </button>
 
@@ -128,7 +177,7 @@ export function DocumentUploadFlow({ customerId  }: Props) {
       {verificationMethod === 'auto' && (
         <div className="space-y-4">
           <p className="text-gray-700 mb-4">
-            We'll use Stripe Identity to verify your passport or driver's license automatically.
+            We&#39;ll use Stripe Identity to verify your passport or driver&#39;s license automatically.
           </p>
           <button
             onClick={() => {/* Stripe Identity flow */}}
@@ -208,6 +257,11 @@ export function DocumentUploadFlow({ customerId  }: Props) {
                       onChange={(e) => {
                         if (e.target.checked) {
                           handleDocumentTypeSelect('secondary', doc.value);
+                        } else {
+                          // Remove from selection when unchecked
+                          setSelectedDocuments(prev =>
+                            prev.filter(d => d.docType !== doc.value)
+                          );
                         }
                       }}
                       className="mt-1 mr-3"
@@ -223,15 +277,39 @@ export function DocumentUploadFlow({ customerId  }: Props) {
           )}
 
           {/* File uploads */}
+          {/* File uploads */}
           {selectedDocuments.length > 0 && (
             <div>
               <h3 className="font-semibold mb-3">Step 3: Upload Documents</h3>
               <div className="space-y-4">
                 {selectedDocuments.map((doc, idx) => (
-                  <div key={idx} className="border rounded p-4">
-                    <label className="block font-medium mb-2">
+                  <div key={idx} className="border rounded p-4 relative">
+                    {/* Close button */}
+                    <button
+                      onClick={() => handleRemoveDocument(doc.docType)}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Remove this document"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+
+                    <label className="block font-medium mb-2 pr-8">
                       {doc.docType.replace(/_/g, ' ').toUpperCase()}
                     </label>
+
                     <input
                       type="file"
                       accept="image/*,application/pdf"
@@ -239,25 +317,74 @@ export function DocumentUploadFlow({ customerId  }: Props) {
                         const file = e.target.files?.[0];
                         if (file) handleFileUpload(doc.docType, doc.category, file);
                       }}
-                      className="block w-full"
+                      disabled={uploadingFiles[doc.docType]}
+                      className="block w-full bg-gray-800 rounded text-white p-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     />
-                    {uploadedFiles[doc.docType] && (
-                      <p className="text-sm text-green-600 mt-2">✓ Uploaded</p>
+
+                    {/* Upload progress indicator */}
+                    {uploadingFiles[doc.docType] && (
+                      <div className="mt-2 flex items-center text-blue-600">
+                        <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="text-sm">Uploading...</span>
+                      </div>
+                    )}
+
+                    {/* Success message */}
+                    {uploadResults[doc.docType]?.success && (
+                      <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-start">
+                          <svg className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-green-800">Upload Successful!</p>
+                            <p className="text-xs text-green-700 mt-1">
+                              {uploadedFiles[doc.docType]?.name} ({(uploadedFiles[doc.docType]?.size / 1024).toFixed(1)} KB)
+                            </p>
+                            <p className="text-xs text-green-600 mt-1">
+                              {uploadResults[doc.docType]?.message}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error message */}
+                    {uploadResults[doc.docType] && !uploadResults[doc.docType].success && (
+                      <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start">
+                          <svg className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-red-800">Upload Failed</p>
+                            <p className="text-xs text-red-700 mt-1">
+                              {uploadResults[doc.docType]?.message}
+                            </p>
+                            <button
+                              onClick={() => {
+                                // Clear error and allow retry
+                                setUploadResults(prev => {
+                                  const updated = { ...prev };
+                                  delete updated[doc.docType];
+                                  return updated;
+                                });
+                              }}
+                              className="text-xs text-red-600 underline mt-1 hover:text-red-700"
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
             </div>
-          )}
-
-          {selectedDocuments.length > 0 && (
-            <button
-              onClick={handleSubmit}
-              disabled={Object.keys(uploadedFiles).length < selectedDocuments.length}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg disabled:opacity-50"
-            >
-              Submit for Review
-            </button>
           )}
         </div>
       )}
@@ -266,10 +393,9 @@ export function DocumentUploadFlow({ customerId  }: Props) {
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
         <h4 className="font-semibold mb-2">Need help?</h4>
         <p className="text-sm text-gray-600 mb-2">
-          Don't have standard ID? We can accept:
+          Don&#39;t have standard ID? We can accept:
         </p>
         <ul className="text-sm text-gray-600 space-y-1 ml-4">
-          <li>• Recently expired documents (up to 2 years)</li>
           <li>• Foreign identity documents with translation</li>
           <li>• Referee statements in special cases</li>
         </ul>

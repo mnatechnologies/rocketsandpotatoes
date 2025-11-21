@@ -72,21 +72,83 @@ export async function generateTTR(data: TTRData) {
 
   return ttrRecord;
 }
-//
-// // Admin function to export TTRs for submission
-// export async function exportPendingTTRs() {
-//   const { data: pendingTTRs } = await supabase
-//     .from('transactions')
-//     .select(`
-//       *,
-//       customers (*)
-//     `)
-//     .eq('requires_ttr', true)
-//     .is('ttr_submitted_at', null)
-//     .gte('created_at', new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()); // Last 10 days
-//
-//   // Format for AUSTRAC upload
-//   const csvData = pendingTTRs?.map(generateTTR);
-//
-//   return csvData;
-//}
+
+// Admin function to export TTRs for submission
+export async function exportPendingTTRs() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  const { data: pendingTTRs } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      customers (*)
+    `)
+    .eq('requires_ttr', true)
+    .is('ttr_submitted_at', null)
+    .gte('created_at', new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()); // Last 10 days
+
+  if (!pendingTTRs || pendingTTRs.length === 0) {
+    return [];
+  }
+
+  // Format each transaction for AUSTRAC reporting
+  const ttrRecords = pendingTTRs.map(transaction => ({
+    // Part B - Transaction details
+    transaction_date: transaction.created_at,
+    transaction_type: 'Purchase of bullion',
+    transaction_amount: transaction.amount,
+    transaction_currency: transaction.currency,
+    
+    // Part C - Customer details
+    customer_type: transaction.customers.customer_type,
+    customer_name: `${transaction.customers.first_name} ${transaction.customers.last_name}`,
+    customer_dob: transaction.customers.date_of_birth,
+    customer_address: JSON.stringify(transaction.customers.residential_address),
+    
+    // Part D - Verification method
+    verification_method: transaction.customers.verification_method || 'Electronic verification via Stripe Identity',
+    identification_document_type: 'See verification records',
+    
+    // Reference
+    internal_reference: transaction.id,
+    ttr_reference: transaction.ttr_reference,
+  }));
+
+  return ttrRecords;
+}
+
+// Mark TTRs as submitted
+export async function markTTRsAsSubmitted(transactionIds: string[]) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  const { error } = await supabase
+    .from('transactions')
+    .update({
+      ttr_submitted_at: new Date().toISOString(),
+    })
+    .in('id', transactionIds);
+
+  if (error) {
+    throw new Error(`Failed to mark TTRs as submitted: ${error.message}`);
+  }
+
+  return { success: true };
+}

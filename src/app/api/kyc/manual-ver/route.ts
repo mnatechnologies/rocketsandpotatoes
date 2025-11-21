@@ -4,6 +4,12 @@ import {NextResponse, NextRequest} from 'next/server'
 /* eslint-disable */
 import {createClient} from "@supabase/supabase-js";
 
+type VerificationMethod =
+  | 'stripe_identity'
+  | 'manual_document'
+  | 'electronic_dvs'
+  | 'alternative';
+
 interface ManualVerificationRequest {
   customerId: string;
   verificationMethod: VerificationMethod;
