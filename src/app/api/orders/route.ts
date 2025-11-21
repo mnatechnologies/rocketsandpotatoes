@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
+import { generateTTR } from '@/lib/compliance/ttr-generator';
 
 const logger = createLogger('CREATE_ORDER_API');
 
@@ -117,6 +118,23 @@ export async function POST(req: NextRequest) {
     }
 
     logger.log('Transaction created successfully:', transaction.id);
+
+    // Generate TTR if required
+    if (requiresTTR) {
+      try {
+        logger.log('Generating TTR for transaction:', transaction.id);
+        await generateTTR({
+          transactionId: transaction.id,
+          customerId: customerId,
+          amount: amount,
+          transactionDate: transaction.created_at,
+        });
+        logger.log('TTR generated successfully');
+      } catch (ttrError) {
+        logger.error('Failed to generate TTR:', ttrError);
+        // Don't fail the order if TTR generation fails
+      }
+    }
 
     try {
       // Fetch customer details

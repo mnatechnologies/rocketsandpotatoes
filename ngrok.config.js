@@ -9,6 +9,7 @@ process.argv.forEach((item, index) => {
     if (["--port", "-p"].includes(item)) port = process.argv[index + 1];
 });
 
+
 async function setup() {
     const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
     const listener = await session.httpEndpoint().listen();
@@ -17,4 +18,4 @@ async function setup() {
 }
 
 // if (makeListener) setup();
-//setup()
+// setup()
