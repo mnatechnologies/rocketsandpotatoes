@@ -17,5 +17,5 @@ async function setup() {
     listener.forward(`${host}:${port}`);
 }
 
-if (makeListener) setup();
-setup()
+// if (makeListener) setup();
+// setup()
