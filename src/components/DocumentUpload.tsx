@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('DOCUMENT_UPLOAD');
 
 const DOCUMENT_OPTIONS = {
   primary_photo: [
@@ -58,9 +61,9 @@ export function DocumentUploadFlow({ customerId  }: Props) {
       }
 
       const result = await response.json();
-      console.log('Upload successful:', result);
+      logger.log('Upload successful:', result);
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Upload error:', error);
       setUploadedFiles(prev => {
         const updated = { ...prev };
         delete updated[docType];

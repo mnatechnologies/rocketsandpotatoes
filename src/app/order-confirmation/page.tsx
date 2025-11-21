@@ -4,15 +4,9 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
+import { createLogger } from '@/lib/utils/logger';
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[ORDER_CONFIRMATION]', ...args);
-  }
-}
+const logger = createLogger('ORDER_CONFIRMATION');
 
 interface Order {
   id: string;
@@ -44,28 +38,28 @@ function OrderConfirmationContent() {
   const { user, isLoaded } = useUser();
 
   useEffect(() => {
-    log('Order confirmation page mounted');
+    logger.log('Order confirmation page mounted');
 
     if (!isLoaded) {
-      log('User auth not loaded yet');
+      logger.log('User auth not loaded yet');
       return;
     }
 
     if (!user) {
-      log('User not authenticated, redirecting to sign-in');
+      logger.log('User not authenticated, redirecting to sign-in');
       router.push('/sign-in');
       return;
     }
 
     const orderId = searchParams.get('orderId');
     if (!orderId) {
-      log('No order ID in URL');
+      logger.log('No order ID in URL');
       setError('No order ID provided');
       setLoading(false);
       return;
     }
 
-    log('Fetching order:', orderId);
+    logger.log('Fetching order:', orderId);
     fetchOrder(orderId);
   }, [user, isLoaded, searchParams, router]);
 
@@ -78,10 +72,10 @@ function OrderConfirmationContent() {
       }
 
       const data = await response.json();
-      log('Order data fetched:', data);
+      logger.log('Order data fetched:', data);
       setOrder(data);
     } catch (err: any) {
-      log('Error fetching order:', err);
+      logger.error('Error fetching order:', err);
       setError(err.message || 'Failed to load order details');
     } finally {
       setLoading(false);

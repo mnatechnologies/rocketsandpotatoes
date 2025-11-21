@@ -4,15 +4,9 @@ import { useState } from 'react';
 import { useStripe, useElements, PaymentElement, Elements } from '@stripe/react-stripe-js';
 import { Product } from '@/types/product';
 import { clearPricingTimer } from '@/lib/pricing/pricingTimer';
+import { createLogger } from '@/lib/utils/logger';
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[PAYMENT_FORM]', ...args);
-  }
-}
+const logger = createLogger('PAYMENT_FORM');
 
 interface PaymentFormProps {
   amount: number;
@@ -39,17 +33,17 @@ export function PaymentForm({
   const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
 
   const handlePaymentElementReady = () => {
-    log('PaymentElement is ready');
+    logger.log('PaymentElement is ready');
     setIsPaymentElementReady(true);
   };
 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    log('Payment form submitted');
+    logger.log('Payment form submitted');
 
     if (!stripe || !elements || !isPaymentElementReady) {
-      log('Stripe not loaded yet');
+      logger.log('Stripe not loaded yet');
       return;
     }
 
@@ -59,7 +53,7 @@ export function PaymentForm({
     try {
 
 
-      log('Step 1: Confirming payment with Stripe...');
+      logger.log('Step 1: Confirming payment with Stripe...');
       
       // Confirm the payment with Stripe
       const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
@@ -72,7 +66,7 @@ export function PaymentForm({
 
 
       if (stripeError) {
-        log('Stripe payment error:', stripeError);
+        logger.error('Stripe payment error:', stripeError);
         setError(stripeError.message || 'Payment failed');
         setIsProcessing(false);
         return;
@@ -81,7 +75,7 @@ export function PaymentForm({
 
 
       if (paymentIntent?.status === 'succeeded') {
-        log('Step 2: Payment succeeded, creating order...');
+        logger.log('Step 2: Payment succeeded, creating order...');
 
         
         // Create order in database
@@ -101,22 +95,22 @@ export function PaymentForm({
 
         if (!orderResponse.ok) {
           const errorData = await orderResponse.json();
-          log('Order creation failed:', errorData);
+          logger.error('Order creation failed:', errorData);
           throw new Error(errorData.error || 'Failed to create order');
         }
 
         const orderData = await orderResponse.json();
-        log('Order created successfully:', orderData.orderId);
+        logger.log('Order created successfully:', orderData.orderId);
 
         setSuccess(true);
         
         // Clear cart from localStorage
-        log('Clearing cart from localStorage');
+        logger.log('Clearing cart from localStorage');
         localStorage.removeItem('cart');
         
         // Clear pricing timer
         clearPricingTimer();
-        log('Pricing timer cleared');
+        logger.log('Pricing timer cleared');
 
         // Call success callback if provided
         if (onSuccess) {
@@ -128,15 +122,15 @@ export function PaymentForm({
           window.location.href = `/order-confirmation?orderId=${orderData.orderId}`;
         }, 2000);
       } else {
-        log('Payment status not succeeded:', paymentIntent?.status);
+        logger.log('Payment status not succeeded:', paymentIntent?.status);
         setError('Payment was not successful. Please try again.');
       }
     } catch (err: any) {
-      log('Error during payment process:', err);
+      logger.error('Error during payment process:', err);
       setError(err.message || 'An error occurred during payment');
     } finally {
       setIsProcessing(false);
-      log('Payment process completed');
+      logger.log('Payment process completed');
     }
   };
 

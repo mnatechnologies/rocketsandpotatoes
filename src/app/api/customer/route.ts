@@ -1,31 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger } from '@/lib/utils/logger';
 // import { createServerSupabase } from "@/lib/supabase/server";
 
-const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CUSTOMER_ME_API]', ...args);
-  }
-}
+const logger = createLogger('CUSTOMER_ME_API');
 
 export async function GET(req: NextRequest) {
-  log('Fetching current customer data');
+  logger.log('Fetching current customer data');
 
   // Get the authenticated user from Clerk
   const { userId } = await auth();
 
   if (!userId) {
-    log('No authenticated user found');
+    logger.log('No authenticated user found');
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
     );
   }
 
-  log('Authenticated Clerk user ID:', userId);
+  logger.log('Authenticated Clerk user ID:', userId);
 
   //subject to removal once I actually get createServerSupabase workin with clerk lmao
   const supabase = createClient(
@@ -48,7 +43,7 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (error) {
-      log('Error fetching customer:', error);
+      logger.error('Error fetching customer:', error);
       return NextResponse.json(
         { error: 'Customer not found', details: error },
         { status: 404 }
@@ -56,17 +51,17 @@ export async function GET(req: NextRequest) {
     }
 
     if (!customer) {
-      log('Customer not found for Clerk user:', userId);
+      logger.log('Customer not found for Clerk user:', userId);
       return NextResponse.json(
         { error: 'Customer not found. Please try signing out and back in.' },
         { status: 404 }
       );
     }
 
-    log('Customer fetched successfully:', customer.email);
+    logger.log('Customer fetched successfully:', customer.email);
     return NextResponse.json(customer);
   } catch (err) {
-    log('Exception fetching customer:', err);
+    logger.error('Exception fetching customer:', err);
     return NextResponse.json(
       { error: 'Internal server error', details: err },
       { status: 500 }

@@ -7,9 +7,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { useCart } from '@/contexts/CartContext';
-import { lockPrices } from '@/lib/pricing/pricingTimer';
+import { lockPrices, startPricingTimer, clearPricingTimer } from '@/lib/pricing/pricingTimer';
+import { useMetalPrices } from '@/contexts/MetalPricesContext';
+import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
+import { MetalSymbol } from '@/lib/metals-api/metalsApi';
+import { createLogger} from "@/lib/utils/logger";
 
-// Separate the component that uses useSearchParams
+const logger = createLogger('CART_PAGE')
+
 function CartContent() {
   const {
     cart,
@@ -25,22 +30,27 @@ function CartContent() {
     timerFormatted,
     isTimerExpired
   } = useCart();
-  
-  const [loadingPrices, setLoadingPrices] = useState(false);
+
+  // Use shared metal prices from context
+  const { prices: metalPrices, isLoading: loadingPrices } = useMetalPrices();
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const hasAddedProduct = useRef(false);
   const hasFetchedPrices = useRef(false);
 
-
-  // Fetch live prices on mount if cart has items
+  // Calculate and lock prices when metal prices or cart changes
   useEffect(() => {
+    if (loadingPrices || !metalPrices || metalPrices.length === 0 || cart.length === 0) {
+      return;
+    }
+
     if (!isLoading && cart.length > 0 && !hasFetchedPrices.current) {
       hasFetchedPrices.current = true;
-      fetchLivePrices();
+      calculateAndLockPrices();
     }
-  }, [isLoading, cart.length]);
+  }, [isLoading, cart.length, metalPrices, loadingPrices]);
 
   // Handle adding product from URL parameter
   useEffect(() => {
@@ -51,33 +61,32 @@ function CartContent() {
     }
   }, [searchParams]);
 
-  const fetchLivePrices = async () => {
-    if (cart.length === 0) return;
+  // REPLACE fetchLivePrices with this client-side calculation
+  const calculateAndLockPrices = () => {
+    if (cart.length === 0 || !metalPrices || metalPrices.length === 0) return;
 
-    setLoadingPrices(true);
     try {
-      const productIds = cart.map(item => item.product.id).join(',');
-      const response = await fetch(`/api/products/pricing?ids=${productIds}`);
+      // Create a map of metal prices (price per troy ounce)
+      const metalPriceMap = new Map<MetalSymbol, number>(
+        metalPrices.map(price => [price.symbol, price.price])
+      );
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch pricing');
-      }
+      // Extract products from cart items
+      const products = cart.map(item => item.product);
 
-      const data = await response.json();
+      // Use centralized pricing calculation
+      const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
 
-      if (data.success && data.data) {
-        // Lock the prices for the timer period
-        const pricesToLock = data.data.map((p: any) => ({
-          productId: p.id,
-          price: p.calculated_price,
-          spotPricePerGram: p.base_price
-        }));
-        lockPrices(pricesToLock);
-      }
+      // Lock the prices for the timer period
+      const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
+        productId,
+        price: priceInfo.calculatedPrice,
+        spotPricePerGram: priceInfo.spotPricePerGram
+      }));
+
+      lockPrices(pricesToLock);
     } catch (error) {
-      console.error('[CART] Error fetching live prices:', error);
-    } finally {
-      setLoadingPrices(false);
+      logger.error('[CART] Error calculating prices:', error);
     }
   };
 
@@ -101,16 +110,17 @@ function CartContent() {
 
       // Use context to add product
       addToCartContext(productWithUrl, 1);
-      
-      // Fetch live prices after adding
-      setTimeout(() => fetchLivePrices(), 100);
+
+      // Calculate prices after adding (no setTimeout needed)
+      setTimeout(() => calculateAndLockPrices(), 100);
 
       router.replace('/cart');
     } catch (error) {
-      console.error('[CART] Error adding to cart:', error);
+      logger.error('[CART] Error adding to cart:', error);
       alert('Failed to add product to cart');
     }
   };
+
 
   const handleCheckout = () => {
     if (!isLoaded) {
@@ -119,6 +129,14 @@ function CartContent() {
 
     if (!user) {
       router.push('/sign-in?redirect_url=/cart');
+      return;
+    }
+
+    if (isTimerExpired) {
+      alert('⏰ Price lock has expired. Please refresh prices before checkout.');
+      // Force price recalculation
+      hasFetchedPrices.current = false;
+      calculateAndLockPrices();
       return;
     }
 
@@ -151,7 +169,21 @@ function CartContent() {
 
         {isTimerExpired && cart.length > 0 && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-            <p className="text-red-800 font-semibold">⏰ Price lock expired - prices will update on next page load</p>
+            <p className="text-red-800 font-semibold mb-2">
+              ⏰ Price lock expired - prices need to be refreshed
+            </p>
+            <button
+              onClick={() => {
+                logger.log('[CART] Refreshing prices and restarting timer');
+                clearPricingTimer();
+                hasFetchedPrices.current = false;
+                startPricingTimer();
+                calculateAndLockPrices();
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              Refresh Prices & Restart Timer
+            </button>
           </div>
         )}
 
@@ -281,9 +313,14 @@ function CartContent() {
 
                 <button
                   onClick={handleCheckout}
-                  className="cursor-pointer w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg transition-colors mb-4"
+                  disabled={isTimerExpired}  // ✅ ADD THIS
+                  className={`cursor-pointer w-full py-3 font-bold rounded-lg transition-colors mb-4 ${
+                    isTimerExpired
+                      ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                      : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                  }`}
                 >
-                  Proceed to Checkout
+                  {isTimerExpired ? '⏰ Prices Expired - Refresh Required' : 'Proceed to Checkout'}
                 </button>
 
                 <Link

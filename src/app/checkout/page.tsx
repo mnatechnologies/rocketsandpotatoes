@@ -6,15 +6,10 @@ import { useUser } from '@clerk/nextjs';
 import { CheckoutFlow } from '@/components/CheckoutFlow';
 import { Product } from '@/types/product';
 import {CartItem, useCart} from '@/contexts/CartContext';
+import {formatRemainingTime} from "@/lib/pricing/pricingTimer";
+import { createLogger } from '@/lib/utils/logger';
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CHECKOUT_PAGE]', ...args);
-  }
-}
+const logger = createLogger('CHECKOUT_PAGE');
 
 export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -22,42 +17,47 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const { getLockedPriceForProduct } = useCart();
-
+  const { getLockedPriceForProduct, isTimerExpired, timerRemaining } = useCart();
   useEffect(() => {
-    log('Checkout page mounted');
+    logger.log('Checkout page mounted');
     
     if (!isLoaded) {
-      log('User auth not loaded yet');
+      logger.log('User auth not loaded yet');
       return;
     }
 
     if (!user) {
-      log('User not authenticated, redirecting to sign-in');
+      logger.log('User not authenticated, redirecting to sign-in');
       router.push('/sign-in?redirect_url=/checkout');
       return;
     }
+    if (isTimerExpired) {
+      logger.log('Price lock expired, redirecting to cart');
+      alert('⏰ Your price lock has expired. Please refresh prices in your cart.');
+      router.push('/cart');
+      return;
+    }
 
-    log('User authenticated:', user.id);
+    logger.log('User authenticated:', user.id);
     fetchCustomerId();
     loadCart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoaded, router]);
+  }, [user, isLoaded, router, isTimerExpired]);
 
   const fetchCustomerId = async () => {
     if (!user) return;
 
-    log('Fetching customer ID for Clerk user:', user.id);
+    logger.log('Fetching customer ID for Clerk user:', user.id);
     try {
       const response = await fetch('/api/customer');
       if (!response.ok) {
         throw new Error('Failed to fetch customer data');
       }
       const data = await response.json();
-      log('Customer data fetched:', data);
+      logger.log('Customer data fetched:', data);
       setCustomerId(data.id);
     } catch (error) {
-      log('Error fetching customer ID:', error);
+      logger.error('Error fetching customer ID:', error);
       // If customer doesn't exist yet, the webhook might not have processed
       // We'll create a temporary flow or wait
       alert('Please wait a moment while we set up your account, then try again.');
@@ -65,18 +65,18 @@ export default function CheckoutPage() {
   };
 
   const loadCart = () => {
-    log('Loading cart from localStorage');
+    logger.log('Loading cart from localStorage');
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        log('Cart loaded:', parsedCart);
+        logger.log('Cart loaded:', parsedCart);
         setCart(parsedCart);
       } catch (error) {
-        log('Error parsing cart:', error);
+        logger.error('Error parsing cart:', error);
       }
     } else {
-      log('No cart found, redirecting to cart page');
+      logger.log('No cart found, redirecting to cart page');
       router.push('/cart');
     }
     setLoading(false);
@@ -89,7 +89,7 @@ export default function CheckoutPage() {
       const price = lockedPrice ?? item.product.price;
       return sum + (price * item.quantity);
     }, 0);
-    log('Total amount calculated with locked prices:', total);
+    logger.log('Total amount calculated with locked prices:', total);
     return total;
   };
 
@@ -102,7 +102,7 @@ export default function CheckoutPage() {
       return (priceB * b.quantity) - (priceA * a.quantity);
     });
 
-    log('Main product for compliance:', sorted[0]?.product.name);
+    logger.log('Main product for compliance:', sorted[0]?.product.name);
     return sorted[0]?.product || null;
   };
 
@@ -169,7 +169,16 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-background/50 py-12">
       <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Checkout</h1>
-
+        {timerRemaining > 0 && timerRemaining < 300000 && ( // Show if less than 5 minutes
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+            <p className="text-yellow-800 font-semibold">
+              ⏰ Price lock expires in: <span className="text-xl font-bold">{formatRemainingTime()}</span>
+            </p>
+            <p className="text-yellow-700 text-sm mt-1">
+              Complete checkout before timer expires to secure these prices
+            </p>
+          </div>
+        )}
         {/* Order Summary */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Summary</h2>

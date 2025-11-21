@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { createServerSupabase } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('CREATE_ORDER_API');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,28 +16,20 @@ const supabase = createClient(
       },
     }
 );
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CREATE_ORDER_API]', ...args);
-  }
-}
 
 export async function POST(req: NextRequest) {
-  log('Order creation request received');
+  logger.log('Order creation request received');
 
   try {
     // Get authenticated user from Clerk
     const { userId } = await auth();
     
     if (!userId) {
-      log('Unauthorized - no userId from Clerk');
+      logger.log('Unauthorized - no userId from Clerk');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    log('Authenticated user ID:', userId);
+    logger.log('Authenticated user ID:', userId);
 
     const body = await req.json();
     const {
@@ -47,11 +42,11 @@ export async function POST(req: NextRequest) {
       paymentMethod = 'card',
     } = body;
 
-    log('Order data:', { customerId, amount, currency, productCount: cartItems?.length });
+    logger.log('Order data:', { customerId, amount, currency, productCount: cartItems?.length });
 
     // Validate required fields
     if (!customerId || !amount || !stripePaymentIntentId) {
-      log('Missing required fields');
+      logger.log('Missing required fields');
       return NextResponse.json(
         { error: 'Missing required fields: customerId, amount, stripePaymentIntentId' },
         { status: 400 }
@@ -67,23 +62,23 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (customerError || !customer) {
-      log('Customer not found:', customerError);
+      logger.error('Customer not found:', customerError);
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
     if (customer.clerk_user_id !== userId) {
-      log('Unauthorized - customer does not belong to user');
+      logger.log('Unauthorized - customer does not belong to user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    log('Customer verified:', customer.id);
+    logger.log('Customer verified:', customer.id);
 
     // Determine compliance requirements
     const requiresKYC = amount >= 5000;
     const requiresTTR = amount >= 10000;
     const requiresEnhancedDD = amount >= 50000;
 
-    log('Compliance flags:', { requiresKYC, requiresTTR, requiresEnhancedDD });
+    logger.log('Compliance flags:', { requiresKYC, requiresTTR, requiresEnhancedDD });
 
     // Create transaction record
     const transactionData = {
@@ -105,7 +100,7 @@ export async function POST(req: NextRequest) {
       flagged_for_review: false,
     };
 
-    log('Creating transaction record');
+    logger.log('Creating transaction record');
 
     const { data: transaction, error: transactionError } = await supabase
       .from('transactions')
@@ -114,14 +109,14 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (transactionError) {
-      log('Error creating transaction:', transactionError);
+      logger.error('Error creating transaction:', transactionError);
       return NextResponse.json(
         { error: 'Failed to create order', details: transactionError },
         { status: 500 }
       );
     }
 
-    log('Transaction created successfully:', transaction.id);
+    logger.log('Transaction created successfully:', transaction.id);
 
     try {
       // Fetch customer details
@@ -164,11 +159,11 @@ export async function POST(req: NextRequest) {
           }),
         });
 
-        log('Order confirmation email sent to:', customerData.email);
+        logger.log('Order confirmation email sent to:', customerData.email);
       }
     } catch (emailError) {
       // Don't fail the order if email fails
-      log('Failed to send confirmation email:', emailError);
+      logger.error('Failed to send confirmation email:', emailError);
     }
 
     // Log audit event
@@ -184,7 +179,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    log('Audit log created');
+    logger.log('Audit log created');
 
     return NextResponse.json({
       success: true,
@@ -193,7 +188,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    log('Error in order creation:', error);
+    logger.error('Error in order creation:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

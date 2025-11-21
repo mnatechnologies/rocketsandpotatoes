@@ -2,34 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { createServerSupabase } from '@/lib/supabase/server';
 import {createClient} from "@supabase/supabase-js";
 import { auth } from '@clerk/nextjs/server';
+import { createLogger } from '@/lib/utils/logger';
 /* eslint-disable */
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[ORDER_API]', ...args);
-  }
-}
+const logger = createLogger('ORDER_API');
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise <{ id: string }> }
 ) {
   const { id: orderId } = await params;
-  log('Order fetch request received for ID:', orderId);
+  logger.log('Order fetch request received for ID:', orderId);
 
   try {
     // Get authenticated user from Clerk
     const { userId } = await auth();
     
     if (!userId) {
-      log('Unauthorized - no userId from Clerk');
+      logger.log('Unauthorized - no userId from Clerk');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    log('Authenticated user ID:', userId);
+    logger.log('Authenticated user ID:', userId);
 
     // const supabase = createServerSupabase();
     //subject to removal once I actually get createServerSupabase workin with clerk lmao
@@ -61,7 +55,7 @@ export async function GET(
       .single();
 
     if (orderError) {
-      log('Error fetching order:', orderError);
+      logger.error('Error fetching order:', orderError);
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
@@ -69,7 +63,7 @@ export async function GET(
     }
 
     if (!order) {
-      log('Order not found:', orderId);
+      logger.log('Order not found:', orderId);
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
@@ -78,14 +72,14 @@ export async function GET(
 
     // Verify the order belongs to the authenticated user
     if (order.customers.clerk_user_id !== userId) {
-      log('Unauthorized access attempt - order does not belong to user');
+      logger.log('Unauthorized access attempt - order does not belong to user');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
       );
     }
 
-    log('Order found and authorized:', {
+    logger.log('Order found and authorized:', {
       id: order.id,
       amount: order.amount,
       status: order.payment_status,
@@ -117,12 +111,12 @@ export async function GET(
       }
     };
 
-    log('Returning order data');
+    logger.log('Returning order data');
 
     return NextResponse.json(response);
 
   } catch (error: any) {
-    log('Error in order fetch:', error);
+    logger.error('Error in order fetch:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

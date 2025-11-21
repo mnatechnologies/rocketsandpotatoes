@@ -8,7 +8,9 @@ import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { ShoppingCartIcon } from "lucide-react";
+import { createLogger } from '@/lib/utils/logger'
 
+const logger = createLogger('PRODUCT_CLIENT')
 interface ProductsClientProps {
     products: Product[];
     categoryNames: Record<string, string>;

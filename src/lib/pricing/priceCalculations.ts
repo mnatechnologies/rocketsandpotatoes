@@ -1,6 +1,9 @@
 import { getMetalInfo, type MetalSymbol} from "@/lib/metals-api/metalsApi";
 import { fetchMetalsQuotes} from "@/lib/metals-api/metalsApi";
 import {error} from "next/dist/build/output/log";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger('PRICING');
 
 interface PricingConfig {
   markup_percentage: number;
@@ -146,7 +149,7 @@ export async function calculateBulkPricing(
 
       priceMap.set(product.id, Math.round(calculatedPrice * 100) / 100);
     } catch (error) {
-      console.error(`Error pricing product ${product.id}:`, error);
+      logger.error(`Error pricing product ${product.id}:`, error);
       const basePrice = product.original.price || product.original.base_price || 0;
       priceMap.set(product.id, basePrice);
     }
@@ -207,7 +210,7 @@ export function calculateBulkPricingFromCache(
         spotPricePerGram: Math.round(spotPricePerGram * 100) / 100
       });
     } catch (error) {
-      console.error(`Error pricing product ${product.id}:`, error);
+      logger.error(`Error pricing product ${product.id}:`, error);
       const basePrice = product.original.price || product.original.base_price || 0;
       priceMap.set(product.id, {
         calculatedPrice: basePrice,

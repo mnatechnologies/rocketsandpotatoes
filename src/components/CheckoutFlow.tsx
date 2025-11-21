@@ -1,23 +1,16 @@
-// INSPECT REACT-STRIPE-JS
+
 'use client';
 /* eslint-disable */
 
 import { useState, useEffect } from 'react';
 import { KYCVerification } from './KYCVerification';
-import {Product} from "@/types/product";
+import { Product } from "@/types/product";
 import { loadStripe } from '@stripe/stripe-js';
-
 import { Elements  } from "@stripe/react-stripe-js";
 import { PaymentForm } from './PaymentForm';
+import { createLogger } from '@/lib/utils/logger'
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CHECKOUT_FLOW]', ...args);
-  }
-}
+const logger = createLogger('CHECKOUT_FLOW')
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -38,22 +31,22 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
   // Automatically trigger validation on component mount
   useEffect(() => {
-    log('CheckoutFlow mounted', { customerId, amount, productDetails });
+    logger.log('CheckoutFlow mounted', { customerId, amount, productDetails });
     validateTransaction();
   }, [customerId, amount, productDetails]);
 
   const validateTransaction = async () => {
     if (isValidating) {
-      log('Validation already in progress, skipping...');
+      logger.log('Validation already in progress, skipping...');
       return;
     }
 
-    log('Starting transaction validation...');
+    logger.log('Starting transaction validation...');
     setIsValidating(true);
 
     try {
       const requestBody = { customerId, amount, productDetails };
-      log('Sending validation request:', requestBody);
+      logger.log('Sending validation request:', requestBody);
 
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -61,36 +54,36 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         body: JSON.stringify(requestBody),
       });
 
-      log('Validation response status:', response.status);
+      logger.log('Validation response status:', response.status);
 
       const result = await response.json();
-      log('Validation result:', result);
+      logger.log('Validation result:', result);
       setValidationResult(result);
 
       if (result.status === 'kyc_required') {
-        log('KYC required - redirecting to KYC verification');
+        logger.log('KYC required - redirecting to KYC verification');
         setStep('kyc');
       } else if (result.status === 'requires_review') {
-        log('Transaction requires manual review');
+        logger.log('Transaction requires manual review');
         setStep('review');
       } else {
-        log('Transaction approved - proceeding to payment');
+        logger.log('Transaction approved - proceeding to payment');
         await createPaymentIntent();
         setStep('payment');
       }
     } catch (error) {
-      log('Error during validation:', error);
+      logger.error('Error during validation:', error);
       // Optionally handle error state
     } finally {
       setIsValidating(false);
-      log('Validation complete');
+      logger.log('Validation complete');
     }
   };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('kyc_status') === 'complete') {
-      log('Returned from KYC verification, re-validating...');
+      logger.log('Returned from KYC verification, re-validating...');
 
       // Clear the URL parameters to prevent re-triggering
       window.history.replaceState({}, '', '/checkout');
@@ -103,7 +96,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }, []);
 
   const createPaymentIntent = async () => {
-    log('Creating payment intent...');
+    logger.log('Creating payment intent...');
     try {
       const response = await fetch('/api/create-payment-intent', {
         method: 'POST',
@@ -121,12 +114,12 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       }
 
       const data = await response.json();
-      log('Payment intent created:', data.paymentIntentId);
+      logger.log('Payment intent created:', data.paymentIntentId);
       setClientSecret(data.clientSecret);
-      log('Client secret:', data.clientSecret);
+      logger.log('Client secret:', data.clientSecret);
       setPaymentIntentId(data.paymentIntentId);
     } catch (error) {
-      log('Error creating payment intent:', error);
+      logger.error('Error creating payment intent:', error);
       throw error;
     }
   };

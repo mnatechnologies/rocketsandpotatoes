@@ -3,21 +3,15 @@ import {  calculateRiskScore, getRiskLevel } from '@/lib/compliance/risk-scoring
 import {getComplianceRequirements} from "@/lib/compliance/thresholds";
 import {detectStructuring} from "@/lib/compliance/structuring-detection";
 import { createClient } from "@supabase/supabase-js";
+import { createLogger } from '@/lib/utils/logger';
 // import { createServerSupabase } from "@/lib/supabase/server";
 
 /* eslint-disable */
 
-
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CHECKOUT_API]', ...args);
-  }
-}
+const logger = createLogger('CHECKOUT_API');
 
 export async function POST(req: NextRequest) {
-  log('Checkout validation request received');
+  logger.log('Checkout validation request received');
 
     //subject to removal once I actually get createServerSupabase workin with clerk lmao
     const supabase = createClient(
@@ -32,13 +26,13 @@ export async function POST(req: NextRequest) {
     );
   
   const { customerId, amount, productDetails } = await (req as any).json();
-  log('Request data:', { customerId, amount, productDetails });
+  logger.log('Request data:', { customerId, amount, productDetails });
 
 
 
   // 1. Check compliance thresholds
   const requirements = getComplianceRequirements(amount);
-  log('Compliance requirements:', requirements);
+  logger.log('Compliance requirements:', requirements);
 
   // 2. Get customer data
   const { data: customer, error: customerError } = await supabase
@@ -48,15 +42,15 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (customerError) {
-    log('Customer fetch error:', customerError);
+    logger.log('Customer fetch error:', customerError);
   }
 
   if (!customer) {
-    log('Customer not found:', customerId);
+    logger.log('Customer not found:', customerId);
     return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
   }
 
-  log('Customer data:', { 
+  logger.log('Customer data:', { 
     id: customer.id, 
     verification_status: customer.verification_status,
     risk_level: customer.risk_level 
@@ -64,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   // 3. Check if KYC is required but not completed
   if (requirements.requiresKYC && customer.verification_status !== 'verified') {
-    log('KYC required but not completed');
+    logger.log('KYC required but not completed');
     return NextResponse.json({
       status: 'kyc_required',
       message: 'Identity verification required for transactions over $5,000',
@@ -73,7 +67,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (requirements.requiresTTR) {
-    log('TTR required for transaction over $10,000');
+    logger.log('TTR required for transaction over $10,000');
     return NextResponse.json({
       status: 'ttr_required',
       message: 'Threshold Transaction Report required for transactions over $10,000',
@@ -85,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   // 4. Check for structuring
   const isStructuring = await detectStructuring(customerId, amount);
-  log('Structuring detection result:', isStructuring);
+  logger.log('Structuring detection result:', isStructuring);
 
   // 5. Calculate risk score
   const { data: previousTransactions } = await supabase
@@ -93,7 +87,7 @@ export async function POST(req: NextRequest) {
     .select('id')
     .eq('customer_id', customerId);
 
-  log('Previous transactions count:', previousTransactions?.length || 0);
+  logger.log('Previous transactions count:', previousTransactions?.length || 0);
 
  // @ts-ignore
   const riskScore = calculateRiskScore({
@@ -107,11 +101,11 @@ export async function POST(req: NextRequest) {
  });
 
   const riskLevel = getRiskLevel(riskScore);
-  log('Risk assessment:', { riskScore, riskLevel });
+  logger.log('Risk assessment:', { riskScore, riskLevel });
 
   // 6. Flag for manual review if high risk
   const requiresReview = riskLevel === 'high' || customer.risk_level === "high" || isStructuring || requirements.requiresEnhancedDD;
-  log('Requires manual review:', requiresReview);
+  logger.log('Requires manual review:', requiresReview);
 
   const response = {
     status: requiresReview ? 'requires_review' : 'approved',
@@ -128,7 +122,7 @@ export async function POST(req: NextRequest) {
       : 'Transaction approved',
   };
 
-  log('Final response:', response);
+  logger.log('Final response:', response);
 
   return NextResponse.json(response);
 }

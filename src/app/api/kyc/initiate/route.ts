@@ -2,8 +2,11 @@ import {NextRequest, NextResponse} from "next/server";
 import {createVerificationSession} from "@/lib/stripe/identity";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {createClient} from "@supabase/supabase-js";
+import { createLogger } from "@/lib/utils/logger";
 
 /* eslint-disable */
+
+const logger = createLogger('KYC_INITIATE_API');
 
 export async function POST(req: NextRequest) {
   const { customerId } = await (req as any).json();
@@ -41,10 +44,10 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (insertError) {
-    console.error('[KYC_INITIATE] Error creating verification record:', insertError);
+    logger.error('Error creating verification record:', insertError);
     // Continue anyway - the webhook can still process it
   } else {
-    console.log('[KYC_INITIATE] Verification record created:', verificationRecord.id);
+    logger.log('Verification record created:', verificationRecord.id);
   }
 
   return NextResponse.json({

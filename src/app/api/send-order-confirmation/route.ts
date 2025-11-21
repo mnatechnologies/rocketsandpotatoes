@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('SEND_EMAIL_API');
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, emailId: result.emailId });
   } catch (error: any) {
-    console.error('[SEND_EMAIL_API] Error:', error);
+    logger.error('Error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

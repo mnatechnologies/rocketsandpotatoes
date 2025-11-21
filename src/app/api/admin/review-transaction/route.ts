@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('ADMIN_REVIEW_API');
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
     .eq('id', transactionId);
 
   if (updateError) {
-    console.error('Error updating transaction:', updateError);
+    logger.error('Error updating transaction:', updateError);
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 

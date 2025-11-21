@@ -3,7 +3,9 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('KYC_RETURN')
 // Inner component that uses useSearchParams
 function KYCReturnContent() {
   const router = useRouter();
@@ -60,7 +62,7 @@ function KYCReturnContent() {
         setTimeout(() => pollVerificationStatus(customerId), 3000);
       }
     } catch (error) {
-      console.error('[KYC_RETURN] Error polling status:', error);
+      logger.error('[KYC_RETURN] Error polling status:', error);
       setStatus('error');
     }
   };

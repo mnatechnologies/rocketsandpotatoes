@@ -3,17 +3,11 @@ import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger } from '@/lib/utils/logger';
 
 /* eslint-disable */
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CLERK_WEBHOOK]', ...args);
-  }
-}
+const logger = createLogger('CLERK_WEBHOOK');
 
 export async function POST(req: NextRequest) {
   // Get the headers
@@ -24,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    log('Error: Missing svix headers');
+    logger.error('Error: Missing svix headers');
     return NextResponse.json({ error: 'Missing svix headers' }, { status: 400 });
   }
 
@@ -44,28 +38,28 @@ export async function POST(req: NextRequest) {
       'svix-timestamp': svix_timestamp,
       'svix-signature': svix_signature,
     }) as WebhookEvent;
-    log('Webhook verified successfully');
+    logger.log('Webhook verified successfully');
   } catch (err) {
-    log('Error: Webhook verification failed', err);
+    logger.error('Error: Webhook verification failed', err);
     return NextResponse.json({ error: 'Webhook verification failed' }, { status: 400 });
   }
 
   // Handle the webhook
   const eventType = evt.type;
-  log('Received event type:', eventType);
+  logger.log('Received event type:', eventType);
 
   if (eventType === 'user.created' || eventType === 'user.updated') {
     const { id, email_addresses, first_name, last_name, phone_numbers } = evt.data;
 
-    log('Processing user:', { id, email: email_addresses[0]?.email_address });
+    logger.log('Processing user:', { id, email: email_addresses[0]?.email_address });
 
     // Create Supabase admin client with service role key (bypasses RLS)
-    // NOTE: You need to add SUPABASE_SERVICE_ROLE_KEY to your .env file
+    // NOTE: You need to add SUPABASE_SERVICE_ROLE_KEY to your .env.development file
     // Get this from your Supabase project settings > API > service_role key (secret)
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
     if (!supabaseServiceKey) {
-      log('Error: SUPABASE_SERVICE_ROLE_KEY not configured');
+      logger.error('Error: SUPABASE_SERVICE_ROLE_KEY not configured');
       return NextResponse.json(
         { error: 'Server configuration error: Missing service role key' },
         { status: 500 }
@@ -95,7 +89,7 @@ export async function POST(req: NextRequest) {
         risk_score: 0,
       };
 
-      log('Customer data prepared:', customerData);
+      logger.log('Customer data prepared:', customerData);
 
       // Insert customer record
       const { data, error } = await supabase
@@ -107,11 +101,11 @@ export async function POST(req: NextRequest) {
         .select();
 
       if (error) {
-        log('Error: Supabase insert failed', error);
+        logger.error('Error: Supabase insert failed', error);
         return NextResponse.json({ error: 'Failed to create customer', details: error }, { status: 500 });
       }
 
-      log('Customer record created/updated successfully:', data);
+      logger.log('Customer record created/updated successfully:', data);
 
       // Log audit event
       await supabase.from('audit_logs').insert({
@@ -122,15 +116,15 @@ export async function POST(req: NextRequest) {
         metadata: { clerk_user_id: id, email: customerData.email },
       });
 
-      log('Audit log created');
+      logger.log('Audit log created');
 
       return NextResponse.json({ success: true, customer: data });
     } catch (err) {
-      log('Error: Exception during processing', err);
+      logger.error('Error: Exception during processing', err);
       return NextResponse.json({ error: 'Internal server error', details: err }, { status: 500 });
     }
   }
 
-  log('Event type not handled:', eventType);
+  logger.log('Event type not handled:', eventType);
   return NextResponse.json({ success: true, message: 'Event received but not processed' });
 }

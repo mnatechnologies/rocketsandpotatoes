@@ -1,20 +1,14 @@
 import { createServerSupabase } from '@/lib/supabase/server';
 import ProductsClient from './ProductsClient';
+import { createLogger } from '@/lib/utils/logger';
 /* eslint-disable  */
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[PRODUCTS_PAGE]', ...args);
-  }
-}
+const logger = createLogger('PRODUCTS_PAGE');
 
 export default async function ProductsPage() {
   const supabase = await createServerSupabase();
 
-  log('Fetching products from database');
+  logger.log('Fetching products from database');
 
   const { data: products, error } = await supabase
       .from('products')
@@ -25,7 +19,7 @@ export default async function ProductsPage() {
 
   // Check for error BEFORE using products
   if (error) {
-    log('Error fetching products:', error);
+    logger.error('Error fetching products:', error);
     return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -43,7 +37,7 @@ export default async function ProductsPage() {
         ? supabase.storage.from('Images').getPublicUrl(`gold/${trimmedImageUrl}`).data.publicUrl
         : null;
 
-    console.log('Product:', product.name, 'Image URL:', imageUrl);
+    logger.log('Product:', product.name, 'Image URL:', imageUrl);
 
     return {
       ...product,
@@ -51,7 +45,7 @@ export default async function ProductsPage() {
     };
   });
 
-  log(`Successfully fetched ${productsWithUrls?.length || 0} products with images`);
+  logger.log(`Successfully fetched ${productsWithUrls?.length || 0} products with images`);
 
   const categoryNames: Record<string, string> = {
     gold_bars: 'Gold Bars',

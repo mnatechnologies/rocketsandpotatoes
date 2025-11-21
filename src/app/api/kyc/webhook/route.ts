@@ -2,6 +2,9 @@ import {NextResponse, NextRequest} from "next/server";
 //import { createServerSupabase } from "@/lib/supabase/server";
 import {processVerificationResult, stripe} from "@/lib/stripe/identity";
 import {createClient} from "@supabase/supabase-js";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger('STRIPE_WEBHOOK')
 
 export async function POST(req: NextRequest) {
   //const supabase = await createServerSupabase();
@@ -35,13 +38,13 @@ export async function POST(req: NextRequest) {
     const session = event.data.object;
     const customerId = session.metadata.customer_id;
 
-    console.log('[KYC_WEBHOOK] Verification completed for customer:', customerId);
-    console.log('[KYC_WEBHOOK] Session ID:', session.id);
-    console.log('[KYC_WEBHOOK] Timestamp:', new Date().toISOString());
+    logger.log('[KYC_WEBHOOK] Verification completed for customer:', customerId);
+    logger.log('[KYC_WEBHOOK] Session ID:', session.id);
+    logger.log('[KYC_WEBHOOK] Timestamp:', new Date().toISOString());
 
     await processVerificationResult(session.id, customerId);
 
-    console.log('[KYC_WEBHOOK] Customer status updated to verified');
+    logger.log('[KYC_WEBHOOK] Customer status updated to verified');
   }
 
   if (event.type === 'identity.verification_session.requires_input') {

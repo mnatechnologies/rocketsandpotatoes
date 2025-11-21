@@ -3,6 +3,10 @@
  * Manages a 15-minute timer from the first product addition to lock dynamic pricing
  */
 
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('PRICING_TIMER');
+
 const TIMER_KEY = 'pricing_timer_start';
 const LOCKED_PRICES_KEY = 'locked_prices';
 const TIMER_DURATION_MS = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -24,7 +28,7 @@ export function startPricingTimer(): void {
   if (!existingTimer) {
     const startTime = Date.now();
     localStorage.setItem(TIMER_KEY, startTime.toString());
-    console.log('[PRICING_TIMER] Timer started at:', new Date(startTime).toISOString());
+    logger.log('Timer started at:', new Date(startTime).toISOString());
   }
 }
 
@@ -50,7 +54,7 @@ export function isTimerActive(): boolean {
   const isActive = elapsed < TIMER_DURATION_MS;
   
   if (!isActive) {
-    console.log('[PRICING_TIMER] Timer expired');
+    logger.log('Timer expired');
   }
   
   return isActive;
@@ -100,7 +104,7 @@ export function lockPrices(prices: LockedPrice[]): void {
   
   const allPrices = Array.from(pricesMap.values());
   localStorage.setItem(LOCKED_PRICES_KEY, JSON.stringify(allPrices));
-  console.log('[PRICING_TIMER] Prices locked for', allPrices.length, 'products');
+  logger.log('Prices locked for', allPrices.length, 'products');
 }
 
 /**
@@ -115,7 +119,7 @@ export function getLockedPrices(): LockedPrice[] {
   try {
     return JSON.parse(pricesStr);
   } catch (error) {
-    console.error('[PRICING_TIMER] Error parsing locked prices:', error);
+    logger.error('Error parsing locked prices:', error);
     return [];
   }
 }
@@ -138,7 +142,7 @@ export function clearPricingTimer(): void {
   
   localStorage.removeItem(TIMER_KEY);
   localStorage.removeItem(LOCKED_PRICES_KEY);
-  console.log('[PRICING_TIMER] Timer and locked prices cleared');
+  logger.log('Timer and locked prices cleared');
 }
 
 /**

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { retrieveVerificationSession, processVerificationResult, stripe } from '@/lib/stripe/identity';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('VERIFICATION_STATUS_API');
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -35,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     // If status is pending, check Stripe for real-time status
     if (customer.verification_status === 'pending') {
-      console.log('[VERIFICATION_STATUS] Customer pending, checking Stripe...');
+      logger.log('Customer pending, checking Stripe...');
 
       // Find the most recent verification session for this customer
       const { data: verificationSession, error: sessionError } = await supabase
@@ -49,17 +52,17 @@ export async function GET(req: NextRequest) {
       if (!sessionError && verificationSession?.stripe_verification_session_id) {
         const sessionId = verificationSession.stripe_verification_session_id;
 
-        console.log('[VERIFICATION_STATUS] Checking session:', sessionId);
+        logger.log('Checking session:', sessionId);
 
         try {
           // Retrieve real-time status from Stripe
           const stripeSession = await stripe.identity.verificationSessions.retrieve(sessionId);
 
-          console.log('[VERIFICATION_STATUS] Stripe status:', stripeSession.status);
+          logger.log('Stripe status:', stripeSession.status);
 
           // If Stripe shows verified but DB doesn't, update it
           if (stripeSession.status === 'verified' && customer.verification_status !== 'verified') {
-            console.log('[VERIFICATION_STATUS] Stripe verified, updating database...');
+            logger.log('Stripe verified, updating database...');
 
             // Process the verification result (updates DB)
             await processVerificationResult(sessionId, customerId);
@@ -89,7 +92,7 @@ export async function GET(req: NextRequest) {
           // Still processing - return pending
           return NextResponse.json(customer);
         } catch (stripeError) {
-          console.error('[VERIFICATION_STATUS] Stripe API error:', stripeError);
+          logger.error('Stripe API error:', stripeError);
           // Fall back to database status if Stripe call fails
           return NextResponse.json(customer);
         }
@@ -99,7 +102,7 @@ export async function GET(req: NextRequest) {
     // Return database status (for verified/rejected/etc)
     return NextResponse.json(customer);
   } catch (err) {
-    console.error('[VERIFICATION_STATUS] Error:', err);
+    logger.error('Error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

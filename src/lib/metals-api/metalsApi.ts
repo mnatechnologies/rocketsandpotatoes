@@ -1,5 +1,8 @@
 const API_HOST = "https://api.metalpriceapi.com/v1";
 import { getCachedData, setCachedData } from './cache';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('METALS_API');
 
 const METALS = [
   {symbol: "XAU", label: "gold", ticker: "GOLD"},
@@ -43,7 +46,7 @@ const getHistoricalDates = (days = 14) => {
 const fetchJson = async <T>(url: string) => {
   const cached = getCachedData(url);
   if (cached) {
-    console.log('✓ Using cached data for:', url);
+    logger.log('✓ Using cached data for:', url);
     return cached as T;
   }
 
@@ -53,7 +56,7 @@ const fetchJson = async <T>(url: string) => {
 
   if (!res.ok) {
     const errorText = await res.text();
-    console.error('❌ HTTP Error Response:', errorText);
+    logger.error('❌ HTTP Error Response:', errorText);
     throw new Error(`HTTP ${res.status} from MetalpriceAPI: ${errorText}`);
   }
 
@@ -61,7 +64,7 @@ const fetchJson = async <T>(url: string) => {
 
   if (!data.success) {
     const errorInfo = data.error?.info || data.error?.message || JSON.stringify(data.error);
-    console.error('❌ API Error:', errorInfo);
+    logger.error('❌ API Error:', errorInfo);
     throw new Error(`MetalpriceAPI error: ${errorInfo}`);
   }
   setCachedData(url, data)
@@ -83,9 +86,9 @@ export const fetchMetalsQuotes = async (
     throw new Error('METALPRICEAPI_API_KEY environment variable is not set');
   }
 
-  console.log('🔑 API Key present:', apiKey ? 'Yes' : 'No');
-  console.log('💱 Base currency:', baseCurrency);
-  console.log('🏅 Symbols requested:', symbols);
+  logger.log('🔑 API Key present:', apiKey ? 'Yes' : 'No');
+  logger.log('💱 Base currency:', baseCurrency);
+  logger.log('🏅 Symbols requested:', symbols);
 
   const params = new URLSearchParams({
     api_key: apiKey,
@@ -93,41 +96,41 @@ export const fetchMetalsQuotes = async (
     currencies: symbols.join(","),
   });
 
-  console.log('📊 Fetching latest rates...');
+  logger.log('📊 Fetching latest rates...');
   const latest = await fetchJson<{
     success: boolean;
     base: string;
     rates: Record<MetalSymbol, number>
     timestamp?: number
   }>(`${API_HOST}/latest?${params}`);
-  console.log('✓ Latest rates received:', latest.rates);
+  logger.log('✓ Latest rates received:', latest.rates);
 
   const dataTimestamp = latest.timestamp
     ? new Date(latest.timestamp * 1000).toISOString()
     : new Date().toISOString();
-  console.log('📅 Data timestamp:', dataTimestamp);
+  logger.log('📅 Data timestamp:', dataTimestamp);
 
 
   let previousRates: Record<MetalSymbol, number> | null = null;
 
-  console.log('📅 Attempting to fetch historical data...');
+  logger.log('📅 Attempting to fetch historical data...');
   for (const date of getHistoricalDates()) {
     try {
-      console.log(`  Trying date: ${date}`);
+      logger.log(`  Trying date: ${date}`);
       const historical = await fetchJson<{
         success: boolean;
         rates: Record<MetalSymbol, number>;
       }>(`${API_HOST}/${date}?${params}`);
       previousRates = historical.rates;
-      console.log(`✓ Historical data found for ${date}:`, historical.rates);
+      logger.log(`✓ Historical data found for ${date}:`, historical.rates);
       break;
     } catch (error) {
-      console.log(`✗ Failed for ${date}:`, error instanceof Error ? error.message : 'Unknown error');
+      logger.log(`✗ Failed for ${date}:`, error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
   if (!previousRates) {
-    console.warn('⚠️ WARNING: No historical data available - all changes will show as 0%');
+    logger.warn('⚠️ WARNING: No historical data available - all changes will show as 0%');
   }
 
   return symbols.map(symbol => {
@@ -142,7 +145,7 @@ export const fetchMetalsQuotes = async (
     const change = price - previous;
     const changePercent = previous ? (change / previous) * 100 : 0;
 
-    console.log(`${symbol}: $${price.toFixed(2)} | Change: ${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`);
+    logger.log(`${symbol}: $${price.toFixed(2)} | Change: ${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`);
 
     return {
       symbol,

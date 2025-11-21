@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 //import { createServerSupabase } from '@/lib/supabase/server';
 import {createClient} from "@supabase/supabase-js";
+import { createLogger } from '@/lib/utils/logger';
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[PRODUCT_API]', ...args);
-  }
-}
+const logger = createLogger('PRODUCT_API');
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const {id: productId} = await params;
-  log('Fetching product with ID:', productId);
+  logger.log('Fetching product with ID:', productId);
 
   //const supabase = await createServerSupabase();
 
@@ -39,7 +33,7 @@ export async function GET(
       .single();
 
     if (error) {
-      log('Error fetching product:', error);
+      logger.error('Error fetching product:', error);
       return NextResponse.json(
         { error: 'Product not found', details: error },
         { status: 404 }
@@ -47,17 +41,17 @@ export async function GET(
     }
 
     if (!product) {
-      log('Product not found');
+      logger.log('Product not found');
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
 
-    log('Product fetched successfully:', product.name);
+    logger.log('Product fetched successfully:', product.name);
     return NextResponse.json(product);
   } catch (err) {
-    log('Exception fetching product:', err);
+    logger.error('Exception fetching product:', err);
     return NextResponse.json(
       { error: 'Internal server error', details: err },
       { status: 500 }

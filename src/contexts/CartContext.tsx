@@ -13,6 +13,9 @@ import {
   isTimerActive,
   type LockedPrice
 } from '@/lib/pricing/pricingTimer';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('CART_CONTEXT');
 
 export interface CartItem {
   product: Product;
@@ -58,19 +61,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      console.log('[CART_CONTEXT] Fetching customer ID for Clerk user:', user.id);
+      logger.log('Fetching customer ID for Clerk user:', user.id);
       try {
         const response = await fetch('/api/customer');
         if (response.ok) {
           const data = await response.json();
-          console.log('[CART_CONTEXT] Customer data fetched:', data.id);
+          logger.log('Customer data fetched:', data.id);
           setCustomerId(data.id);
         } else {
-          console.log('[CART_CONTEXT] Customer not found, may need to wait for webhook');
+          logger.log('Customer not found, may need to wait for webhook');
           setCustomerId(null);
         }
       } catch (error) {
-        console.error('[CART_CONTEXT] Error fetching customer ID:', error);
+        logger.error('Error fetching customer ID:', error);
         setCustomerId(null);
       }
     };
@@ -90,17 +93,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!savedCart) {
         savedCart = sessionStorage.getItem(CART_STORAGE_KEY);
         if (savedCart) {
-          console.log('[CART_CONTEXT] Restored cart from sessionStorage');
+          logger.log('Restored cart from sessionStorage');
         }
       }
 
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
         setCart(parsedCart);
-        console.log('[CART_CONTEXT] Cart loaded:', parsedCart.length, 'items');
+        logger.log('Cart loaded:', parsedCart.length, 'items');
       }
     } catch (error) {
-      console.error('[CART_CONTEXT] Error loading cart:', error);
+      logger.error('Error loading cart:', error);
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
       sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)); // ADD THIS
       window.dispatchEvent(new Event('cartUpdated'));
-      console.log('[CART_CONTEXT] Cart saved to localStorage:', cart.length, 'items');
+      logger.log('[CART_CONTEXT] Cart saved to localStorage:', cart.length, 'items');
     }
   }, [cart, isLoading]);
 
@@ -134,10 +137,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       setTimerRemaining(remaining);
       setTimerFormatted(formatted);
-      setIsTimerExpired(!active && remaining === 0);
 
-      if (!active && remaining === 0) {
-        console.log('[CART_CONTEXT] Timer expired');
+      const expired = !active && remaining === 0;
+      setIsTimerExpired(expired);
+
+      if (expired && !isTimerExpired) {
+        logger.log('[CART_CONTEXT] Timer expired - clearing locked prices');
+        clearPricingTimer()
       }
     };
 
@@ -148,7 +154,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [cart.length]);
+  }, [cart.length, isTimerExpired]);
 
   const addToCart = useCallback((product: Product, quantity: number = 1) => {
     setCart((prevCart) => {
@@ -162,7 +168,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // Update quantity of existing item
         newCart = [...prevCart];
         newCart[existingItemIndex].quantity += quantity;
-        console.log(`[CART_CONTEXT] Updated quantity for ${product.name}:`, newCart[existingItemIndex].quantity);
+        logger.log(`[CART_CONTEXT] Updated quantity for ${product.name}:`, newCart[existingItemIndex].quantity);
       } else {
         // Add new item to cart
         const newItem: CartItem = {
@@ -171,12 +177,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           addedAt: Date.now(),
         };
         newCart = [...prevCart, newItem];
-        console.log(`[CART_CONTEXT] Added new item to cart:`, product.name);
+        logger.log(`[CART_CONTEXT] Added new item to cart:`, product.name);
 
         // Start timer when first item is added
         if (prevCart.length === 0) {
           startPricingTimer();
-          console.log('[CART_CONTEXT] Pricing timer started');
+          logger.log('[CART_CONTEXT] Pricing timer started');
         }
       }
 
@@ -187,12 +193,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeFromCart = useCallback((productId: string) => {
     setCart((prevCart) => {
       const filtered = prevCart.filter((item) => item.product.id !== productId);
-      console.log(`[CART_CONTEXT] Removed product ${productId} from cart`);
+      logger.log(`[CART_CONTEXT] Removed product ${productId} from cart`);
 
       // Clear timer if cart becomes empty
       if (filtered.length === 0) {
         clearPricingTimer();
-        console.log('[CART_CONTEXT] Cart empty, timer cleared');
+        logger.log('[CART_CONTEXT] Cart empty, timer cleared');
       }
 
       return filtered;
@@ -212,14 +218,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
           : item
       )
     );
-    console.log(`[CART_CONTEXT] Updated quantity for product ${productId} to ${quantity}`);
+    logger.log(`[CART_CONTEXT] Updated quantity for product ${productId} to ${quantity}`);
   }, [removeFromCart]);
 
   const clearCart = useCallback(() => {
     setCart([]);
     localStorage.removeItem(CART_STORAGE_KEY);
     clearPricingTimer();
-    console.log('[CART_CONTEXT] Cart cleared');
+    logger.log('[CART_CONTEXT] Cart cleared');
   }, []);
 
   const getCartTotal = useCallback(() => {

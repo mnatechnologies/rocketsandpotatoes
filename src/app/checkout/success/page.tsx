@@ -4,15 +4,9 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { clearPricingTimer } from '@/lib/pricing/pricingTimer';
+import { createLogger } from '@/lib/utils/logger';
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[SUCCESS_PAGE]', ...args);
-  }
-}
+const logger = createLogger('SUCCESS_PAGE');
 
 function CheckoutSuccessContent() {
   const [orderDetails, setOrderDetails] = useState<any>(null);
@@ -21,17 +15,17 @@ function CheckoutSuccessContent() {
   const router = useRouter();
 
   useEffect(() => {
-    log('Success page mounted');
+    logger.log('Success page mounted');
 
     // Get order ID from URL params
     const orderId = searchParams.get('order_id');
     const paymentIntentId = searchParams.get('payment_intent');
 
-    log('Order ID:', orderId);
-    log('Payment Intent ID:', paymentIntentId);
+    logger.log('Order ID:', orderId);
+    logger.log('Payment Intent ID:', paymentIntentId);
 
     if (!orderId && !paymentIntentId) {
-      log('No order information found');
+      logger.log('No order information found');
       // Redirect if no order info
       setTimeout(() => {
         router.push('/products');
@@ -39,12 +33,12 @@ function CheckoutSuccessContent() {
     }
 
     // Clear cart from localStorage
-    log('Clearing cart from localStorage');
+    logger.log('Clearing cart from localStorage');
     localStorage.removeItem('cart');
     
     // Clear pricing timer
     clearPricingTimer();
-    log('Pricing timer cleared');
+    logger.log('Pricing timer cleared');
 
     // Fetch order details if we have an order ID
     if (orderId) {
@@ -55,18 +49,18 @@ function CheckoutSuccessContent() {
   }, [searchParams, router]);
 
   const fetchOrderDetails = async (orderId: string) => {
-    log('Fetching order details for:', orderId);
+    logger.log('Fetching order details for:', orderId);
     try {
       const response = await fetch(`/api/orders/${orderId}`);
       if (response.ok) {
         const data = await response.json();
-        log('Order details fetched:', data);
+        logger.log('Order details fetched:', data);
         setOrderDetails(data);
       } else {
-        log('Failed to fetch order details');
+        logger.log('Failed to fetch order details');
       }
     } catch (error) {
-      log('Error fetching order details:', error);
+      logger.error('Error fetching order details:', error);
     } finally {
       setLoading(false);
     }

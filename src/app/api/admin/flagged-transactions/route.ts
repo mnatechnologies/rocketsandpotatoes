@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger('flagged_transactions')
 
 export async function GET(req: NextRequest) {
+
   const { userId } = await auth();
 
   if (!userId) {
@@ -40,7 +44,7 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching flagged transactions:', error);
+    logger.error('Error fetching flagged transactions:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

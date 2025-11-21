@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { createServerSupabase } from '@/lib/supabase/server';
 import {createClient} from "@supabase/supabase-js";
 import { calculateBulkPricing} from "@/lib/pricing/priceCalculations";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger('PRODUCT_PRICING_API');
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,7 +78,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error fetching product pricing:', error);
+    logger.error('Error fetching product pricing:', error);
     return NextResponse.json(
       {
         success: false,

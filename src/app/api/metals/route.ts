@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse} from "next/server";
 import {fetchMetalsQuotes, type MetalSymbol} from "@/lib/metals-api/metalsApi";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger('METALS_API');
 
 export async function GET(request: NextRequest) {
     try {
@@ -15,7 +18,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({success: true, data: quotes, timestamp: dataTimeStamp});
     } catch (error) {
-        console.error('Error fetching metals quotes:', error);
+        logger.error('Error fetching metals quotes:', error);
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : 'An unknown error occurred'

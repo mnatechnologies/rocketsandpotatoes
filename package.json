@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
+    "dev": "dotenvx run --env-file=.env.development -- next dev --turbopack",
+    "build": "dotenvx run --env-file=.env.production -- next build --turbopack",
+    "start": "dotenvx run --env-file=.env.production -- next start",
     "lint": "eslint",
     "test": "vitest --run",
     "test:watch": "vitest",

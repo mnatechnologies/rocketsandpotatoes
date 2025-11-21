@@ -116,45 +116,6 @@ export default function PriceTicker() {
     };
   });
 
-
-
-  /* ===== COMMENTED OUT - Now using shared context instead of individual fetch =====
-   const fetchPrices = async () => {
-    try {
-      const response = await fetch('/api/metals?baseCurrency=USD');
-      const result = await response.json();
-
-      console.log('API Response:', result); // Debug log
-
-      if (result.success && result.data) {
-        const newPrices: TickerPrice[] = result.data.map((quote: any) => {
-          console.log('Quote data:', quote); // Debug log
-          const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
-          return {
-            metal: metalInfo.ticker,
-            price: quote.price,
-            change: quote.change,
-            changePercent: quote.changePercent
-          };
-        });
-
-        console.log('Mapped prices:', newPrices); // Debug log
-        setPrices(newPrices);
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error('Error fetching prices:', error);
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPrices();
-    const interval = setInterval(fetchPrices, 600000); // 5 minutes
-    return () => clearInterval(interval);
-  }, []);
-  ===== END COMMENTED OUT CODE ===== */
-
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);

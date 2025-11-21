@@ -2,69 +2,63 @@
 'use client';
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+import { createLogger } from '@/lib/utils/logger';
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.NEXT_PUBLIC_TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[KYC_VERIFICATION]', ...args);
-  }
-}
+const logger = createLogger('KYC_VERIFICATION');
 
 export function KYCVerification({ customerId }: { customerId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleVerify = async () => {
-    log('Starting KYC verification for customer:', customerId);
+    logger.log('Starting KYC verification for customer:', customerId);
     setLoading(true);
     setError(null);
 
     try {
       // 1. Create verification session
-      log('Step 1: Initiating verification session...');
+      logger.log('Step 1: Initiating verification session...');
       const response = await fetch('/api/kyc/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customerId }),
       });
 
-      log('Verification session API response status:', response.status);
+      logger.log('Verification session API response status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
-        log('Error response from API:', errorData);
+        logger.log('Error response from API:', errorData);
         throw new Error(errorData.error || 'Failed to create verification session');
       }
 
       const data = await response.json();
-      log('Verification session data:', data);
+      logger.log('Verification session data:', data);
 
       const { verificationUrl, verificationSessionId, status } = data;
 
       if (status === 'already_verified') {
-        log('Customer is already verified');
+        logger.log('Customer is already verified');
         setError('You are already verified.');
         return;
       }
 
       if (!verificationUrl) {
-        log('No verification URL received');
+        logger.log('No verification URL received');
         throw new Error('No verification URL provided');
       }
 
-      log('Step 2: Redirecting to Stripe Identity verification URL:', verificationUrl);
+      logger.log('Step 2: Redirecting to Stripe Identity verification URL:', verificationUrl);
       
       // Redirect to Stripe Identity verification
       window.location.href = verificationUrl;
 
     } catch (error: any) {
-      log('Error during KYC verification:', error);
+      logger.error('Error during KYC verification:', error);
       setError(error.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
-      log('KYC verification process completed');
+      logger.log('KYC verification process completed');
     }
   };
 

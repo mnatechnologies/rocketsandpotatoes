@@ -1,6 +1,8 @@
 import { Resend } from 'resend';
 import OrderConfirmationEmail from '@/emails/OrderConfirmationEmail';
+import { createLogger } from '@/lib/utils/logger';
 
+const logger = createLogger('EMAIL');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface OrderEmailData {
@@ -33,14 +35,14 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData) {
     });
 
     if (error) {
-      console.error('[EMAIL] Error sending order confirmation:', error);
+      logger.error('Error sending order confirmation:', error);
       throw error;
     }
 
-    console.log('[EMAIL] Order confirmation sent successfully:', emailData);
+    logger.log('Order confirmation sent successfully:', emailData);
     return { success: true, emailId: emailData?.id };
   } catch (error) {
-    console.error('[EMAIL] Failed to send order confirmation:', error);
+    logger.error('Failed to send order confirmation:', error);
     return { success: false, error };
   }
 }

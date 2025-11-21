@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
+import { createLogger } from '@/lib/utils/logger';
 
-// Testing flag - set to true to enable console logging
-const TESTING_MODE = process.env.TESTING_MODE === 'true' || true;
-
-function log(...args: any[]) {
-  if (TESTING_MODE) {
-    console.log('[CREATE_PAYMENT_INTENT_API]', ...args);
-  }
-}
+const logger = createLogger('CREATE_PAYMENT_INTENT_API');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-09-30.clover',
 });
 
 export async function POST(req: NextRequest) {
-  log('Payment intent creation request received');
+  logger.log('Payment intent creation request received');
 
   try {
     const { amount, currency = 'aud', customerId, customerEmail, clerkUserId } = await req.json();
@@ -25,27 +19,27 @@ export async function POST(req: NextRequest) {
     const { userId: clerkUserIdFromAuth } = await auth();
     const finalClerkUserId = clerkUserIdFromAuth || clerkUserId;
 
-    log('Request params:', { amount, currency, customerId, finalClerkUserId });
+    logger.log('Request params:', { amount, currency, customerId, finalClerkUserId });
 
     // Validate required fields
     if (!amount || amount <= 0) {
-      log('Invalid amount:', amount);
+      logger.log('Invalid amount:', amount);
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
     if (!customerId) {
-      log('Missing customerId');
+      logger.log('Missing customerId');
       return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
     }
 
 
-    log('Authenticated user ID:', finalClerkUserId, customerId);
+    logger.log('Authenticated user ID:', finalClerkUserId, customerId);
 
-    log('Payment intent params:', { amount, currency, customerId });
+    logger.log('Payment intent params:', { amount, currency, customerId });
 
     // Validate amount
     if (!amount || amount <= 0) {
-      log('Invalid amount:', amount);
+      logger.log('Invalid amount:', amount);
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
@@ -61,7 +55,7 @@ export async function POST(req: NextRequest) {
 
       if (existingCustomers.data.length > 0) {
         stripeCustomerId = existingCustomers.data[0].id;
-        log('Found existing Stripe customer:', stripeCustomerId);
+        logger.log('Found existing Stripe customer:', stripeCustomerId);
       } else {
         // Create new Stripe customer
         const customer = await stripe.customers.create({
@@ -72,7 +66,7 @@ export async function POST(req: NextRequest) {
           },
         });
         stripeCustomerId = customer.id;
-        log('Created new Stripe customer:', stripeCustomerId);
+        logger.log('Created new Stripe customer:', stripeCustomerId);
       }
     }
 
@@ -90,7 +84,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    log('Payment intent created:', paymentIntent.id);
+    logger.log('Payment intent created:', paymentIntent.id);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
@@ -98,7 +92,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    log('Error creating payment intent:', error);
+    logger.error('Error creating payment intent:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create payment intent' },
       { status: 500 }

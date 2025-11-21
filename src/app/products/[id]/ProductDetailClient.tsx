@@ -9,7 +9,9 @@ import { useCart } from '@/contexts/CartContext';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { getMetalInfo, type MetalSymbol } from '@/lib/metals-api/metalsApi';
-import {toUpperCase} from "uri-js/dist/esnext/util";
+import { createLogger } from '@/lib/utils/logger'
+
+const logger = createLogger('PRODUCT_DETAIL_CLIENT')
 
 interface ProductDetailClientProps {
   product: Product;
@@ -48,7 +50,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     if (priceInfo) {
       setLivePrice(priceInfo.calculatedPrice);
       setSpotPricePerGram(priceInfo.spotPricePerGram);
-      console.log('[PRODUCT_DETAIL] Live price calculated:', priceInfo.calculatedPrice);
+      logger.log('[PRODUCT_DETAIL] Live price calculated:', priceInfo.calculatedPrice);
     } else {
       // Fallback to base price if calculation failed
       setLivePrice(product.price);
@@ -64,14 +66,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         price: livePrice
       };
       addToCart(productWithLivePrice, quantity);
-      console.log('[PRODUCT_DETAIL] Added to cart:', product.name, 'Qty:', quantity, 'Price:', livePrice);
+      logger.log('[PRODUCT_DETAIL] Added to cart:', product.name, 'Qty:', quantity, 'Price:', livePrice);
 
       // Show success message and redirect to cart
       setTimeout(() => {
         router.push('/cart');
       }, 500);
     } catch (error) {
-      console.error('[PRODUCT_DETAIL] Error adding to cart:', error);
+      logger.error('[PRODUCT_DETAIL] Error adding to cart:', error);
       alert('Failed to add item to cart. Please try again.');
     } finally {
       setAddingToCart(false);
@@ -88,7 +90,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       addToCart(productWithLivePrice, quantity);
       router.push('/checkout');
     } catch (error) {
-      console.error('[PRODUCT_DETAIL] Error in buy now:', error);
+      logger.error('[PRODUCT_DETAIL] Error in buy now:', error);
       alert('Failed to proceed to checkout. Please try again.');
     } finally {
       setAddingToCart(false);
