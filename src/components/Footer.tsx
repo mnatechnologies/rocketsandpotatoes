@@ -61,7 +61,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="hover:text-yellow-500 transition-colors">
+                <Link href="/#pricing" className="hover:text-yellow-500 transition-colors">
                   Live Pricing
                 </Link>
               </li>
@@ -76,17 +76,17 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="hover:text-yellow-500 transition-colors">
+                <Link href="/#" className="hover:text-yellow-500 transition-colors">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="hover:text-yellow-500 transition-colors">
+                <Link href="/#" className="hover:text-yellow-500 transition-colors">
                   Shipping Information
                 </Link>
               </li>
               <li>
-                <Link href="/returns" className="hover:text-yellow-500 transition-colors">
+                <Link href="/#" className="hover:text-yellow-500 transition-colors">
                   Returns & Refunds
                 </Link>
               </li>
@@ -98,7 +98,7 @@ export default function Footer() {
             <h4 className="text-white font-bold mb-4">Legal & Compliance</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/privacy-policy" className="hover:text-yellow-500 transition-colors">
+                <Link href="/#" className="hover:text-yellow-500 transition-colors">
                   Privacy Policy
                 </Link>
               </li>

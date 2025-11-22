@@ -1,53 +1,64 @@
-import { createServerSupabase } from '@/lib/supabase/server';
+'use client';
+
+import { useEffect, useState } from 'react';
 import ProductsClient from './ProductsClient';
 import { createLogger } from '@/lib/utils/logger';
-/* eslint-disable  */
 
 const logger = createLogger('PRODUCTS_PAGE');
 
-export default async function ProductsPage() {
-  const supabase = await createServerSupabase();
+export default function ProductsPage() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  logger.log('Fetching products from database');
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) throw new Error('Failed to fetch products');
+        const data = await response.json();
 
-  const { data: products, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('stock', true)
-      .order('category', { ascending: true })
-      .order('price', { ascending: true });
+        // Transform with image URLs
+        const productsWithUrls = data.map((product: { image_url: string; }) => {
+          const trimmedImageUrl = product.image_url?.trim();
+          const imageUrl = trimmedImageUrl
+            ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
+            : null;
+          return { ...product, image_url: imageUrl };
+        });
 
-  // Check for error BEFORE using products
-  if (error) {
-    logger.error('Error fetching products:', error);
+        setProducts(productsWithUrls);
+      } catch (err: any) {
+        logger.error('Error fetching products:', err);
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, []);
+
+  if (loading) {
     return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Products</h1>
-            <p className="text-gray-600">{error.message}</p>
-          </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        Loading products...
+      </div>
     );
   }
 
-  // Now transform products with URLs
-  const productsWithUrls = products?.map(product => {
-    const trimmedImageUrl = product.image_url?.trim();
-    const imageUrl = trimmedImageUrl
-        ? supabase.storage.from('Images').getPublicUrl(`gold/${trimmedImageUrl}`).data.publicUrl
-        : null;
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Products</h1>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
-    logger.log('Product:', product.name, 'Image URL:', imageUrl);
-
-    return {
-      ...product,
-      image_url: imageUrl
-    };
-  });
-
-  logger.log(`Successfully fetched ${productsWithUrls?.length || 0} products with images`);
-
-  const categoryNames: Record<string, string> = {
+  const categoryNames = {
     gold_bars: 'Gold Bars',
     gold_coins: 'Gold Coins',
     silver_bars: 'Silver Bars',
@@ -59,19 +70,18 @@ export default async function ProductsPage() {
   };
 
   return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-primary my-4">
-              Precious Metals Products
-            </h1>
-            <p className="text-xl text-secondary">
-              Premium bullion from Australia's most trusted mints
-            </p>
-          </div>
-
-          <ProductsClient products={productsWithUrls || []} categoryNames={categoryNames} />
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-primary my-4">
+            Precious Metals Products
+          </h1>
+          <p className="text-xl text-secondary">
+            Premium bullion from Australia&#39;s most trusted mints
+          </p>
         </div>
+        <ProductsClient products={products} categoryNames={categoryNames} />
       </div>
+    </div>
   );
 }

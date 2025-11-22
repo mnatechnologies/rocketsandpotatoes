@@ -40,56 +40,6 @@ function CartContent() {
   const hasAddedProduct = useRef(false);
   const hasFetchedPrices = useRef(false);
 
-  // Calculate and lock prices when metal prices or cart changes
-  useEffect(() => {
-    if (loadingPrices || !metalPrices || metalPrices.length === 0 || cart.length === 0) {
-      return;
-    }
-
-    if (!isLoading && cart.length > 0 && !hasFetchedPrices.current) {
-      hasFetchedPrices.current = true;
-      calculateAndLockPrices();
-    }
-  }, [isLoading, cart.length, metalPrices, loadingPrices]);
-
-  // Handle adding product from URL parameter
-  useEffect(() => {
-    const productId = searchParams.get('add');
-    if (productId && !hasAddedProduct.current) {
-      hasAddedProduct.current = true;
-      addToCart(productId);
-    }
-  }, [searchParams]);
-
-  // REPLACE fetchLivePrices with this client-side calculation
-  const calculateAndLockPrices = () => {
-    if (cart.length === 0 || !metalPrices || metalPrices.length === 0) return;
-
-    try {
-      // Create a map of metal prices (price per troy ounce)
-      const metalPriceMap = new Map<MetalSymbol, number>(
-        metalPrices.map(price => [price.symbol, price.price])
-      );
-
-      // Extract products from cart items
-      const products = cart.map(item => item.product);
-
-      // Use centralized pricing calculation
-      const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
-
-      // Lock the prices for the timer period
-      const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
-        productId,
-        price: priceInfo.calculatedPrice,
-        spotPricePerGram: priceInfo.spotPricePerGram
-      }));
-
-      lockPrices(pricesToLock);
-    } catch (error) {
-      logger.error('[CART] Error calculating prices:', error);
-    }
-  };
-
   const addToCart = async (productId: string) => {
     try {
       const response = await fetch(`/api/products/${productId}`);
@@ -120,6 +70,58 @@ function CartContent() {
       alert('Failed to add product to cart');
     }
   };
+
+  // Calculate and lock prices when metal prices or cart changes
+  useEffect(() => {
+    if (loadingPrices || !metalPrices || metalPrices.length === 0 || cart.length === 0) {
+      return;
+    }
+
+    if (!isLoading && cart.length > 0 && !hasFetchedPrices.current) {
+      hasFetchedPrices.current = true;
+      calculateAndLockPrices();
+    }
+  }, [isLoading, cart.length, metalPrices, loadingPrices]);
+
+  // Handle adding product from URL parameter
+  useEffect(() => {
+    const productId = searchParams.get('add');
+    if (productId && !hasAddedProduct.current) {
+      hasAddedProduct.current = true;
+      addToCart(productId);
+    }
+  }, [addToCart, searchParams]);
+
+  // REPLACE fetchLivePrices with this client-side calculation
+  const calculateAndLockPrices = () => {
+    if (cart.length === 0 || !metalPrices || metalPrices.length === 0) return;
+
+    try {
+      // Create a map of metal prices (price per troy ounce)
+      const metalPriceMap = new Map<MetalSymbol, number>(
+        metalPrices.map(price => [price.symbol, price.price])
+      );
+
+      // Extract products from cart items
+      const products = cart.map(item => item.product);
+
+      // Use centralized pricing calculation
+      const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
+
+      // Lock the prices for the timer period
+      const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
+        productId,
+        price: priceInfo.calculatedPrice,
+        spotPricePerGram: priceInfo.spotPricePerGram
+      }));
+
+      lockPrices(pricesToLock);
+    } catch (error) {
+      logger.error('[CART] Error calculating prices:', error);
+    }
+  };
+
+
 
 
   const handleCheckout = () => {
