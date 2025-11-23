@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
 
   // 1. Check compliance thresholds
-  const requirements = getComplianceRequirements(amount);
+  const requirements = await getComplianceRequirements(customerId, amount);
   logger.log('Compliance requirements:', requirements);
 
   // 2. Get customer data

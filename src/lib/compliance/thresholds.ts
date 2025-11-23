@@ -1,13 +1,57 @@
+//import {createServerSupabase} from "@/lib/supabase/server";
+import {createClient} from "@supabase/supabase-js";
+
 export const complianceThreshold : {readonly enhancedDD: 50000, readonly kycRequired: 5000, readonly ttrRequired: 10000} = {
    enhancedDD: 50000,
    kycRequired: 5000,
    ttrRequired: 10000,
 } as const;
 
-export function getComplianceRequirements(amount: number) : {requiresEnhancedDD: boolean, requiresKYC: boolean, requiresTTR: boolean} {
+export async function getComplianceRequirements(
+  customerId: string,
+  currentAmount: number
+): Promise<{
+  requiresEnhancedDD: boolean;
+  requiresKYC: boolean;
+  requiresTTR: boolean;
+  cumulativeTotal: number;
+  newCumulativeTotal: number;
+}> {
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  // Get customer's lifetime transaction total
+  //const supabase = createServerSupabase()
+
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select('amount')
+    .eq('customer_id', customerId)
+   // .eq('payment_status', 'succeeded'); // Only count successful transactions
+
+  console.log(transactions)
+
+  const lifetimeTotal = transactions?.reduce(
+    (sum, tx) => sum + parseFloat(tx.amount),
+    0
+  ) || 0;
+
+  const newCumulativeTotal = lifetimeTotal + currentAmount;
+
   return {
-    requiresEnhancedDD: amount > complianceThreshold.enhancedDD,
-    requiresKYC: amount > complianceThreshold.kycRequired,
-    requiresTTR: amount > complianceThreshold.ttrRequired,
-  }
+    requiresEnhancedDD: newCumulativeTotal >= complianceThreshold.enhancedDD,
+    requiresKYC: newCumulativeTotal >= complianceThreshold.kycRequired,
+    requiresTTR: currentAmount >= complianceThreshold.ttrRequired,
+    cumulativeTotal: lifetimeTotal,
+    newCumulativeTotal
+  };
 }
