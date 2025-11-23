@@ -1,3 +1,5 @@
+import ngrok from '@ngrok/ngrok'
+
 const isDev = process.env.NODE_ENV !== 'production';
 
 async function setup() {
