@@ -5,6 +5,7 @@ import {detectStructuring} from "@/lib/compliance/structuring-detection";
 import { createClient } from "@supabase/supabase-js";
 import { createLogger } from '@/lib/utils/logger';
 // import { createServerSupabase } from "@/lib/supabase/server";
+import { screenCustomer } from "@/lib/compliance/screening";
 
 /* eslint-disable */
 
@@ -15,11 +16,11 @@ export async function POST(req: NextRequest) {
 
     //subject to removal once I actually get createServerSupabase workin with clerk lmao
     const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-            auth: {
-                autoRefreshToken: false,
+                  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+                  {
+                    auth: {
+                      autoRefreshToken: false,
                 persistSession: false,
             },
         }
@@ -27,6 +28,39 @@ export async function POST(req: NextRequest) {
   
   const { customerId, amount, productDetails } = await (req as any).json();
   logger.log('Request data:', { customerId, amount, productDetails });
+
+  try {
+    const sanctionsResult = await screenCustomer(customerId);
+    if (sanctionsResult.isMatch) {
+      // BLOCK TRANSACTION IMMEDIATELY
+      logger.log('⛔ Sanctions match detected!', sanctionsResult);
+
+      // Auto-generate SMR
+      // await generateSMR({
+      //   customerId,
+      //   suspicionType: 'sanctions_match',
+      //   indicators: sanctionsResult.matches.map(m =>
+      //     `Match: ${m.name} (${m.source}) - Score: ${m.matchScore}`
+      //   ),
+      //   narrative: `Customer matched against ${sanctionsResult.matches[0].source} sanctions list. Reference: ${sanctionsResult.matches[0].referenceNumber}`,
+      // });
+
+      return Response.json({
+        status: 'blocked',
+        reason: 'compliance_review_required',
+        message: 'Your transaction requires additional verification. Our compliance team will contact you.',
+      }, { status: 403 });
+    }
+  } catch (error) {
+    logger.error('Sanctions screening failed:', error);
+    // FAIL SAFE - if screening fails, require manual review
+    return Response.json({
+      status: 'requires_review',
+      reason: 'screening_error',
+    });
+  } finally {
+    logger.log('screening_test', customerId)
+  }
 
 
 

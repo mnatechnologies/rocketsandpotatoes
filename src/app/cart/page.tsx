@@ -309,7 +309,7 @@ function CartContent() {
                   </div>
                   <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
                     <span>Total</span>
-                    <span>${getCartTotal().toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD</span>
+                    <span>${getCartTotal().toLocaleString('en-AU', {minimumFractionDigits: 2})} USD</span>
                   </div>
                 </div>
 

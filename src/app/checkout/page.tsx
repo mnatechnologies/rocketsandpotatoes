@@ -202,7 +202,7 @@ export default function CheckoutPage() {
             <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
               <span>Total</span>
               <span>
-                ${getTotalAmount().toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+                ${getTotalAmount().toLocaleString('en-AU', { minimumFractionDigits: 2 })} usd
               </span>
             </div>
           </div>
