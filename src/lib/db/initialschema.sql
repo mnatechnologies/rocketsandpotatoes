@@ -444,3 +444,12 @@ COMMENT ON COLUMN identity_verifications.date_of_birth IS 'Date of birth from ve
 COMMENT ON COLUMN identity_verifications.address_city IS 'City from verified address';
 COMMENT ON COLUMN identity_verifications.id_number_type IS 'Type of ID number (e.g., license_number, passport_number)';
 COMMENT ON COLUMN identity_verifications.id_number_last4 IS 'Last 4 digits of ID number';
+
+
+ALTER TABLE customer_documents
+    ADD COLUMN review_status VARCHAR(20) DEFAULT 'pending'
+        CHECK (review_status IN ('pending', 'approved', 'rejected', 'resubmission_required')),
+ADD COLUMN reviewed_by UUID,
+ADD COLUMN reviewed_at TIMESTAMPTZ,
+ADD COLUMN review_notes TEXT,
+ADD COLUMN rejection_reason TEXT;

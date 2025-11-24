@@ -1,7 +1,10 @@
 import Stripe from 'stripe'
 import {createClient} from "@supabase/supabase-js";
+import { createLogger } from "@/lib/utils/logger";
+import {sanctionsScreening} from "@/lib/compliance/screening";
 /* eslint-disable */
 /*@ts-ignore */
+const logger = createLogger('STRIPE_IDENTITY');
 
 // Use a stable API version string
 export const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
@@ -134,7 +137,119 @@ export async function processVerificationResult(sessionId: string, customerId: s
 
   if (error) throw error
 
-  if (session.status === 'verified') {
+  if (session.status === 'verified' && vo?.first_name && vo?.last_name) {
+    logger.log('🔍 Starting sanctions screening for verified customer...');
+
+    try {
+      const screeningResult = await sanctionsScreening(
+        vo.first_name,
+        vo.last_name,
+        verificationData.date_of_birth || undefined
+      );
+
+      logger.log(`Screening result: ${screeningResult.isMatch ? '⚠️ MATCH FOUND' : '✅ Clear'}`);
+
+      // Save screening result
+      await supabase.from('sanctions_screenings').insert({
+        customer_id: customerId,
+        screened_name: `${vo.first_name} ${vo.last_name}`,
+        screening_service: 'DFAT',
+        is_match: screeningResult.isMatch,
+        match_score: screeningResult.matches[0]?.matchScore || 0,
+        matched_entities: screeningResult.matches,
+        status: screeningResult.isMatch ? 'potential_match' : 'clear',
+        screened_at: new Date().toISOString(),
+      });
+
+      // Update customer with verified details AND sanctions status
+      await supabase
+        .from('customers')
+        .update({
+          first_name: vo.first_name,
+          last_name: vo.last_name,
+          date_of_birth: verificationData.date_of_birth,
+          residential_address: vo.address ? {
+            line1: vo.address.line1,
+            line2: vo.address.line2,
+            city: vo.address.city,
+            state: vo.address.state,
+            postcode: vo.address.postal_code,
+            country: vo.address.country,
+          } : null,
+          verification_status: screeningResult.isMatch ? 'requires_review' : 'verified',
+          verification_level: 'stripe_identity',
+          is_sanctioned: screeningResult.isMatch,
+          last_verified_at: new Date().toISOString(),
+        })
+        .eq('id', customerId);
+
+      // ⚠️ If sanctioned, log critical alert
+      if (screeningResult.isMatch) {
+        logger.log('🚨 SANCTIONS MATCH DETECTED! Customer flagged for review.');
+
+        await logAuditEvent({
+          action_type: 'sanctions_match_detected',
+          entity_type: 'customer',
+          entity_id: customerId,
+          description: `CRITICAL: Customer matched against ${screeningResult.matches[0].source} sanctions list`,
+          metadata: {
+            matches: screeningResult.matches,
+            verification_id: data.id,
+            session_id: sessionId
+          },
+        });
+
+        // TODO: Send alert to compliance officer
+        // await sendComplianceAlert({
+        //   type: 'sanctions_match',
+        //   customerId,
+        //   matches: screeningResult.matches,
+        // });
+      } else {
+        // Customer is clear
+        await logAuditEvent({
+          action_type: 'customer_verified',
+          entity_type: 'customer',
+          entity_id: customerId,
+          description: 'Customer identity verified via Stripe Identity and cleared sanctions screening',
+          metadata: {
+            verification_id: data.id,
+            session_id: sessionId,
+            sanctions_cleared: true,
+          },
+        });
+      }
+
+    } catch (screeningError) {
+      logger.error('❌ Sanctions screening failed:', screeningError);
+
+      // Log the screening failure
+      await logAuditEvent({
+        action_type: 'sanctions_screening_failed',
+        entity_type: 'customer',
+        entity_id: customerId,
+        description: 'Sanctions screening encountered an error',
+        metadata: {
+          error: String(screeningError),
+          session_id: sessionId
+        },
+      });
+
+      // Mark customer for manual review
+      await supabase
+        .from('customers')
+        .update({
+          verification_status: 'requires_review',
+          first_name: vo.first_name,
+          last_name: vo.last_name,
+          date_of_birth: verificationData.date_of_birth,
+        })
+        .eq('id', customerId);
+    }
+  } else if (session.status === 'verified') {
+    // Verification succeeded but missing name data
+    logger.log('⚠️ Verification succeeded but missing name data for screening');
+
     await supabase
       .from('customers')
       .update({
@@ -142,15 +257,15 @@ export async function processVerificationResult(sessionId: string, customerId: s
         verification_level: 'stripe_identity',
         last_verified_at: new Date().toISOString(),
       })
-      .eq('id', customerId)
+      .eq('id', customerId);
 
     await logAuditEvent({
       action_type: 'customer_verified',
       entity_type: 'customer',
       entity_id: customerId,
-      description: 'Customer identity verified via Stripe Identity',
+      description: 'Customer identity verified via Stripe Identity (sanctions screening skipped - no name data)',
       metadata: { verification_id: data.id, session_id: sessionId },
-    })
+    });
   }
 
   return data

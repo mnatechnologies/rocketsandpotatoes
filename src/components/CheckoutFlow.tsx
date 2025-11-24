@@ -10,6 +10,7 @@ import { Elements  } from "@stripe/react-stripe-js";
 import { PaymentForm } from './PaymentForm';
 import { createLogger } from '@/lib/utils/logger'
 
+
 const logger = createLogger('CHECKOUT_FLOW')
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);

@@ -152,46 +152,47 @@ export default function TTRReportsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-xl mb-4">Loading TTR reports...</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-muted-foreground">Loading TTR reports...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Threshold Transaction Reports (TTR)
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Transactions over $10,000 AUD requiring AUSTRAC reporting
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive-foreground">
             {error}
           </div>
         )}
 
         {ttrRecords.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="bg-card rounded-lg shadow p-8 text-center">
             <div className="text-6xl mb-4">✓</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-card-foreground mb-2">
               No Pending TTR Reports
             </h2>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               All transactions requiring TTR reporting have been processed
             </p>
           </div>
         ) : (
           <>
             <div className="mb-4 flex justify-between items-center">
-              <div className="text-gray-700">
+              <div className="text-foreground">
                 <strong>{ttrRecords.length}</strong> pending report(s)
                 {selectedRecords.size > 0 && (
                   <span className="ml-4">
@@ -202,7 +203,7 @@ export default function TTRReportsPage() {
               <div className="space-x-3">
                 <button
                   onClick={handleExportCSV}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
                 >
                   📥 Export to CSV
                 </button>
@@ -216,10 +217,10 @@ export default function TTRReportsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-card rounded-lg shadow overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-border">
+                  <thead className="bg-muted">
                     <tr>
                       <th className="px-6 py-3 text-left">
                         <input
@@ -229,26 +230,26 @@ export default function TTRReportsPage() {
                           className="rounded"
                         />
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         TTR Reference
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Customer
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Amount
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Verification
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-card divide-y divide-border">
                     {ttrRecords.map((record) => (
-                      <tr key={record.internal_reference} className="hover:bg-gray-50">
+                      <tr key={record.internal_reference} className="hover:bg-muted/50">
                         <td className="px-6 py-4">
                           <input
                             type="checkbox"
@@ -257,19 +258,19 @@ export default function TTRReportsPage() {
                             className="rounded"
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-card-foreground">
                           {record.ttr_reference}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {new Date(record.transaction_date).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
                           {record.customer_name}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
                           ${record.transaction_amount.toLocaleString()} {record.transaction_currency}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="px-6 py-4 text-sm text-muted-foreground">
                           {record.verification_method}
                         </td>
                       </tr>
@@ -279,9 +280,9 @@ export default function TTRReportsPage() {
               </div>
             </div>
 
-            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">📋 Next Steps</h3>
-              <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
+            <div className="mt-6 bg-card border border-border rounded-lg p-4">
+              <h3 className="font-semibold text-card-foreground mb-2">📋 Next Steps</h3>
+              <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
                 <li>Review all pending TTR records above</li>
                 <li>Click "Export to CSV" to download the report</li>
                 <li>Submit the CSV file to AUSTRAC Online</li>

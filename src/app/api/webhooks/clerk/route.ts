@@ -4,6 +4,7 @@ import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
+import { screenCustomer } from "@/lib/compliance/screening";
 
 /* eslint-disable */
 
@@ -53,22 +54,10 @@ export async function POST(req: NextRequest) {
 
     logger.log('Processing user:', { id, email: email_addresses[0]?.email_address });
 
-    // Create Supabase admin client with service role key (bypasses RLS)
-    // NOTE: You need to add SUPABASE_SERVICE_ROLE_KEY to your .env.development file
-    // Get this from your Supabase project settings > API > service_role key (secret)
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    if (!supabaseServiceKey) {
-      logger.error('Error: SUPABASE_SERVICE_ROLE_KEY not configured');
-      return NextResponse.json(
-        { error: 'Server configuration error: Missing service role key' },
-        { status: 500 }
-      );
-    }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      supabaseServiceKey,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
         auth: {
           autoRefreshToken: false,
@@ -106,6 +95,7 @@ export async function POST(req: NextRequest) {
       }
 
       logger.log('Customer record created/updated successfully:', data);
+
 
       // Log audit event
       await supabase.from('audit_logs').insert({

@@ -48,22 +48,27 @@ export default function ReviewsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Loading flagged transactions...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-muted-foreground">Loading flagged transactions...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Transaction Reviews</h1>
-        <p className="text-gray-600 mb-8">
-          Review flagged transactions for compliance approval
-        </p>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Transaction Reviews</h1>
+          <p className="text-muted-foreground">
+            Review flagged transactions for compliance approval
+          </p>
+        </div>
 
         {transactions.length === 0 ? (
-          <div className="bg-white rounded-lg p-8 text-center text-gray-500">
+          <div className="bg-card rounded-lg p-8 text-center text-muted-foreground">
             ✓ No transactions pending review
           </div>
         ) : (
@@ -104,20 +109,20 @@ function TransactionReviewCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-card rounded-lg shadow p-6">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-xl font-semibold">{transaction.customer.first_name} {transaction.customer.last_name}</h3>
-          <p className="text-gray-600">{transaction.customer.email}</p>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="text-xl font-semibold text-card-foreground">{transaction.customer.first_name} {transaction.customer.last_name}</h3>
+          <p className="text-muted-foreground">{transaction.customer.email}</p>
+          <p className="text-sm text-muted-foreground mt-1">
             ID: {transaction.id.slice(0, 13)}...
           </p>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-gray-900">
+          <div className="text-2xl font-bold text-card-foreground">
             ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             {new Date(transaction.created_at).toLocaleDateString('en-AU')}
           </div>
         </div>
@@ -151,13 +156,13 @@ function TransactionReviewCard({
       {/* Toggle Details */}
       <button
         onClick={() => setShowDetails(!showDetails)}
-        className="text-blue-600 hover:text-blue-800 text-sm font-medium mb-4"
+        className="text-primary hover:text-primary/80 text-sm font-medium mb-4"
       >
         {showDetails ? '▼ Hide Details' : '▶ Show Details'}
       </button>
 
       {showDetails && (
-        <div className="bg-gray-50 rounded p-4 mb-4 text-sm space-y-2">
+        <div className="bg-muted rounded p-4 mb-4 text-sm space-y-2 text-muted-foreground">
           <div><strong>Customer Name:</strong> {transaction.customer.first_name} {transaction.customer.last_name}</div>
           <div><strong>Customer Verification:</strong> {transaction.customer.verification_status}</div>
           <div><strong>Customer Risk Level:</strong> {transaction.customer.risk_level}</div>
@@ -169,14 +174,14 @@ function TransactionReviewCard({
 
       {/* Review Notes */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-card-foreground mb-2">
           Review Notes *
         </label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Document your review decision and reasoning..."
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full p-3 border border-border bg-input text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           rows={3}
         />
       </div>

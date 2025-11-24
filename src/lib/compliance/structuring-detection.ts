@@ -1,5 +1,7 @@
 // import { createServerSupabase } from "@/lib/supabase/server";
 import {createClient} from "@supabase/supabase-js";
+import {generateSMR} from "@/lib/compliance/smr-generator";
+
 // this function is to handle multiple transactions below thresehold and will serve as a check in the checkout process.
 export async function detectStructuring(
   customerId: string,
@@ -35,8 +37,20 @@ export async function detectStructuring(
   if (suspiciousTransactions.length >= 3) return true;
 
   const totalRecent = recentTransactions.reduce((sum, tx) => sum +parseFloat(tx.amount.toString()), 0);
-  if (totalRecent + currentAmount >= 10000 && suspiciousTransactions.length >= 2) return true;
 
+  if (totalRecent + currentAmount >= 10000 && suspiciousTransactions.length >= 2) {
+
+    await generateSMR({
+      customerId,
+      suspicionType: 'structuring',
+      indicators: [
+        `${suspiciousTransactions.length} transactions between $4,000-$5,000 in 7 days`,
+        `Total amount: $${totalRecent.toFixed(2)}`,
+      ],
+      narrative: 'Customer appears to be structuring transactions to avoid $5,000 KYC threshold',
+    });
+    return true;
+  }
   return false;
 }
 

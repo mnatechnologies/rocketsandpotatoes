@@ -10,11 +10,19 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:coverage": "vitest --coverage",
-    "dry-run": "dotenvx run -- tsx src/scripts/dry-run-checkout.ts",
+    "dry-run": "dotenvx run --env-file=.env.development -- tsx src/scripts/dry-run-checkout.ts",
     "dry-run:single": "tsx src/scripts/dry-run-checkout.ts",
-    "test:checkout": "dotenvx run -- vitest run src/test/checkout-flow.test.ts",
+    "test:checkout": "dotenvx run --env-file=.env.development vitest run src/test/checkout-flow.test.ts",
     "test:checkout:watch": "dotenvx run -- vitest watch src/test/checkout-flow.test.ts",
-    "seed-test": "dotenvx run -- tsx src/test/seed-test-data.ts"
+    "test:ttr": "dotenvx run --env-file=.env.development -- vitest run src/test/ttr-reporting.test.ts",
+    "test:ttr:watch": "dotenvx run --env-file=.env.development -- vitest watch src/test/ttr-reporting.test.ts",
+    "test:smr": "dotenvx run --env-file=.env.development -- vitest run src/test/smr-generation.test.ts",
+    "test:smr:watch": "dotenvx run --env-file=.env.development -- vitest watch src/test/smr-generation.test.ts",
+    "test:compliance": "dotenvx run --env-file=.env.development -- tsx src/test/run-compliance-tests.ts",
+    "test:compliance-all": "dotenvx run --env-file=.env.development -- vitest run src/test/ttr-reporting.test.ts src/test/smr-generation.test.ts",
+    "seed-test": "dotenvx run --env-file=.env.development -- tsx src/test/seed-test-data.ts",
+    "import-sanctions": "npx dotenvx run --env-file=.env.development --  tsx src/scripts/import-dfat-sanctions.ts",
+    "ttrsmr-report-test": "dotenvx run --env-file=.env.development -- tsx src/scripts/quick-test.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.7",
@@ -24,6 +32,7 @@
     "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.1.0",
     "@supabase/supabase-js": "^2.75.1",
+    "fast-xml-parser": "^5.3.2",
     "lucide-react": "^0.545.0",
     "next": "^16.0.1",
     "react": "19.1.0",
@@ -31,13 +40,14 @@
     "react-email": "^5.0.4",
     "resend": "^6.5.0",
     "stripe": "^19.1.0",
-    "svix": "^1.77.0"
+    "svix": "^1.77.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.51.1",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^24.10.0",
+    "@types/node": "^24.10.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitest/coverage-v8": "^3.2.4",
