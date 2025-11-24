@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { createServerSupabase } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { generateTTR } from '@/lib/compliance/ttr-generator';
+import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
 
 const logger = createLogger('CREATE_ORDER_API');
 
 const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
 );
 
 export async function POST(req: NextRequest) {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   try {
     // Get authenticated user from Clerk
     const { userId } = await auth();
-    
+
     if (!userId) {
       logger.log('Unauthorized - no userId from Clerk');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -54,11 +54,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-
     // Verify customer belongs to authenticated user
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, clerk_user_id')
+      .select('id, clerk_user_id, source_of_funds, occupation, source_of_funds_declared_at')
       .eq('id', customerId)
       .single();
 
@@ -81,6 +80,20 @@ export async function POST(req: NextRequest) {
 
     logger.log('Compliance flags:', { requiresKYC, requiresTTR, requiresEnhancedDD });
 
+    // ✅ Check source of funds for $10K+ transactions
+    let sourceOfFundsMissing = false;
+    if (amount >= 10000) {
+      if (!customer.source_of_funds || !customer.occupation) {
+        logger.log('⚠️ Source of funds missing for $10K+ transaction');
+        sourceOfFundsMissing = true;
+      } else {
+        logger.log('✅ Source of funds verified:', {
+          source: customer.source_of_funds,
+          occupation: customer.occupation,
+        });
+      }
+    }
+
     // Create transaction record
     const transactionData = {
       customer_id: customerId,
@@ -98,7 +111,13 @@ export async function POST(req: NextRequest) {
       requires_kyc: requiresKYC,
       requires_ttr: requiresTTR,
       requires_enhanced_dd: requiresEnhancedDD,
-      flagged_for_review: false,
+      // ✅ Add source of funds tracking
+      source_of_funds_checked: amount >= 10000,
+      source_of_funds_check_date: amount >= 10000 ? new Date().toISOString() : null,
+      // ✅ Flag if source of funds is missing
+      flagged_for_review: sourceOfFundsMissing,
+      review_status: sourceOfFundsMissing ? 'pending' : null,
+      review_notes: sourceOfFundsMissing ? 'Missing source of funds declaration for $10K+ transaction' : null,
     };
 
     logger.log('Creating transaction record');
@@ -119,6 +138,24 @@ export async function POST(req: NextRequest) {
 
     logger.log('Transaction created successfully:', transaction.id);
 
+    // ✅ Log if source of funds is missing
+    if (sourceOfFundsMissing) {
+      await supabase.from('audit_logs').insert({
+        action_type: 'transaction_flagged_missing_sof',
+        entity_type: 'transaction',
+        entity_id: transaction.id,
+        description: 'Transaction flagged: missing source of funds for $10K+ transaction',
+        metadata: {
+          customer_id: customerId,
+          amount: amount,
+          requires_manual_review: true,
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      logger.log('🚩 Transaction flagged for missing source of funds');
+    }
+
     // Generate TTR if required
     if (requiresTTR) {
       try {
@@ -136,8 +173,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Send order confirmation email
     try {
-      // Fetch customer details
       const { data: customerData } = await supabase
         .from('customers')
         .select('email, first_name, last_name')
@@ -145,7 +182,6 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (customerData) {
-        // Format items for email
         const emailItems = cartItems.map((item: any) => ({
           name: item.name,
           quantity: item.quantity || 1,
@@ -154,37 +190,35 @@ export async function POST(req: NextRequest) {
           purity: item.purity,
         }));
 
-        // Send email notification
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-order-confirmation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderNumber: transaction.id,
-            customerName: `${customerData.first_name} ${customerData.last_name}`,
-            customerEmail: customerData.email,
-            orderDate: new Date().toLocaleDateString('en-AU', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            }),
-            items: emailItems,
-            subtotal: amount,
-            total: amount,
-            currency: currency,
-            paymentMethod: paymentMethod === 'card' ? 'Credit/Debit Card' : paymentMethod,
-            requiresKYC: requiresKYC,
-            requiresTTR: requiresTTR,
+        const emailResult = await sendOrderConfirmationEmail({
+          orderNumber: transaction.id,
+          customerName: `${customerData.first_name} ${customerData.last_name}`,
+          customerEmail: customerData.email,
+          orderDate: new Date().toLocaleDateString('en-AU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
           }),
+          items: emailItems,
+          subtotal: amount,
+          total: amount,
+          currency: currency,
+          paymentMethod: paymentMethod === 'card' ? 'Credit/Debit Card' : paymentMethod,
+          requiresKYC: requiresKYC,
+          requiresTTR: requiresTTR,
         });
 
-        logger.log('Order confirmation email sent to:', customerData.email);
+        if (emailResult.success) {
+          logger.log('Order confirmation email sent to:', customerData.email);
+        } else {
+          logger.error('Failed to send email:', emailResult.error);
+        }
       }
     } catch (emailError) {
-      // Don't fail the order if email fails
       logger.error('Failed to send confirmation email:', emailError);
     }
 
-    // Log audit event
+    // Log audit event for order creation
     await supabase.from('audit_logs').insert({
       action_type: 'order_created',
       entity_type: 'transaction',
@@ -194,7 +228,10 @@ export async function POST(req: NextRequest) {
         customer_id: customerId,
         amount,
         payment_intent_id: stripePaymentIntentId,
+        source_of_funds_checked: amount >= 10000,
+        flagged_for_review: sourceOfFundsMissing,
       },
+      created_at: new Date().toISOString(),
     });
 
     logger.log('Audit log created');
@@ -203,6 +240,8 @@ export async function POST(req: NextRequest) {
       success: true,
       orderId: transaction.id,
       order: transaction,
+      // ✅ Inform frontend if flagged
+      warnings: sourceOfFundsMissing ? ['Transaction flagged for compliance review'] : undefined,
     });
 
   } catch (error: any) {

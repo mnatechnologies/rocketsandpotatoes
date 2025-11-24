@@ -1,21 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { TTRRecord } from '@/lib/compliance/ttr-generator';
 
-interface TTRRecord {
-  transaction_date: string;
-  transaction_type: string;
-  transaction_amount: number;
-  transaction_currency: string;
-  customer_type: string;
-  customer_name: string;
-  customer_dob: string;
-  customer_address: string;
-  verification_method: string;
-  identification_document_type: string;
-  internal_reference: string;
-  ttr_reference: string;
-}
 
 export default function TTRReportsPage() {
   const [ttrRecords, setTtrRecords] = useState<TTRRecord[]>([]);
@@ -98,57 +85,35 @@ export default function TTRReportsPage() {
     }
   };
 
-  const handleExportCSV = () => {
-    if (ttrRecords.length === 0) {
-      alert('No records to export');
-      return;
-    }
 
-    // Create CSV content
-    const headers = [
-      'Transaction Date',
-      'Transaction Type',
-      'Amount',
-      'Currency',
-      'Customer Type',
-      'Customer Name',
-      'Date of Birth',
-      'Address',
-      'Verification Method',
-      'ID Document Type',
-      'Internal Reference',
-      'TTR Reference',
-    ];
+    const handleExportCSV = async () => {
+      if (ttrRecords.length === 0) {
+        alert('No records to export');
+        return;
+      }
 
-    const csvRows = [
-      headers.join(','),
-      ...ttrRecords.map(record => [
-        record.transaction_date,
-        record.transaction_type,
-        record.transaction_amount,
-        record.transaction_currency,
-        record.customer_type,
-        `"${record.customer_name}"`,
-        record.customer_dob,
-        `"${record.customer_address}"`,
-        `"${record.verification_method}"`,
-        record.identification_document_type,
-        record.internal_reference,
-        record.ttr_reference,
-      ].join(','))
-    ];
+      try {
+        // Use the existing API endpoint with CSV format
+        const response = await fetch('/api/admin/export-ttrs?format=csv');
 
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `TTR_Report_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
+        if (!response.ok) {
+          throw new Error('Failed to export CSV');
+        }
+
+        // Download the file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `TTR_Report_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch (err: any) {
+        alert(err.message || 'Failed to export CSV');
+      }
+    };
 
   if (loading) {
     return (
@@ -284,9 +249,9 @@ export default function TTRReportsPage() {
               <h3 className="font-semibold text-card-foreground mb-2">📋 Next Steps</h3>
               <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
                 <li>Review all pending TTR records above</li>
-                <li>Click "Export to CSV" to download the report</li>
+                <li>Click &#34;Export to CSV&#34; to download the report</li>
                 <li>Submit the CSV file to AUSTRAC Online</li>
-                <li>Once submitted to AUSTRAC, select the records and click "Mark as Submitted"</li>
+                <li>Once submitted to AUSTRAC, select the records and click &#34Mark as Submitted&#34</li>
               </ol>
             </div>
           </>

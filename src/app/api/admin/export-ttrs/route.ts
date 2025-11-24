@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exportPendingTTRs, markTTRsAsSubmitted } from '@/lib/compliance/ttr-generator';
+import { exportPendingTTRs, markTTRsAsSubmitted, exportTTRsAsCSV } from '@/lib/compliance/ttr-generator';
 
 export async function GET(req: NextRequest) {
   try {
-    // Get pending TTR records
+    const format = req.nextUrl.searchParams.get('format') || 'json';
     const ttrRecords = await exportPendingTTRs();
 
     if (!ttrRecords || ttrRecords.length === 0) {
@@ -14,13 +14,25 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Return the TTR records as JSON
-    // In production, you would convert this to CSV format
+    // ✅ Return as CSV if requested
+    if (format === 'csv') {
+      const csv = exportTTRsAsCSV(ttrRecords);
+
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="TTR_Report_${new Date().toISOString().split('T')[0]}.csv"`,
+        },
+      });
+    }
+
+    // Default: Return as JSON
     return NextResponse.json({
       message: 'TTR reports retrieved successfully',
       count: ttrRecords.length,
       records: ttrRecords,
     });
+
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Failed to export TTR reports' },

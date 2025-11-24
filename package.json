@@ -29,6 +29,7 @@
     "@icons-pack/react-simple-icons": "^13.8.0",
     "@ngrok/ngrok": "^1.5.2",
     "@react-email/components": "^1.0.1",
+    "@react-email/render": "^2.0.0",
     "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.1.0",
     "@supabase/supabase-js": "^2.75.1",

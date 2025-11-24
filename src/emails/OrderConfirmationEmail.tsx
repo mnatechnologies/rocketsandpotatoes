@@ -11,8 +11,9 @@ import {
   Hr,
   Row,
   Column,
+  Img
 } from '@react-email/components';
-import Image from "next/image";
+
 
 interface OrderConfirmationEmailProps {
   orderNumber: string;
@@ -59,7 +60,7 @@ export default function OrderConfirmationEmail({
         <Container style={container}>
           {/* Header */}
           <Section style={header}>
-            <Image
+            <Img
               src='https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/anblogo.png'
               width="150"
               height="50"

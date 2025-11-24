@@ -453,3 +453,19 @@ ADD COLUMN reviewed_by UUID,
 ADD COLUMN reviewed_at TIMESTAMPTZ,
 ADD COLUMN review_notes TEXT,
 ADD COLUMN rejection_reason TEXT;
+
+ALTER TABLE customers
+    ADD COLUMN IF NOT EXISTS source_of_funds VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS source_of_funds_verified BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_of_funds_declared_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS occupation VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS employer VARCHAR(255);
+
+-- Add index for queries
+CREATE INDEX IF NOT EXISTS idx_customers_source_of_funds
+    ON customers(source_of_funds_verified);
+
+-- Add to transactions table:
+ALTER TABLE transactions
+ADD COLUMN IF NOT EXISTS source_of_funds_checked BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS source_of_funds_check_date TIMESTAMPTZ;

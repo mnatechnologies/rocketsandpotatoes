@@ -1,5 +1,4 @@
-import { createServerSupabase } from "@/lib/supabase/server";
-import {createClient} from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 interface TTRData {
   transactionId: string;
@@ -8,10 +7,27 @@ interface TTRData {
   transactionDate: string;
 }
 
-export async function generateTTR(data: TTRData) {
-  // const supabase = createServerSupabase();
-  //subject to removal once I actually get createServerSupabase workin with clerk lmao
-  const supabase = createClient(
+export interface TTRRecord {
+  transaction_date: string;
+  transaction_type: string;
+  transaction_amount: number;
+  transaction_currency: string;
+  customer_type?: string;
+  customer_name: string;
+  customer_dob?: string;
+  customer_address: string;
+  customer_occupation?: string;
+  customer_source_of_funds?: string;
+  customer_employer?: string;
+  verification_method: string;
+  identification_document_type: string;
+  internal_reference: string;
+  ttr_reference?: string;
+}
+
+// ✅ Create Supabase client once
+function getSupabaseClient() {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
@@ -21,123 +37,187 @@ export async function generateTTR(data: TTRData) {
       },
     }
   );
-  const { data: transaction } = await supabase
-    .from('transactions')
-    .select(`
-      *,
-      customers (*)
-    `)
-    .eq('id', data.transactionId)
-    .single();
+}
 
-  if (!transaction) throw new Error('Transaction not found');
+// ✅ Single function to format TTR record
+function formatTTRRecord(transaction: any): TTRRecord {
+  const formatAddress = (addr: any) => {
+    if (!addr) return 'Address not provided';
 
-  // Format for AUSTRAC (CSV)
-  const ttrRecord = {
+    if (typeof addr === 'string') {
+      try {
+        addr = JSON.parse(addr);
+      } catch {
+        return addr;
+      }
+    }
 
+    const parts = [
+      addr.line1,
+      addr.line2,
+      addr.city,
+      addr.state,
+      addr.postcode,
+      addr.country,
+    ].filter(Boolean);
+
+    return parts.join(' | ');
+  };
+
+  // Helper to format date
+  const formatDate = (date: string | null) => {
+    if (!date) return '';
+    try {
+      return new Date(date).toISOString().split('T')[0]; // YYYY-MM-DD
+    } catch {
+      return date;
+    }
+  };
+
+  return {
     // Part B - Transaction details
-    transaction_date: transaction.created_at,
+    transaction_date: formatDate(transaction.created_at),
     transaction_type: 'Purchase of bullion',
     transaction_amount: transaction.amount,
     transaction_currency: transaction.currency,
 
     // Part C - Customer details
-    customer_type: transaction.customers.customer_type,
-    customer_name: `${transaction.customers.first_name} ${transaction.customers.last_name}`,
-    customer_dob: transaction.customers.date_of_birth,
-    customer_address: JSON.stringify(transaction.customers.residential_address),
+    customer_type: transaction.customers?.customer_type || 'individual',
+    customer_name: `${transaction.customers?.first_name || ''} ${transaction.customers?.last_name || ''}`.trim() || 'Name not provided',
+    customer_dob: formatDate(transaction.customers?.date_of_birth),
+    customer_address: formatAddress(transaction.customers?.residential_address),
+    customer_occupation: transaction.customers?.occupation || 'Not provided',
+    customer_source_of_funds: transaction.customers?.source_of_funds || 'Not declared',
+    customer_employer: transaction.customers?.employer || 'N/A',
 
-    // Part D - Verification method
-    // review
-    verification_method: 'Electronic verification via Stripe Identity',
-    identification_document_type: 'See verification records',
+    // Part D - Verification level
+    verification_method: getVerificationMethod(transaction),
+    identification_document_type: getDocumentType(transaction),
 
     // Reference
     internal_reference: transaction.id,
+    ttr_reference: transaction.ttr_reference,
   };
+}
 
-  // Store TTR record
+function getVerificationMethod(transaction: any): string {
+  const level = transaction.customers?.verification_level;
+  
+  if (!level || level === 'none') {
+    return 'Not verified';
+  }
+  
+  if (level === 'stripe_identity') {
+    return 'Electronic verification via Stripe Identity';
+  }
+  
+  if (level === 'manual') {
+    return 'Manual verification';
+  }
+  
+  if (level === 'dvs_verified') {
+    return 'Electronic verification via DVS';
+  }
+  
+  return 'Not verified';
+}
+
+function getDocumentType(transaction: any): string {
+
+  if (transaction.customers?.verification_level === 'stripe_identity') {
+    return 'Government-issued photo ID (Passport or Driver License)';
+  }
+
+  if (transaction.customers?.verification_level === 'manual_document') {
+    return 'Manually verified documents';
+  }
+
+  return 'Verification pending';
+}
+
+// ✅ Generate TTR for a single transaction
+export async function generateTTR(data: TTRData) {
+  const supabase = getSupabaseClient();
+
+  // Generate TTR reference immediately
+  const ttrReference = `TTR-${Date.now()}-${data.transactionId.slice(0, 8)}`;
+
+  const { data: transaction, error } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      customers (
+        customer_type,
+        first_name,
+        last_name,
+        date_of_birth,
+        residential_address,
+        occupation,
+        source_of_funds,
+        employer,
+        verification_level
+      )
+    `)
+    .eq('id', data.transactionId)
+    .single();
+
+  if (error || !transaction) {
+    throw new Error('Transaction not found');
+  }
+
+  // Store TTR reference BEFORE formatting
   await supabase
     .from('transactions')
     .update({
-      ttr_reference: `TTR-${Date.now()}`,
+      ttr_reference: ttrReference,
       ttr_generated_at: new Date().toISOString(),
     })
     .eq('id', data.transactionId);
 
-  // In production, you would:
-  // 1. Generate proper AUSTRAC format (CSV/XML)
-  // 2. Upload to AUSTRAC Online
-  // 3. Store submission confirmation
+  // Add the reference to the transaction object
+  transaction.ttr_reference = ttrReference;
 
-  return ttrRecord;
+  // Format and return
+  return formatTTRRecord(transaction);
 }
 
-// Admin function to export TTRs for submission
+// ✅ Export pending TTRs for AUSTRAC submission
 export async function exportPendingTTRs() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = getSupabaseClient();
 
-  const { data: pendingTTRs } = await supabase
+  const { data: pendingTTRs, error } = await supabase
     .from('transactions')
     .select(`
       *,
-      customers (*)
+      customers (
+        first_name,
+        last_name,
+        date_of_birth,
+        residential_address,
+        occupation,
+        source_of_funds,
+        employer,
+        verification_level
+      )
     `)
     .eq('requires_ttr', true)
     .is('ttr_submitted_at', null)
-    .gte('created_at', new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()); // Last 10 days
+    .gte('created_at', new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString());
+
+  if (error) {
+    throw new Error(`Failed to fetch pending TTRs: ${error.message}`);
+  }
 
   if (!pendingTTRs || pendingTTRs.length === 0) {
     return [];
   }
 
-  // Format each transaction for AUSTRAC reporting
-  const ttrRecords = pendingTTRs.map(transaction => ({
-    // Part B - Transaction details
-    transaction_date: transaction.created_at,
-    transaction_type: 'Purchase of bullion',
-    transaction_amount: transaction.amount,
-    transaction_currency: transaction.currency,
-    
-    // Part C - Customer details
-    customer_type: transaction.customers.customer_type,
-    customer_name: `${transaction.customers.first_name} ${transaction.customers.last_name}`,
-    customer_dob: transaction.customers.date_of_birth,
-    customer_address: JSON.stringify(transaction.customers.residential_address),
-    
-    // Part D - Verification method
-    verification_method: transaction.customers.verification_method || 'Electronic verification via Stripe Identity',
-    identification_document_type: 'See verification records',
-    
-    // Reference
-    internal_reference: transaction.id,
-    ttr_reference: transaction.ttr_reference,
-  }));
-
-  return ttrRecords;
+  return pendingTTRs.map(formatTTRRecord);
 }
 
-// Mark TTRs as submitted
+// ✅ Mark TTRs as submitted
 export async function markTTRsAsSubmitted(transactionIds: string[]) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = getSupabaseClient();
 
   const { error } = await supabase
     .from('transactions')
@@ -151,4 +231,50 @@ export async function markTTRsAsSubmitted(transactionIds: string[]) {
   }
 
   return { success: true };
+}
+
+// ✅ Helper to export TTRs as CSV
+export function exportTTRsAsCSV(ttrRecords: TTRRecord[]): string {
+  if (ttrRecords.length === 0) return '';
+  // CSV headers
+  const headers = [
+    'Transaction Date',
+    'Transaction Type',
+    'Amount',
+    'Currency',
+    'Customer Name',
+    'Date of Birth',
+    'Address',
+    'Occupation',
+    'Source of Funds',
+    'Employer',
+    'Verification Level',
+    'ID Document Type',
+    'Internal Reference',
+    'TTR Reference',
+  ];
+
+  // CSV rows
+  const rows = ttrRecords.map(record => [
+    record.transaction_date,
+    record.transaction_type,
+    record.transaction_amount,
+    record.transaction_currency,
+    `"${record.customer_name}"`,
+    record.customer_dob || '',
+    `"${record.customer_address}"`,
+    record.customer_occupation || '',
+    record.customer_source_of_funds || '',
+    record.customer_employer || '',
+    `"${record.verification_method}"`,
+    `"${record.identification_document_type}"`,
+    record.internal_reference,
+    record.ttr_reference || '',
+  ]);
+
+  // Combine headers and rows
+  return [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n');
 }

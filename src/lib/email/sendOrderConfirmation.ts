@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { render } from  '@react-email/render'
 import OrderConfirmationEmail from '@/emails/OrderConfirmationEmail';
 import { createLogger } from '@/lib/utils/logger';
 
@@ -27,11 +28,15 @@ interface OrderEmailData {
 
 export async function sendOrderConfirmationEmail(data: OrderEmailData) {
   try {
+    const emailHtml = await render(OrderConfirmationEmail(data));
+
     const { data: emailData, error } = await resend.emails.send({
       from: 'Australian National Bullion <onboarding@resend.dev>',
-      to: [data.customerEmail],
+     // TODO FIX EMAIL SENDER,
+      // to: [data.customerEmail] removed for dev,
+      to: 'devops@mnatechnologies.com.au',
       subject: `Order Confirmation - ${data.orderNumber}`,
-      react: OrderConfirmationEmail(data),
+      html: emailHtml
     });
 
     if (error) {

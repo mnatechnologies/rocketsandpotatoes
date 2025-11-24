@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createLogger } from '@/lib/utils/logger';
 // import { createServerSupabase } from "@/lib/supabase/server";
 import { screenCustomer } from "@/lib/compliance/screening";
+import { generateSMR } from "@/lib/compliance/smr-generator";
 
 /* eslint-disable */
 
@@ -35,15 +36,27 @@ export async function POST(req: NextRequest) {
       // BLOCK TRANSACTION IMMEDIATELY
       logger.log('⛔ Sanctions match detected!', sanctionsResult);
 
-      // Auto-generate SMR
-      // await generateSMR({
-      //   customerId,
-      //   suspicionType: 'sanctions_match',
-      //   indicators: sanctionsResult.matches.map(m =>
-      //     `Match: ${m.name} (${m.source}) - Score: ${m.matchScore}`
-      //   ),
-      //   narrative: `Customer matched against ${sanctionsResult.matches[0].source} sanctions list. Reference: ${sanctionsResult.matches[0].referenceNumber}`,
-      // });
+      await generateSMR({
+        customerId,
+        suspicionType: 'sanctions_match',
+        indicators: sanctionsResult.matches.map(m =>
+          `Match: ${m.name} (${m.source}) - Score: ${m.matchScore}`
+        ),
+        narrative: `Customer matched against ${sanctionsResult.matches[0].source} sanctions list. Reference: ${sanctionsResult.matches[0].referenceNumber}`,
+      });
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'sanctions_match_blocked',
+        entity_type: 'customer',
+        entity_id: customerId,
+        description: 'Transaction blocked due to sanctions match',
+        metadata: {
+          amount,
+          matches: sanctionsResult.matches,
+        },
+        created_at: new Date().toISOString(),
+      });
+
 
       return Response.json({
         status: 'blocked',

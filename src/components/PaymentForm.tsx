@@ -5,6 +5,7 @@ import { useStripe, useElements, PaymentElement, Elements } from '@stripe/react-
 import { Product } from '@/types/product';
 import { clearPricingTimer } from '@/lib/pricing/pricingTimer';
 import { createLogger } from '@/lib/utils/logger';
+import {useCart} from "@/contexts/CartContext";
 
 const logger = createLogger('PAYMENT_FORM');
 
@@ -31,6 +32,7 @@ export function PaymentForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
+  const { clearCart } = useCart()
 
   const handlePaymentElementReady = () => {
     logger.log('PaymentElement is ready');
@@ -106,7 +108,7 @@ export function PaymentForm({
         
         // Clear cart from localStorage
         logger.log('Clearing cart from localStorage');
-        localStorage.removeItem('cart');
+        clearCart();
         
         // Clear pricing timer
         clearPricingTimer();
@@ -117,10 +119,7 @@ export function PaymentForm({
           onSuccess(orderData.orderId);
         }
 
-        // Redirect to order confirmation page after a short delay
-        setTimeout(() => {
           window.location.href = `/order-confirmation?orderId=${orderData.orderId}`;
-        }, 2000);
       } else {
         logger.log('Payment status not succeeded:', paymentIntent?.status);
         setError('Payment was not successful. Please try again.');

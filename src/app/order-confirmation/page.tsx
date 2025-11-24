@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
@@ -36,9 +36,15 @@ function OrderConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const hasFetchedOrder = useRef(false); // ✅ Add this
 
   useEffect(() => {
     logger.log('Order confirmation page mounted');
+
+    if (hasFetchedOrder.current) {
+      logger.log('Order already fetched, skipping...');
+      return;
+    }
 
     if (!isLoaded) {
       logger.log('User auth not loaded yet');
@@ -58,10 +64,10 @@ function OrderConfirmationContent() {
       setLoading(false);
       return;
     }
-
+    hasFetchedOrder.current = true
     logger.log('Fetching order:', orderId);
     fetchOrder(orderId);
-  }, [user, isLoaded, searchParams, router]);
+  }, [isLoaded]);
 
   const fetchOrder = async (orderId: string) => {
     try {
@@ -226,7 +232,7 @@ function OrderConfirmationContent() {
             </div>
             <div className="flex items-start">
               <span className="mr-3">3.</span>
-              <span>You'll receive shipping information once your order is dispatched</span>
+              <span>You&#39;ll receive shipping information once your order is dispatched</span>
             </div>
             <div className="flex items-start">
               <span className="mr-3">4.</span>

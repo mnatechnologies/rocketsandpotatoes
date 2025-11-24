@@ -2,13 +2,14 @@
 'use client';
 /* eslint-disable */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { KYCVerification } from './KYCVerification';
 import { Product } from "@/types/product";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements  } from "@stripe/react-stripe-js";
 import { PaymentForm } from './PaymentForm';
 import { createLogger } from '@/lib/utils/logger'
+import { SourceOfFundsForm } from './SourceOfFunds';
 
 
 const logger = createLogger('CHECKOUT_FLOW')
@@ -29,12 +30,22 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const [isValidating, setIsValidating] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [sourceOfFundsProvided, setSourceOfFundsProvided] = useState(false);
+  const paymentIntentCreated = useRef(false);
+  const hasValidated = useRef(false); // ✅ Add this
 
-  // Automatically trigger validation on component mount
   useEffect(() => {
+    // ✅ Add guard to prevent duplicate validation
+    if (hasValidated.current) {
+      logger.log('Already validated, skipping...');
+      return;
+    }
+
     logger.log('CheckoutFlow mounted', { customerId, amount, productDetails });
+    hasValidated.current = true; // ✅ Mark as validated
     validateTransaction();
-  }, [customerId, amount, productDetails]);
+  }, []); //
+
 
   const validateTransaction = async () => {
     if (isValidating) {
@@ -74,7 +85,6 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       }
     } catch (error) {
       logger.error('Error during validation:', error);
-      // Optionally handle error state
     } finally {
       setIsValidating(false);
       logger.log('Validation complete');
@@ -96,7 +106,32 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     }
   }, []);
 
+  useEffect(() => {
+    const checkSourceOfFunds = async () => {
+      if (amount >= 10000) {
+        try {
+          const response = await fetch(`/api/customer/source-of-funds?customerId=${customerId}`);
+          const result = await response.json();
+
+          if (result.success && result.data?.source_of_funds) {
+            setSourceOfFundsProvided(true);
+          }
+        } catch (error) {
+          console.error('Error checking source of funds:', error);
+        }
+      }
+    };
+
+    if (customerId) {
+      checkSourceOfFunds();
+    }
+  }, [customerId, amount]);
+
   const createPaymentIntent = async () => {
+    if (paymentIntentCreated.current) {
+      logger.log('Payment intent already created, skipping...');
+      return;
+    }
     logger.log('Creating payment intent...');
     try {
       const response = await fetch('/api/create-payment-intent', {
@@ -155,6 +190,22 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }
 
   if (step === 'payment') {
+    // Check if source of funds is needed but not provided
+    if (amount >= 10000 && !sourceOfFundsProvided) {
+      return (
+        <SourceOfFundsForm
+          customerId={customerId}
+          amount={amount}
+          onComplete={() => {
+            setSourceOfFundsProvided(true);
+            // Will automatically show payment form on next render
+          }}
+        />
+      );
+    }
+  }
+
+    if (step === 'payment') {
     if (!clientSecret) {
       return <div>Preparing payment...</div>;
     }
