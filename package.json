@@ -10,12 +10,19 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:coverage": "vitest --coverage",
-    "dry-run": "dotenvx run -- tsx src/scripts/dry-run-checkout.ts",
+    "dry-run": "dotenvx run --env-file=.env.development -- tsx src/scripts/dry-run-checkout.ts",
     "dry-run:single": "tsx src/scripts/dry-run-checkout.ts",
-    "test:checkout": "dotenvx run -- vitest run src/test/checkout-flow.test.ts",
+    "test:checkout": "dotenvx run --env-file=.env.development vitest run src/test/checkout-flow.test.ts",
     "test:checkout:watch": "dotenvx run -- vitest watch src/test/checkout-flow.test.ts",
-    "seed-test": "dotenvx run -- tsx src/test/seed-test-data.ts",
-    "import-sanctions": "npx dotenvx run --env-file=.env.development -- npx tsx src/scripts/import-dfat-sanctions.ts"
+    "test:ttr": "dotenvx run --env-file=.env.development -- vitest run src/test/ttr-reporting.test.ts",
+    "test:ttr:watch": "dotenvx run --env-file=.env.development -- vitest watch src/test/ttr-reporting.test.ts",
+    "test:smr": "dotenvx run --env-file=.env.development -- vitest run src/test/smr-generation.test.ts",
+    "test:smr:watch": "dotenvx run --env-file=.env.development -- vitest watch src/test/smr-generation.test.ts",
+    "test:compliance": "dotenvx run --env-file=.env.development -- tsx src/test/run-compliance-tests.ts",
+    "test:compliance-all": "dotenvx run --env-file=.env.development -- vitest run src/test/ttr-reporting.test.ts src/test/smr-generation.test.ts",
+    "seed-test": "dotenvx run --env-file=.env.development -- tsx src/test/seed-test-data.ts",
+    "import-sanctions": "npx dotenvx run --env-file=.env.development --  tsx src/scripts/import-dfat-sanctions.ts",
+    "ttrsmr-report-test": "dotenvx run --env-file=.env.development -- tsx src/scripts/quick-test.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.7",
