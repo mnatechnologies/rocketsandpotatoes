@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-deadlines",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/rescreen-customers",
+      "schedule": "0 3 * * 0"
+    }
+  ]
+}
+
