@@ -10,6 +10,7 @@ import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { getMetalInfo, type MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { createLogger } from '@/lib/utils/logger'
+import {useCurrency} from "@/contexts/CurrencyContext";
 
 const logger = createLogger('PRODUCT_DETAIL_CLIENT')
 
@@ -20,6 +21,7 @@ interface ProductDetailClientProps {
 export default function ProductDetailClient({ product }: ProductDetailClientProps) {
   const router = useRouter();
   const { addToCart } = useCart();
+  const {formatPrice, currency } = useCurrency();
 
   // Use shared metal prices from context - same as ProductsClient
   const { prices: metalPrices, isLoading: loadingPrices, error, lastUpdated } = useMetalPrices();
@@ -222,7 +224,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             ) : (
               <>
                 <div className="text-4xl font-bold text-foreground mb-2">
-                  ${livePrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                  {formatPrice(livePrice)} {currency}
                 </div>
                 <div className="text-sm text-muted-foreground">USD</div>
                 {hasLivePrice && (
@@ -232,7 +234,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                     </div>
                     {spotPricePerGram > 0 && (
                       <div className="text-xs text-gray-500 mt-1">
-                        Spot/gram: ${spotPricePerGram.toFixed(2)}
+                        Spot/gram: {formatPrice(spotPricePerGram)} {currency}
                       </div>
                     )}
                   </>
@@ -297,7 +299,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div className="ml-auto text-right">
                 <div className="text-sm text-muted-foreground">Total</div>
                 <div className="text-2xl font-bold text-primary">
-                  ${totalPrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                  {formatPrice(totalPrice)} {currency}
                 </div>
               </div>
             </div>
@@ -447,19 +449,19 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   <div className="space-y-3">
                     <div className="flex justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                       <span className="font-semibold text-foreground">Current Spot Price</span>
-                      <span className="text-muted-foreground">${spotPricePerGram.toFixed(2)}/gram</span>
+                      <span className="text-muted-foreground">{formatPrice(spotPricePerGram)} {currency}</span>
                     </div>
                     <div className="flex justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                       <span className="font-semibold text-foreground">Spot Value of Product</span>
-                      <span className="text-muted-foreground">${(spotPricePerGram * product.weight_grams).toFixed(2)}</span>
+                      <span className="text-muted-foreground">{formatPrice(spotPricePerGram)} {currency}</span>
                     </div>
                     <div className="flex justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                       <span className="font-semibold text-foreground">Your Price</span>
-                      <span className="text-green-600 font-bold text-lg">${livePrice.toFixed(2)}</span>
+                      <span className="text-green-600 font-bold text-lg">{formatPrice(livePrice)} {currency}</span>
                     </div>
                     <div className="flex justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                       <span className="font-semibold text-foreground">Currency</span>
-                      <span className="text-muted-foreground">{product.currency}</span>
+                      <span className="text-muted-foreground">{currency}</span>
                     </div>
                   </div>
 

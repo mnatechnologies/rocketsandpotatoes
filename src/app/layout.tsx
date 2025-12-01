@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import PriceTicker from "@/components/PriceTicker";
 import {MetalPricesProvider} from "@/contexts/MetalPricesContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { CurrencyProvider} from "@/contexts/CurrencyContext";
 
 import {
   ClerkProvider,
@@ -36,12 +37,14 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <MetalPricesProvider>
-            <CartProvider>
-              <PriceTicker />
-              <Header />
-              {children}
-              <Footer />
-            </CartProvider>
+            <CurrencyProvider>
+              <CartProvider>
+                <PriceTicker />
+                <Header />
+                {children}
+                <Footer />
+              </CartProvider>
+            </CurrencyProvider>
           </MetalPricesProvider>
         </body>
       </html>

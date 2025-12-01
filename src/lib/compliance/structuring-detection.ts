@@ -48,6 +48,7 @@ export async function detectStructuring(
         `Total amount: $${totalRecent.toFixed(2)}`,
       ],
       narrative: 'Customer appears to be structuring transactions to avoid $5,000 KYC threshold',
+      transactionAmount: totalRecent + currentAmount,
     });
     return true;
   }

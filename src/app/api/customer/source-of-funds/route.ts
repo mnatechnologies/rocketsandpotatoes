@@ -17,12 +17,20 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    const { customerId, sourceOfFunds, occupation, employer } = await req.json();
+    const { customerId, sourceOfFunds, occupation, employer, isPep, pepRelationship } = await req.json();
 
     // Validate required fields
     if (!customerId || !sourceOfFunds || !occupation) {
       return NextResponse.json(
         { error: 'Customer ID, source of funds, and occupation are required' },
+        { status: 400 }
+      );
+    }
+
+    // If PEP is true, relationship is required
+    if (isPep && !pepRelationship) {
+      return NextResponse.json(
+        { error: 'PEP relationship is required when declaring as a PEP' },
         { status: 400 }
       );
     }
@@ -37,7 +45,12 @@ export async function POST(req: NextRequest) {
         occupation: occupation,
         employer: employer || null,
         source_of_funds_declared_at: new Date().toISOString(),
-        source_of_funds_verified: false, // Will be verified by compliance team
+        source_of_funds_verified: true,
+        is_pep: isPep || false,
+        pep_relationship: isPep ? pepRelationship : null,
+        pep_declared_at: new Date().toISOString(),
+        // Flag for EDD if PEP
+        requires_enhanced_dd: isPep || false,
       })
       .eq('id', customerId)
       .select()
@@ -48,7 +61,7 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    // Log audit event
+    // Log audit event for source of funds
     await supabase.from('audit_logs').insert({
       action_type: 'source_of_funds_declared',
       entity_type: 'customer',
@@ -62,6 +75,23 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
     });
 
+    // Log separate audit event for PEP declaration
+    if (isPep) {
+      await supabase.from('audit_logs').insert({
+        action_type: 'pep_declaration',
+        entity_type: 'customer',
+        entity_id: customerId,
+        description: `Customer declared as PEP: ${pepRelationship}`,
+        metadata: {
+          is_pep: true,
+          pep_relationship: pepRelationship,
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      logger.log(`PEP declaration recorded for customer ${customerId}: ${pepRelationship}`);
+    }
+
     logger.log('Source of funds saved successfully');
 
     return NextResponse.json({
@@ -71,6 +101,8 @@ export async function POST(req: NextRequest) {
         source_of_funds: data.source_of_funds,
         occupation: data.occupation,
         employer: data.employer,
+        is_pep: data.is_pep,
+        pep_relationship: data.pep_relationship,
       },
     });
 

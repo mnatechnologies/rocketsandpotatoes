@@ -39,27 +39,22 @@ export async function POST(request: NextRequest) {
   }
 
   // Create verification record
-  const { data: verification } = await supabase
+  const { error } = await supabase
     .from('identity_verifications')
     .insert({
       customer_id: customerId,
       verification_type: 'manual_document',
       status: 'pending',
-      verification_checks: { documents_submitted: documents },
-    })
-    .select()
-    .single();
-
-  // Create verification requirements record
-  await supabase
-    .from('verification_requirements')
-    .insert({
-      customer_id: customerId,
-      verification_method: verificationMethod,
-      is_complete: false,
-      required_documents: documents,
-      submitted_documents: documents.filter((d: any) => d.uploaded),
+      verification_checks: {
+        verification_method: verificationMethod,
+        documents_submitted: documents,
+        submitted_documents: documents.filter((d: { docType: string; uploaded: boolean }) => d.uploaded),
+      },
     });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({
     success: true,

@@ -25,7 +25,7 @@ export default async function ProductDetailPage({params}: { params: Promise<{ id
   // Construct full image URL
   const trimmedImageUrl = product.image_url?.trim();
   const fullImageUrl = trimmedImageUrl
-    ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
+    ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
     : '/anblogo.png';
 
   const productWithUrl: Product = {

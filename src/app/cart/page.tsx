@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, Suspense, useState } from 'react';
+import { useEffect, useRef, Suspense, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Product } from '@/types/product';
 import Image from 'next/image';
@@ -12,13 +12,14 @@ import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { createLogger} from "@/lib/utils/logger";
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const logger = createLogger('CART_PAGE')
 
 function CartContent() {
   const {
     cart,
-    addToCart: addToCartContext,
+    addToCartById,
     removeFromCart,
     updateQuantity,
     clearCart,
@@ -28,7 +29,8 @@ function CartContent() {
     isLoading,
     timerRemaining,
     timerFormatted,
-    isTimerExpired
+    isTimerExpired,
+    lockPricesOnServer,
   } = useCart();
 
   // Use shared metal prices from context
@@ -39,37 +41,36 @@ function CartContent() {
   const { user, isLoaded } = useUser();
   const hasAddedProduct = useRef(false);
   const hasFetchedPrices = useRef(false);
+  const { formatPrice, currency } = useCurrency();
 
-  const addToCart = async (productId: string) => {
-    try {
-      const response = await fetch(`/api/products/${productId}`);
-      if (!response.ok) {
-        throw new Error('Product not found');
-      }
-      const product: Product = await response.json();
 
-      const trimmedImageUrl = product.image_url?.trim();
-      const fullImageUrl = trimmedImageUrl
-        ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
-        : '/anblogo.png';
+  const calculateAndLockPrices = useCallback(async () => {
+  if (cart.length === 0 || !metalPrices || metalPrices.length === 0) return;
 
-      const productWithUrl: Product = {
-        ...product,
-        image_url: fullImageUrl
-      };
+  try {
+    const metalPriceMap = new Map<MetalSymbol, number>(
+      metalPrices.map(price => [price.symbol, price.price])
+    );
 
-      // Use context to add product
-      addToCartContext(productWithUrl, 1);
+    const products = cart.map(item => item.product);
+    const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
 
-      // Calculate prices after adding (no setTimeout needed)
-      setTimeout(() => calculateAndLockPrices(), 100);
+    const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
+      productId,
+      price: priceInfo.calculatedPrice,
+      spotPricePerGram: priceInfo.spotPricePerGram
+    }));
 
-      router.replace('/cart');
-    } catch (error) {
-      logger.error('[CART] Error adding to cart:', error);
-      alert('Failed to add product to cart');
-    }
-  };
+    // Lock locally
+    lockPrices(pricesToLock);
+    
+    // Lock on server (ADD THIS)
+    await lockPricesOnServer(products);
+    
+  } catch (error) {
+    logger.error('[CART] Error calculating prices:', error);
+  }
+}, [cart, metalPrices, lockPricesOnServer]);
 
   // Calculate and lock prices when metal prices or cart changes
   useEffect(() => {
@@ -81,45 +82,23 @@ function CartContent() {
       hasFetchedPrices.current = true;
       calculateAndLockPrices();
     }
-  }, [isLoading, cart.length, metalPrices, loadingPrices]);
+  }, [isLoading, cart.length, metalPrices, loadingPrices, calculateAndLockPrices]);
 
   // Handle adding product from URL parameter
   useEffect(() => {
     const productId = searchParams.get('add');
     if (productId && !hasAddedProduct.current) {
       hasAddedProduct.current = true;
-      addToCart(productId);
+      addToCartById(productId).then((success) => {
+        if (!success) {
+          alert('Failed to add product to cart');
+        }
+        router.replace('/cart');
+      });
+      // Trigger price calculation after cart updates
+      setTimeout(() => calculateAndLockPrices(), 100);
     }
-  }, [addToCart, searchParams]);
-
-  // REPLACE fetchLivePrices with this client-side calculation
-  const calculateAndLockPrices = () => {
-    if (cart.length === 0 || !metalPrices || metalPrices.length === 0) return;
-
-    try {
-      // Create a map of metal prices (price per troy ounce)
-      const metalPriceMap = new Map<MetalSymbol, number>(
-        metalPrices.map(price => [price.symbol, price.price])
-      );
-
-      // Extract products from cart items
-      const products = cart.map(item => item.product);
-
-      // Use centralized pricing calculation
-      const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
-
-      // Lock the prices for the timer period
-      const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
-        productId,
-        price: priceInfo.calculatedPrice,
-        spotPricePerGram: priceInfo.spotPricePerGram
-      }));
-
-      lockPrices(pricesToLock);
-    } catch (error) {
-      logger.error('[CART] Error calculating prices:', error);
-    }
-  };
+  }, [searchParams, addToCartById, router, calculateAndLockPrices]);
 
 
 
@@ -238,7 +217,7 @@ function CartContent() {
                         <span>Purity: {item.product.purity}</span>
                       </div>
                       <div className="text-xl font-bold text-gray-900">
-                        ${displayPrice.toLocaleString('en-AU', {minimumFractionDigits: 2})} AUD
+                        {formatPrice(displayPrice)}
                         {isPriceLocked && (
                           <div className="text-xs text-green-600 font-medium mt-1">
                             🔒 Price Locked
@@ -278,7 +257,7 @@ function CartContent() {
                       </button>
 
                       <div className="text-lg font-bold text-gray-900 md:mt-auto">
-                        ${(displayPrice * item.quantity).toLocaleString('en-AU', {minimumFractionDigits: 2})}
+                        {formatPrice(displayPrice * item.quantity)} {currency}
                       </div>
                     </div>
                   </div>
@@ -301,7 +280,7 @@ function CartContent() {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
                     <span>Items ({getCartCount()})</span>
-                    <span>${getCartTotal().toLocaleString('en-AU', {minimumFractionDigits: 2})}</span>
+                    {formatPrice(getCartTotal())} {currency}
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
@@ -309,13 +288,13 @@ function CartContent() {
                   </div>
                   <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
                     <span>Total</span>
-                    <span>${getCartTotal().toLocaleString('en-AU', {minimumFractionDigits: 2})} USD</span>
+                    {formatPrice(getCartTotal())} {currency}
                   </div>
                 </div>
 
                 <button
                   onClick={handleCheckout}
-                  disabled={isTimerExpired}  // ✅ ADD THIS
+                  disabled={isTimerExpired} 
                   className={`cursor-pointer w-full py-3 font-bold rounded-lg transition-colors mb-4 ${
                     isTimerExpired
                       ? 'bg-gray-400 text-gray-700 cursor-not-allowed'

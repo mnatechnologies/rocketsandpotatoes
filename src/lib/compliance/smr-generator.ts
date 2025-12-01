@@ -1,4 +1,6 @@
 import {createClient} from "@supabase/supabase-js";
+import { sendSMRCreatedAlert } from "@/lib/email/sendComplianceAlert";
+import { calculateSMRDeadline } from "./deadline-utils";
 
 export async function generateSMR(data: {
   customerId: string;
@@ -6,6 +8,7 @@ export async function generateSMR(data: {
   suspicionType: 'structuring' | 'sanctions_match' | 'unusual_pattern' | 'high_risk' | 'other';
   indicators: string[];
   narrative: string;
+  transactionAmount?: number;
 }) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +21,9 @@ export async function generateSMR(data: {
     }
   );
 
+  // Calculate submission deadline (3 business days)
+  const deadline = calculateSMRDeadline(new Date());
+
   // Create SMR record
   const { data: smr, error } = await supabase
     .from('suspicious_activity_reports')
@@ -29,6 +35,7 @@ export async function generateSMR(data: {
       description: generateSMRNarrative(data),
       status: 'pending',
       flagged_by_system: true,
+      submission_deadline: deadline.toISOString(),
     })
     .select()
     .single();
@@ -47,6 +54,32 @@ export async function generateSMR(data: {
       suspicion_type: data.suspicionType,
       indicators: data.indicators,
     },
+  });
+
+  // Get customer name for alert
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('first_name, last_name')
+    .eq('id', data.customerId)
+    .single();
+
+  const customerName = customer 
+    ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown'
+    : 'Unknown';
+
+  // Send compliance alert
+  await sendSMRCreatedAlert({
+    smrId: smr.id,
+    customerId: data.customerId,
+    customerName,
+    suspicionType: data.suspicionType,
+    transactionAmount: data.transactionAmount,
+    deadline: deadline.toLocaleDateString('en-AU', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
   });
 
   return smr;

@@ -1,6 +1,5 @@
 import Hero from "@/components/Hero";
 import MetalsPricing from "@/components/PriceDisplay";
-import FeaturedProducts from "@/components/FeaturedProducts";
 import { createServerSupabase } from '@/lib/supabase/server';
 import FeaturedProductsWrapper from "@/components/FeaturedProductsWrapper";
 
@@ -20,7 +19,7 @@ export default async function Home() {
   const featuredProducts = products?.map(product => {
     const trimmedImageUrl = product.image_url?.trim();
     const imageUrl = trimmedImageUrl
-      ? supabase.storage.from('Images').getPublicUrl(`gold/${trimmedImageUrl}`).data.publicUrl
+     ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
       : null;
 
     return {

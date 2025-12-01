@@ -11,6 +11,7 @@ const logger = createLogger('PAYMENT_FORM');
 
 interface PaymentFormProps {
   amount: number;
+  currency: 'USD' | 'AUD';
   customerId: string;
   productDetails: Product;
   cartItems?: any[];
@@ -20,6 +21,7 @@ interface PaymentFormProps {
 
 export function PaymentForm({
   amount,
+  currency,
   customerId,
   productDetails,
   cartItems,
@@ -87,7 +89,7 @@ export function PaymentForm({
           body: JSON.stringify({
             customerId,
             amount,
-            currency: 'USD',
+            currency,
             productDetails,
             cartItems,
             stripePaymentIntentId: paymentIntent.id,
@@ -167,7 +169,7 @@ export function PaymentForm({
       <div className="border-t pt-4">
         <div className="flex justify-between text-lg font-bold mb-4">
           <span>Total Amount:</span>
-          <span>${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} USD</span>
+          <span>${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} {currency}</span>
         </div>
 
         <button
@@ -175,7 +177,7 @@ export function PaymentForm({
           disabled={!stripe || isProcessing}
           className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors"
         >
-          {isProcessing ? 'Processing Payment...' : `Pay $${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} USD`}
+          {isProcessing ? 'Processing Payment...' : `Pay $${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} ${currency}`}
         </button>
       </div>
 

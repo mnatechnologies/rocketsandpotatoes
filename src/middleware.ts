@@ -11,7 +11,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/checkout(.*)',
   '/api/create-payment-intent',
   '/kyc-return',
-  '/api/kyc/webhook'
+  '/api/kyc/webhook',
+  '/api/fx-rate'
 ]);
 
 export default clerkMiddleware( async (auth, request) => {

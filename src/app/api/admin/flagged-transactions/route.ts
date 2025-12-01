@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from "@/lib/utils/logger";
+import { requireAdmin } from '@/lib/auth/admin';
 
 const logger = createLogger('flagged_transactions')
 
 export async function GET(req: NextRequest) {
-
-  const { userId } = await auth();
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // TODO: Add proper admin role check
-  // For now, you can check if userId matches a specific admin ID
+  const adminCheck = await requireAdmin();
+  if (!adminCheck.authorized) return adminCheck.error;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,7 +33,7 @@ export async function GET(req: NextRequest) {
       )
     `)
     .eq('flagged_for_review', true)
-    .is('review_status', null)
+    .not('review_status', 'in', '(approved,rejected)')
     .order('created_at', { ascending: false });
 
   if (error) {

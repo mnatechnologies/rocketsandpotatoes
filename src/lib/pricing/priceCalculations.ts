@@ -76,6 +76,11 @@ function extractWeightGrams(product: any): number {
   if (product.weight) {
     const weightStr = product.weight.toLowerCase();
 
+    const kgMatch = weightStr.match(/(\d+(?:\.\d+)?)\s*kg/);
+    if (kgMatch) {
+      return parseFloat(kgMatch[1]) * 1000; // Convert kg to grams
+    }
+
     const ozMatch = weightStr.match(/(\d+(?:\.\d+)?)\s*(?:troy\s*)?oz/);
     if (ozMatch) {
       return parseFloat(ozMatch[1]) * 31.1035; // Convert troy oz to grams
@@ -184,6 +189,14 @@ export function calculateBulkPricingFromCache(
     weight_grams: extractWeightGrams(product),
     original: product
   })).filter(p => p.metal_type !== null);
+
+  logger.log('🔍 Processed products:', processedProducts.map(p => ({
+    id: p.id,
+    metal_type: p.metal_type,
+    weight_grams: p.weight_grams,
+    original_metal_type: p.original.metal_type,
+    original_category: p.original.category
+  })));
 
   // Convert metal prices from per troy ounce to per gram
   const metalPricesPerGram = new Map(

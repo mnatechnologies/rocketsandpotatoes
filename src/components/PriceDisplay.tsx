@@ -3,6 +3,7 @@
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import {useEffect, useState} from "react";
+import {useCurrency} from "@/contexts/CurrencyContext";
 
 interface MetalPrice {
   metal: string;
@@ -35,6 +36,7 @@ export default function MetalsPricing() {
   // Use shared prices from context - no more individual fetching!
   const { prices: contextPrices, isLoading, error, lastUpdated, refetch } = useMetalPrices();
   const [marketStatus, setMarketStatus] = useState(getMarketStatus())
+  const { formatPrice, currency } = useCurrency()
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,13 +56,6 @@ export default function MetalsPricing() {
     };
   });
 
-  const formatPrice = (value: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
 
   const formatDateTime = (date: Date) => {
     return date.toLocaleString("en-AU", {
@@ -138,7 +133,7 @@ export default function MetalsPricing() {
               {/* Metal Name and Unit */}
               <div className="flex items-start justify-between mb-6">
                 <h2 className="text-lg font-semibold">{metal.metal}</h2>
-                <span className="text-xs text-gray-500">USD/oz</span>
+                <span className="text-xs text-gray-500">/oz</span>
               </div>
 
               {/* Price */}

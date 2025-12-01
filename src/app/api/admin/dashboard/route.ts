@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
+import { requireAdmin } from '@/lib/auth/admin';
 
 const logger = createLogger('ADMIN_DASHBOARD_API');
 
@@ -16,6 +17,9 @@ const supabase = createClient(
 );
 
 export async function GET(req: NextRequest) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck.authorized) return adminCheck.error;
+
   try {
     // Fetch pending document verifications
     const { data: pendingDocs, error: docsError } = await supabase

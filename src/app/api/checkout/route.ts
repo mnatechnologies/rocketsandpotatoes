@@ -7,6 +7,9 @@ import { createLogger } from '@/lib/utils/logger';
 // import { createServerSupabase } from "@/lib/supabase/server";
 import { screenCustomer } from "@/lib/compliance/screening";
 import { generateSMR } from "@/lib/compliance/smr-generator";
+import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
+import { fetchFxRate } from '@/lib/metals-api/metalsApi';
+
 
 /* eslint-disable */
 
@@ -27,8 +30,24 @@ export async function POST(req: NextRequest) {
         }
     );
   
-  const { customerId, amount, productDetails } = await (req as any).json();
-  logger.log('Request data:', { customerId, amount, productDetails });
+  const { customerId, amount, currency = 'USD', productDetails, cartItems } = await (req as any).json();
+  logger.log('Request data:', { customerId, amount, currency, productDetails });
+
+  // Convert amount to AUD for compliance checks (Australian regulations require AUD)
+  let amountInAUD = amount;
+  if (currency === 'USD') {
+    try {
+      const fxResult = await fetchFxRate('USD', 'AUD');
+      amountInAUD = amount * fxResult.rate;
+      logger.log(`Converted ${amount} USD to ${amountInAUD.toFixed(2)} AUD (rate: ${fxResult.rate})`);
+    } catch (error) {
+      logger.error('Failed to fetch FX rate, using fallback:', error);
+      // Fallback rate if API fails
+      amountInAUD = amount * 1.57;
+      logger.log(`Using fallback rate: ${amount} USD = ${amountInAUD.toFixed(2)} AUD`);
+    }
+  }
+  logger.log('Amount for compliance checks (AUD):', amountInAUD);
 
   try {
     const sanctionsResult = await screenCustomer(customerId);
@@ -52,11 +71,22 @@ export async function POST(req: NextRequest) {
         description: 'Transaction blocked due to sanctions match',
         metadata: {
           amount,
+          currency,
+          amountInAUD,
           matches: sanctionsResult.matches,
         },
         created_at: new Date().toISOString(),
       });
 
+      // Send compliance alert
+      await sendSanctionsMatchAlert({
+        customerId,
+        customerName: sanctionsResult.screenedName,
+        matchedEntity: sanctionsResult.matches[0].name,
+        matchScore: sanctionsResult.matches[0].matchScore,
+        source: sanctionsResult.matches[0].source,
+        transactionAmount: amount,
+      });
 
       return Response.json({
         status: 'blocked',
@@ -77,8 +107,8 @@ export async function POST(req: NextRequest) {
 
 
 
-  // 1. Check compliance thresholds
-  const requirements = await getComplianceRequirements(customerId, amount);
+  // 1. Check compliance thresholds (using AUD amount for Australian regulations)
+  const requirements = await getComplianceRequirements(customerId, amountInAUD);
   logger.log('Compliance requirements:', requirements);
 
   // 2. Get customer data
@@ -113,19 +143,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  if (requirements.requiresTTR) {
-    logger.log('TTR required for transaction over $10,000');
-    return NextResponse.json({
-      status: 'ttr_required',
-      message: 'Threshold Transaction Report required for transactions over $10,000',
-      requirements,
-      riskScore: 0,
-      riskLevel: "undefined",
-    });
-  }
 
-  // 4. Check for structuring
-  const isStructuring = await detectStructuring(customerId, amount);
+  // 4. Check for structuring (using AUD amount for threshold comparison)
+  const isStructuring = await detectStructuring(customerId, amountInAUD);
   logger.log('Structuring detection result:', isStructuring);
 
   // 5. Calculate risk score
@@ -138,7 +158,7 @@ export async function POST(req: NextRequest) {
 
  // @ts-ignore
   const riskScore = calculateRiskScore({
-   transactionAmount: amount,
+   transactionAmount: amountInAUD,
    customerAge: Math.floor((Date.now() - new Date(customer.created_at).getTime()) / (1000 * 60 * 60 * 24)),
    previousTransactionCount: previousTransactions?.length || 0,
    isInternational: customer?.residential_address?.country !== 'AU',
@@ -154,6 +174,76 @@ export async function POST(req: NextRequest) {
   const requiresReview = riskLevel === 'high' || customer.risk_level === "high" || isStructuring || requirements.requiresEnhancedDD;
   logger.log('Requires manual review:', requiresReview);
 
+  if (requiresReview) {
+    const flagReasons = [];
+    if (isStructuring) flagReasons.push('Potential structuring detected');
+    if (riskLevel === 'high') flagReasons.push('High risk score');
+    if (customer.risk_level === 'high') flagReasons.push('High risk customer');
+    if (requirements.requiresEnhancedDD) flagReasons.push('Enhanced due diligence required');
+    if (previousTransactions && previousTransactions.length >= 3) {
+      flagReasons.push('Multiple recent transactions detected');
+    }
+
+    logger.log('🚩 Creating flagged transaction record:', flagReasons);
+
+    const { data: flaggedTransaction, error: flagError } = await supabase
+      .from('transactions')
+      .insert({
+        customer_id: customerId,
+        transaction_type: 'purchase',
+        amount: amount,
+        currency: currency,
+        product_type: productDetails?.name || 'Multiple items',
+        product_details: {
+          items: cartItems || [productDetails],
+          mainProduct: productDetails,
+          currency: currency,
+        },
+        payment_status: 'pending_review',
+        flagged_for_review: true,
+        review_status: 'pending',
+        review_notes: flagReasons.join('; '),
+        requires_kyc: requirements.requiresKYC,
+        requires_ttr: requirements.requiresTTR,
+        requires_enhanced_dd: requirements.requiresEnhancedDD,
+        // ✅ Store the reason for flagging
+        metadata: {
+          flagReasons,
+          riskScore,
+          riskLevel,
+          isStructuring,
+          previousTransactionCount: previousTransactions?.length || 0,
+          amountInAUD,
+        },
+      })
+      .select()
+      .single();
+
+    if (flagError) {
+      logger.error('Failed to create flagged transaction:', flagError);
+    } else {
+      logger.log('✅ Flagged transaction created:', flaggedTransaction.id);
+
+      // Create audit log
+      await supabase.from('audit_logs').insert({
+        action_type: 'transaction_flagged',
+        entity_type: 'transaction',
+        entity_id: flaggedTransaction.id,
+        description: `Transaction flagged for review: ${flagReasons.join(', ')}`,
+        metadata: {
+          customer_id: customerId,
+          amount,
+          currency,
+          amountInAUD,
+          flagReasons,
+          riskScore,
+          riskLevel,
+        },
+        created_at: new Date().toISOString(),
+      });
+    }
+  }
+
   const response = {
     status: requiresReview ? 'requires_review' : 'approved',
     requirements,
@@ -163,6 +253,7 @@ export async function POST(req: NextRequest) {
       structuring: isStructuring,
       highValue: requirements.requiresEnhancedDD,
       highRisk: riskLevel === 'high',
+      multipleRecentTransactions: previousTransactions && previousTransactions.length >= 3,
     },
     message: requiresReview
       ? 'Transaction flagged for manual review'

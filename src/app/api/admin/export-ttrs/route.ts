@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exportPendingTTRs, markTTRsAsSubmitted, exportTTRsAsCSV } from '@/lib/compliance/ttr-generator';
+import { requireAdmin } from '@/lib/auth/admin';
 
 export async function GET(req: NextRequest) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck.authorized) return adminCheck.error;
+
   try {
     const format = req.nextUrl.searchParams.get('format') || 'json';
     const ttrRecords = await exportPendingTTRs();
@@ -42,6 +46,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck.authorized) return adminCheck.error;
+
   try {
     const { transactionIds, action } = await req.json();
 
@@ -53,7 +60,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await markTTRsAsSubmitted(transactionIds);
+      await markTTRsAsSubmitted(transactionIds, adminCheck.userId || undefined);
 
       return NextResponse.json({
         success: true,

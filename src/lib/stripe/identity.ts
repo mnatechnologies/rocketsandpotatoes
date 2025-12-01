@@ -2,6 +2,7 @@ import Stripe from 'stripe'
 import {createClient} from "@supabase/supabase-js";
 import { createLogger } from "@/lib/utils/logger";
 import {sanctionsScreening} from "@/lib/compliance/screening";
+import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
 /* eslint-disable */
 /*@ts-ignore */
 const logger = createLogger('STRIPE_IDENTITY');
@@ -199,12 +200,14 @@ export async function processVerificationResult(sessionId: string, customerId: s
           },
         });
 
-        // TODO: Send alert to compliance officer
-        // await sendComplianceAlert({
-        //   type: 'sanctions_match',
-        //   customerId,
-        //   matches: screeningResult.matches,
-        // });
+        // Send alert to compliance officer
+        await sendSanctionsMatchAlert({
+          customerId,
+          customerName: `${vo.first_name} ${vo.last_name}`,
+          matchedEntity: screeningResult.matches[0].name,
+          matchScore: screeningResult.matches[0].matchScore,
+          source: screeningResult.matches[0].source,
+        });
       } else {
         // Customer is clear
         await logAuditEvent({

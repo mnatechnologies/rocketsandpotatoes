@@ -1,10 +1,9 @@
-import { Resend } from 'resend';
-import { render } from  '@react-email/render'
+import { render } from '@react-email/render';
 import OrderConfirmationEmail from '@/emails/OrderConfirmationEmail';
 import { createLogger } from '@/lib/utils/logger';
+import { sendEmail } from './ses';
 
 const logger = createLogger('EMAIL');
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface OrderEmailData {
   orderNumber: string;
@@ -30,22 +29,19 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData) {
   try {
     const emailHtml = await render(OrderConfirmationEmail(data));
 
-    const { data: emailData, error } = await resend.emails.send({
-      from: 'Australian National Bullion <onboarding@resend.dev>',
-     // TODO FIX EMAIL SENDER,
-      // to: [data.customerEmail] removed for dev,
-      to: 'devops@mnatechnologies.com.au',
+    const result = await sendEmail({
+      to: data.customerEmail,
       subject: `Order Confirmation - ${data.orderNumber}`,
-      html: emailHtml
+      html: emailHtml,
     });
 
-    if (error) {
-      logger.error('Error sending order confirmation:', error);
-      throw error;
+    if (!result.success) {
+      logger.error('Error sending order confirmation:', result.error);
+      return { success: false, error: result.error };
     }
 
-    logger.log('Order confirmation sent successfully:', emailData);
-    return { success: true, emailId: emailData?.id };
+    logger.log('Order confirmation sent successfully:', result.messageId);
+    return { success: true, emailId: result.messageId };
   } catch (error) {
     logger.error('Failed to send order confirmation:', error);
     return { success: false, error };

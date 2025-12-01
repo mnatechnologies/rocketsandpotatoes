@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import {
   SignInButton,
@@ -9,9 +9,11 @@ import {
   SignedIn,
   SignedOut,
   UserButton,
+  useUser,
 } from '@clerk/nextjs';
 import {ShoppingCartIcon} from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import CurrencySelector from "@/components/CurrencySelector";
 
 
 export default function Header() {
@@ -19,7 +21,11 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [tickerHeight, setTickerHeight] = useState(56);
   const { getCartCount } = useCart();
-  const cartCount = getCartCount()
+  const cartCount = getCartCount();
+  const { user } = useUser();
+  
+  // Check if user has admin role
+  const isAdmin = user?.publicMetadata?.role === 'admin';
 
 
 
@@ -73,13 +79,21 @@ export default function Header() {
     };
   }, [tickerHeight]);
 
-  const navItems = [
-    { name: "Products", href: "/products" },
-    { name: "Pricing", href: "/#pricing" },
-    { name: "About", href: "/#about" },
-    { name: "Contact", href: "/#contact" },
-    { name: "Admin", href: '/admin'}
-  ];
+  const navItems = useMemo(() => {
+    const items = [
+      { name: "Products", href: "/products" },
+      { name: "Pricing", href: "/#pricing" },
+      { name: "About", href: "/#about" },
+      { name: "Contact", href: "/#contact" },
+    ];
+    
+    // Only show Admin link to users with admin role
+    if (isAdmin) {
+      items.push({ name: "Admin", href: '/admin' });
+    }
+    
+    return items;
+  }, [isAdmin]);
 
   return (
       <nav
@@ -124,7 +138,7 @@ export default function Header() {
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center space-x-3 " >
-
+              <CurrencySelector />
               <Link href={'/cart'}>
                 <button className=" mt-2 relative cursor-pointer inline-flex items-center...">
                   <ShoppingCartIcon/>
@@ -191,6 +205,10 @@ export default function Header() {
                         {item.name}
                       </Link>
                   ))}
+                  <div className="py-2">
+                  <CurrencySelector />
+                </div>
+
                   <Link href={'/cart'}>
                     <button className=" cursor-pointer inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
                       <ShoppingCartIcon/>

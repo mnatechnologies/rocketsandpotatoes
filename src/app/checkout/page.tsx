@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,82 +6,36 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { CheckoutFlow } from '@/components/CheckoutFlow';
 import { Product } from '@/types/product';
-import {CartItem, useCart} from '@/contexts/CartContext';
+import { useCart} from '@/contexts/CartContext';
 import {formatRemainingTime} from "@/lib/pricing/pricingTimer";
 import { createLogger } from '@/lib/utils/logger';
+import {useCurrency} from "@/contexts/CurrencyContext";
 
 const logger = createLogger('CHECKOUT_PAGE');
 
 export default function CheckoutPage() {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const { getLockedPriceForProduct, isTimerExpired, timerRemaining } = useCart();
-  useEffect(() => {
-    logger.log('Checkout page mounted');
-    
-    if (!isLoaded) {
-      logger.log('User auth not loaded yet');
-      return;
-    }
+  const { formatPrice, currency, convertPrice } = useCurrency();
 
+  const { getLockedPriceForProduct, isTimerExpired, timerRemaining, cart, customerId, isLoading: cartLoading, sessionId } = useCart();
+
+  useEffect(() => {
+    if (!isLoaded) return;
     if (!user) {
-      logger.log('User not authenticated, redirecting to sign-in');
       router.push('/sign-in?redirect_url=/checkout');
       return;
     }
     if (isTimerExpired) {
-      logger.log('Price lock expired, redirecting to cart');
-      alert('⏰ Your price lock has expired. Please refresh prices in your cart.');
+      alert('Your price lock has expired. Please refresh prices in your cart.');
       router.push('/cart');
       return;
     }
-
-    logger.log('User authenticated:', user.id);
-    fetchCustomerId();
-    loadCart();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoaded, router, isTimerExpired]);
-
-  const fetchCustomerId = async () => {
-    if (!user) return;
-
-    logger.log('Fetching customer ID for Clerk user:', user.id);
-    try {
-      const response = await fetch('/api/customer');
-      if (!response.ok) {
-        throw new Error('Failed to fetch customer data');
-      }
-      const data = await response.json();
-      logger.log('Customer data fetched:', data);
-      setCustomerId(data.id);
-    } catch (error) {
-      logger.error('Error fetching customer ID:', error);
-      // If customer doesn't exist yet, the webhook might not have processed
-      // We'll create a temporary flow or wait
-      alert('Please wait a moment while we set up your account, then try again.');
-    }
-  };
-
-  const loadCart = () => {
-    logger.log('Loading cart from localStorage');
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        logger.log('Cart loaded:', parsedCart);
-        setCart(parsedCart);
-      } catch (error) {
-        logger.error('Error parsing cart:', error);
-      }
-    } else {
-      logger.log('No cart found, redirecting to cart page');
+    if (cart.length === 0 && !cartLoading) {
       router.push('/cart');
+      return;
     }
-    setLoading(false);
-  };
+  }, [user, isLoaded, router, isTimerExpired, cart.length, cartLoading]);
 
   const getTotalAmount = () => {
     const total = cart.reduce((sum, item) => {
@@ -91,6 +46,20 @@ export default function CheckoutPage() {
     }, 0);
     logger.log('Total amount calculated with locked prices:', total);
     return total;
+  };
+
+  // Get converted total for display and payment
+  const getConvertedTotal = () => {
+    return convertPrice(getTotalAmount());
+  };
+
+  // Get AUD equivalent for compliance threshold display
+  const getAmountInAUDForThresholds = () => {
+    if (currency === 'AUD') {
+      return getTotalAmount();
+    }
+    // If in USD, convert to AUD for compliance display (approx rate)
+    return getTotalAmount() * 1.57;
   };
 
   const getMainProduct = (): Product | null => {
@@ -106,7 +75,7 @@ export default function CheckoutPage() {
     return sorted[0]?.product || null;
   };
 
-  if (loading || !isLoaded) {
+  if ( !isLoaded || cartLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -165,6 +134,8 @@ export default function CheckoutPage() {
     );
   }
 
+  const amountInAUD = getAmountInAUDForThresholds();
+
   return (
     <div className="min-h-screen bg-background/50 py-12">
       <div className="max-w-4xl mx-auto px-4">
@@ -192,9 +163,7 @@ export default function CheckoutPage() {
                     {item.product.name} x {item.quantity}
                   </span>
                   <span className="font-semibold">
-                    ${(displayPrice * item.quantity).toLocaleString('en-AU', {
-                    minimumFractionDigits: 2
-                    })}
+                    {formatPrice(displayPrice * item.quantity)} {currency}
                   </span>
                 </div>
               );
@@ -202,7 +171,7 @@ export default function CheckoutPage() {
             <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
               <span>Total</span>
               <span>
-                ${getTotalAmount().toLocaleString('en-AU', { minimumFractionDigits: 2 })} USD
+                {formatPrice(getTotalAmount())} {currency}
               </span>
             </div>
           </div>
@@ -214,7 +183,7 @@ export default function CheckoutPage() {
           <p className="text-sm text-blue-800">
             All precious metal transactions are subject to Australian compliance requirements.
             Your order will be verified for anti-money laundering (AML) compliance.
-            {getTotalAmount() >= 5000 && (
+            {amountInAUD >= 5000 && (
               <span className="block mt-2 font-semibold">
                 ⚠️ Transactions over $5,000 AUD require identity verification (KYC).
               </span>
@@ -227,10 +196,11 @@ export default function CheckoutPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Payment & Verification</h2>
           <CheckoutFlow
             customerId={customerId}
-            amount={getTotalAmount()}
+            amount={getConvertedTotal()}
             productDetails={mainProduct}
             cartItems={cart}
             customerEmail={user?.primaryEmailAddress?.emailAddress}
+            sessionId={sessionId}
             onSuccess={(orderId) => {
               logger.log('Payment successful, redirecting to confirmation');
               router.push(`/order-confirmation?orderId=${orderId}`);

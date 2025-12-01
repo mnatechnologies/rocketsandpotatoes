@@ -9,8 +9,10 @@ import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { ShoppingCartIcon } from "lucide-react";
 import { createLogger } from '@/lib/utils/logger'
+import { useCurrency } from '@/contexts/CurrencyContext'
 
 const logger = createLogger('PRODUCT_CLIENT')
+
 interface ProductsClientProps {
     products: Product[];
     categoryNames: Record<string, string>;
@@ -27,7 +29,8 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name'>('price-asc');
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
-    
+    const [selectedFormType, setSelectedFormType] = useState<string>('all');
+
     // Use shared metal prices from context
     const { prices: metalPrices, isLoading: loadingPrices, error, lastUpdated } = useMetalPrices();
     const priceError = error ? 'Using static prices' : null;
@@ -94,6 +97,10 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         if (selectedCategory !== 'all') {
             filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
         }
+        
+        if (selectedCategory === 'Gold' && selectedFormType !== 'all') {
+            filtered = filtered.filter(p => p.form_type === selectedFormType);
+        }
 
         // Sort products - use calculated_price if available
         const sorted = [...filtered].sort((a, b) => {
@@ -113,12 +120,13 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         });
 
         return sorted;
-    }, [productsWithPricing, searchQuery, selectedCategory, sortBy]);
+    }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType]);
 
     // Group by category for display
     const productsByCategory = useMemo(() => {
         return filteredProducts.reduce((acc, product) => {
             const category = product.category || 'other';
+
             if (!acc[category]) {
                 acc[category] = [];
             }
@@ -195,6 +203,38 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                   ))}
               </div>
 
+              {selectedCategory === 'Gold' && (
+                <div className="flex gap-2 ml-4">
+                    <button 
+                    onClick={() => setSelectedFormType('all')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
+                      selectedFormType === 'all'
+                        ? 'bg-yellow-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    >
+                        All Gold</button>
+                    <button 
+                    onClick={() => setSelectedFormType('cast')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
+                      selectedFormType === 'cast'
+                        ? 'bg-yellow-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    >
+                        Cast Bars</button>
+                    <button 
+                    onClick={() => setSelectedFormType('minted')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
+                      selectedFormType === 'minted'
+                        ? 'bg-yellow-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    >
+                        Minted Tablets</button>
+                </div>
+            )}
+
               {/* Results Count */}
               <div className="text-gray-600">
                   Showing {filteredProducts.length} of {productsWithPricing.length} products
@@ -228,6 +268,8 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
 
 function ProductCard({ product, loadingPrices, lastUpdated }: { product: ProductWithDynamicPrice; loadingPrices: boolean; lastUpdated: Date }) {
+    const { formatPrice, currency } = useCurrency();
+
     const displayPrice = product.calculated_price ?? product.price;
 
     const formatDateTime = (date: Date) => {
@@ -280,7 +322,7 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
                   {product.spot_price_per_gram && (
                     <div className="flex justify-between text-xs text-gray-500">
                         <span>Spot/gram:</span>
-                        <span>${product.spot_price_per_gram.toFixed(2)}</span>
+                        <span>{formatPrice(product.spot_price_per_gram)}</span>
                     </div>
                   )}
               </div>
@@ -305,9 +347,8 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
                       ) : (
                         <>
                             <div className="text-2xl font-bold text-gray-900">
-                                ${displayPrice.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                                {formatPrice(displayPrice)} {currency}
                             </div>
-                            <div className="text-xs text-gray-500">USD</div>
                             <div className="text-xs text-green-600 font-medium mt-1">
                                 ✓ Live Market Price
                             </div>

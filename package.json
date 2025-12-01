@@ -25,6 +25,7 @@
     "ttrsmr-report-test": "dotenvx run --env-file=.env.development -- tsx src/scripts/quick-test.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.940.0",
     "@clerk/nextjs": "^6.33.7",
     "@icons-pack/react-simple-icons": "^13.8.0",
     "@ngrok/ngrok": "^1.5.2",
@@ -39,7 +40,6 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-email": "^5.0.4",
-    "resend": "^6.5.0",
     "stripe": "^19.1.0",
     "svix": "^1.77.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"

@@ -83,7 +83,8 @@ export async function GET(
       id: order.id,
       amount: order.amount,
       status: order.payment_status,
-      customer_id: order.customer_id
+      customer_id: order.customer_id,
+      review_status: order.review_status
     });
 
     // Format the response
@@ -99,9 +100,12 @@ export async function GET(
       payment_status: order.payment_status,
       status: order.payment_status,
       stripe_payment_intent_id: order.stripe_payment_intent_id,
-      requires_kyc: order.requires_kyc,
-      requires_ttr: order.requires_ttr,
-      flagged_for_review: order.flagged_for_review,
+      requires_kyc: order.requires_kyc || false,
+      requires_ttr: order.requires_ttr || false,
+      flagged_for_review: order.flagged_for_review || false,
+      review_status: order.review_status || null, // Ensure this is always present
+      review_notes: order.review_notes || null,
+      reviewed_at: order.reviewed_at || null,
       created_at: order.created_at,
       updated_at: order.updated_at,
       customer: {

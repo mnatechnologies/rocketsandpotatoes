@@ -15,6 +15,7 @@ export interface Product {
     stock: boolean;
     image_url: string;
     metal_type: MetalSymbol;
+    form_type?: 'cast' | 'minted' | null;
     created_at?: string;
     updated_at?: string;
   }

@@ -1,36 +1,47 @@
 "use client";
-
+import Link from 'next/link'
 import Image from "next/image";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { createLogger } from "@/lib/utils/logger";
+
+
+const logger = createLogger('HERO');
+
+interface MetalPrice {
+  metal: string;
+  price: number;
+  change: number;
+  changePercent: number;
+}
 
 export default function Hero() {
   // Use shared prices from context
-  const { prices: contextPrices, isLoading } = useMetalPrices();
+  const { prices: contextPrices, isLoading, error } = useMetalPrices();
+  const { formatPrice, currency } = useCurrency();
 
-  // Get Gold and Silver prices (in USD, need to convert to AUD)
-  const goldPrice = contextPrices.find(p => p.symbol === 'XAU')?.price || 0;
-  const silverPrice = contextPrices.find(p => p.symbol === 'XAG')?.price || 0;
+  const prices: MetalPrice[] = contextPrices.map((quote) => {
+    const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
+    return {
+      metal: metalInfo.ticker,
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent
+    };
+  });
 
-  // Convert USD to AUD (approximate conversion rate - you may want to make this dynamic)
-  const USD_TO_AUD = 1.53; // Update this rate as needed
-  const goldAUD = goldPrice * USD_TO_AUD;
-  const silverAUD = silverPrice * USD_TO_AUD;
+  // Get Gold and Silver prices (prices are in USD from API)
+  const goldPrice = prices.find(p => p.metal === 'XAU')?.price || 0;
+  const silverPrice = prices.find(p => p.metal === 'XAG')?.price || 0;
 
-  const formatPrice = (value: number) => {
-    if (value === 0 || isLoading) return '---';
-    return new Intl.NumberFormat("en-AU", {
-      style: "currency",
-      currency: "AUD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  logger.log('Hero prices:', { goldPrice, silverPrice, currency, isLoading });
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 lg:pt-40">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
-        <Image 
+        <Image
           src="/hero-bullion.jpg"
           alt="Premium bullion and precious metals"
           fill
@@ -57,10 +68,10 @@ export default function Hero() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <a href="/products" className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">
+              <Link href="/products" className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95">
                 Shop Now
                 <svg className="ml-2 h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              </a>
+              </Link>
               <a href="#pricing" className="inline-flex items-center justify-center px-6 py-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
                 View Live Prices
               </a>
@@ -98,22 +109,40 @@ export default function Hero() {
                 <div className="space-y-6">
                   <div className="text-center">
                     <h3 className="text-2xl font-bold mb-2">Market Overview</h3>
-                    <p className="text-muted-foreground">Australian Market</p>
+                    <p className="text-muted-foreground">Live Spot Prices</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div className="bg-card/50 rounded-lg p-4">
-                      <div className={`text-2xl font-bold text-primary ${isLoading ? 'animate-pulse' : ''}`}>
-                        {formatPrice(goldAUD)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Gold AUD/oz</div>
+
+                  {error ? (
+                    <div className="text-center text-destructive text-sm">
+                      Unable to load prices
                     </div>
-                    <div className="bg-card/50 rounded-lg p-4">
-                      <div className={`text-2xl font-bold text-secondary ${isLoading ? 'animate-pulse' : ''}`}>
-                        {formatPrice(silverAUD)}
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div className="bg-card/50 rounded-lg p-4">
+                        <div className={`text-2xl font-bold text-primary ${isLoading ? 'animate-pulse' : ''}`}>
+                          {isLoading ? '---' : formatPrice(goldPrice)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Gold/oz</div>
+                        {!isLoading && goldPrice > 0 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {currency}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-sm text-muted-foreground">Silver AUD/oz</div>
+                      <div className="bg-card/50 rounded-lg p-4">
+                        <div className={`text-2xl font-bold text-secondary ${isLoading ? 'animate-pulse' : ''}`}>
+                          {isLoading ? '---' : formatPrice(silverPrice)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Silver/oz</div>
+                        {!isLoading && silverPrice > 0 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {currency}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
                   <div className="text-center">
                     <a href="#pricing" className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-primary text-primary-foreground shadow-gold transition-smooth hover:opacity-95 w-full">
                       View Full Pricing
@@ -126,7 +155,7 @@ export default function Hero() {
         </div>
       </div>
 
-      {/*/!* Scroll indicator *!/*/}
+      {/* Scroll indicator */}
       {/*<div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">*/}
       {/*  <div className="w-6 h-10 border-2 border-primary/30 rounded-full flex justify-center">*/}
       {/*    <div className="w-1 h-3 bg-primary rounded-full mt-2"></div>*/}

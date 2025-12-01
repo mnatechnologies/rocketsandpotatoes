@@ -130,15 +130,15 @@ function TransactionReviewCard({
 
       {/* Risk Indicators */}
       <div className="flex gap-2 mb-4 flex-wrap">
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-          transaction.risk_level === 'high'
-            ? 'bg-red-100 text-red-800'
-            : transaction.risk_level === 'medium'
-              ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-green-100 text-green-800'
-        }`}>
-          Risk: {transaction.risk_level.toUpperCase()} ({transaction.risk_score})
-        </span>
+        {/*<span className={`px-3 py-1 rounded-full text-sm font-medium ${*/}
+        {/*  transaction.risk_level === 'high'*/}
+        {/*    ? 'bg-red-100 text-red-800'*/}
+        {/*    : transaction.risk_level === 'medium'*/}
+        {/*      ? 'bg-yellow-100 text-yellow-800'*/}
+        {/*      : 'bg-green-100 text-green-800'*/}
+        {/*}`}>*/}
+        {/*  Risk: {transaction.risk_level.toUpperCase()} ({transaction.risk_score})*/}
+        {/*</span>*/}
 
         {transaction.amount >= 10000 && (
           <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">

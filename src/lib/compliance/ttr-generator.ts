@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { calculateTTRDeadline } from "./deadline-utils";
 
 interface TTRData {
   transactionId: string;
@@ -141,6 +142,9 @@ export async function generateTTR(data: TTRData) {
 
   // Generate TTR reference immediately
   const ttrReference = `TTR-${Date.now()}-${data.transactionId.slice(0, 8)}`;
+  
+  // Calculate submission deadline (10 business days)
+  const deadline = calculateTTRDeadline(new Date(data.transactionDate));
 
   const { data: transaction, error } = await supabase
     .from('transactions')
@@ -165,12 +169,13 @@ export async function generateTTR(data: TTRData) {
     throw new Error('Transaction not found');
   }
 
-  // Store TTR reference BEFORE formatting
+  // Store TTR reference and deadline BEFORE formatting
   await supabase
     .from('transactions')
     .update({
       ttr_reference: ttrReference,
       ttr_generated_at: new Date().toISOString(),
+      ttr_submission_deadline: deadline.toISOString(),
     })
     .eq('id', data.transactionId);
 
@@ -216,7 +221,7 @@ export async function exportPendingTTRs() {
 }
 
 // ✅ Mark TTRs as submitted
-export async function markTTRsAsSubmitted(transactionIds: string[]) {
+export async function markTTRsAsSubmitted(transactionIds: string[], submittedBy?: string) {
   const supabase = getSupabaseClient();
 
   const { error } = await supabase
@@ -228,6 +233,20 @@ export async function markTTRsAsSubmitted(transactionIds: string[]) {
 
   if (error) {
     throw new Error(`Failed to mark TTRs as submitted: ${error.message}`);
+  }
+
+  // Log audit event for each TTR
+  for (const transactionId of transactionIds) {
+    await supabase.from('audit_logs').insert({
+      action_type: 'ttr_submitted',
+      entity_type: 'transaction',
+      entity_id: transactionId,
+      description: 'TTR marked as submitted to AUSTRAC',
+      metadata: {
+        submitted_by: submittedBy,
+        submitted_at: new Date().toISOString(),
+      },
+    });
   }
 
   return { success: true };

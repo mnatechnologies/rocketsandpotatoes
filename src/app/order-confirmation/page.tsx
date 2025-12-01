@@ -167,22 +167,31 @@ function OrderConfirmationContent() {
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">Order Items</h3>
             <div className="space-y-3">
-              {items.map((item: any, index: number) => (
-                <div key={index} className="flex justify-between items-start py-2 border-b">
-                  <div>
-                    <p className="font-medium text-gray-900">{item.product?.name || item.name}</p>
-                    <p className="text-sm text-gray-600">
-                      {item.product?.weight || item.weight} • {item.product?.purity || item.purity}
+              {items.map((item: any, index: number) => {
+                // ✅ Handle both nested and flat structures
+                const itemPrice = item.price || item.product?.price;
+                const itemQuantity = item.quantity || 1;
+                const itemName = item.name || item.product?.name;
+                const itemWeight = item.weight || item.product?.weight;
+                const itemPurity = item.purity || item.product?.purity;
+
+                return (
+                  <div key={index} className="flex justify-between items-start py-2 border-b">
+                    <div>
+                      <p className="font-medium text-gray-900">{itemName}</p>
+                      <p className="text-sm text-gray-600">
+                        {itemWeight} • {itemPurity}
+                      </p>
+                      <p className="text-sm text-gray-600">Qty: {itemQuantity}</p>
+                    </div>
+                    <p className="font-semibold text-gray-900">
+                      ${(itemPrice * itemQuantity).toLocaleString('en-AU', {
+                      minimumFractionDigits: 2,
+                    })} {order.currency || 'AUD'}
                     </p>
-                    {item.quantity && <p className="text-sm text-gray-600">Qty: {item.quantity}</p>}
                   </div>
-                  <p className="font-semibold text-gray-900">
-                    ${((item.product?.price || item.price) * (item.quantity || 1)).toLocaleString('en-AU', {
-                    minimumFractionDigits: 2,
-                  })}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

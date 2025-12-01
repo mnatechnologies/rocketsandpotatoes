@@ -11,7 +11,6 @@ import {
   getLockedPrice,
   clearPricingTimer,
   isTimerActive,
-  type LockedPrice
 } from '@/lib/pricing/pricingTimer';
 import { createLogger } from '@/lib/utils/logger';
 
@@ -26,6 +25,7 @@ export interface CartItem {
 interface CartContextType {
   cart: CartItem[];
   addToCart: (product: Product, quantity?: number) => void;
+  addToCartById: (productId: string) => Promise<boolean>;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -38,11 +38,14 @@ interface CartContextType {
   isTimerExpired: boolean;
   customerId: string | null;
   customerEmail: string | null;
+  sessionId: string | null;
+  lockPricesOnServer: (products: Product[]) => Promise<any>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'cart';
+const SESSION_ID_KEY = 'cart_session_id'
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded: isUserLoaded } = useUser();
@@ -52,6 +55,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [timerFormatted, setTimerFormatted] = useState('00:00');
   const [isTimerExpired, setIsTimerExpired] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
 
   // Fetch customer ID from Supabase when user is loaded
   useEffect(() => {
@@ -83,31 +88,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [user, isUserLoaded]);
 
+  useEffect(() => {
+    let id = localStorage.getItem(SESSION_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(SESSION_ID_KEY, id);
+    }
+    setSessionId(id);
+  }, []);
+
   // Load cart from localStorage on mount
   useEffect(() => {
-  const loadCart = () => {
-    try {
-      let savedCart = localStorage.getItem(CART_STORAGE_KEY);
-
-      // Fallback to sessionStorage if localStorage is empty
-      if (!savedCart) {
-        savedCart = sessionStorage.getItem(CART_STORAGE_KEY);
+    const loadCart = () => {
+      try {
+        const savedCart = localStorage.getItem(CART_STORAGE_KEY);
         if (savedCart) {
-          logger.log('Restored cart from sessionStorage');
+          const parsedCart = JSON.parse(savedCart);
+          setCart(parsedCart);
+          logger.log('Cart loaded:', parsedCart.length, 'items');
         }
+      } catch (error) {
+        logger.error('Error loading cart:', error);
+      } finally {
+        setIsLoading(false);
       }
-
-      if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        setCart(parsedCart);
-        logger.log('Cart loaded:', parsedCart.length, 'items');
-      }
-    } catch (error) {
-      logger.error('Error loading cart:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
     loadCart();
   }, []);
 
@@ -115,7 +120,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading) {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-      sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)); // ADD THIS
+
       window.dispatchEvent(new Event('cartUpdated'));
       logger.log(' Cart saved to localStorage:', cart.length, 'items');
     }
@@ -190,6 +195,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addToCartById = useCallback(async (productId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/products/${productId}`);
+      if (!response.ok) {
+        throw new Error('Product not found');
+      }
+      const product: Product = await response.json();
+  
+      const trimmedImageUrl = product.image_url?.trim();
+      const fullImageUrl = trimmedImageUrl
+        ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
+        : '/anblogo.png';
+  
+      const productWithUrl: Product = {
+        ...product,
+        image_url: fullImageUrl
+      };
+  
+      addToCart(productWithUrl, 1);
+      return true;
+    } catch (error) {
+      logger.error('Error adding product by ID:', error);
+      return false;
+    }
+  }, [addToCart]);
+
   const removeFromCart = useCallback((productId: string) => {
     setCart((prevCart) => {
       const filtered = prevCart.filter((item) => item.product.id !== productId);
@@ -221,12 +252,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
     logger.log(` Updated quantity for product ${productId} to ${quantity}`);
   }, [removeFromCart]);
 
-  const clearCart = useCallback(() => {
+  const clearCart = useCallback( async () => {
     setCart([]);
     localStorage.removeItem(CART_STORAGE_KEY);
+    sessionStorage.removeItem(CART_STORAGE_KEY);
     clearPricingTimer();
-    logger.log( 'Cart cleared');
-  }, []);
+    if (sessionId) {
+      try {
+        await fetch('/api/products/pricing', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId }),
+        });
+      } catch (error) {
+        logger.error('Error clearing server locks:', error);
+      }
+    }
+    
+    logger.log('Cart cleared');
+  }, [sessionId]);
 
   const getCartTotal = useCallback(() => {
     return cart.reduce((total, item) => {
@@ -245,10 +289,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const lockedPrice = getLockedPrice(productId);
     return lockedPrice?.price ?? null;
   }, []);
+  
+  const lockPricesOnServer = useCallback(async (products: Product[]) => {
+    if (!sessionId || products.length === 0) return null;
+  
+    try {
+      const response = await fetch('/api/products/pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          customerId: customerId || undefined,
+          products: products.map(p => ({ productId: p.id })),
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to lock prices');
+      }
+  
+      const data = await response.json();
+      logger.log('Server price lock created:', data);
+      
+      // Update local locked prices with server values
+      if (data.lockedPrices) {
+        lockPrices(data.lockedPrices.map((lp: { productId: string; price: number }) => ({
+          productId: lp.productId,
+          price: lp.price,
+        })));
+      }
+  
+      return data;
+    } catch (error) {
+      logger.error('Error locking prices on server:', error);
+      return null;
+    }
+  }, [sessionId, customerId]);
 
   const value: CartContextType = {
     cart,
     addToCart,
+    addToCartById,
     removeFromCart,
     updateQuantity,
     clearCart,
@@ -261,6 +342,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     isTimerExpired,
     customerId,
     customerEmail: user?.primaryEmailAddress?.emailAddress ?? null,
+    sessionId,
+    lockPricesOnServer,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

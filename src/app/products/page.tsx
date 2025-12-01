@@ -19,15 +19,15 @@ export default function ProductsPage() {
         const data = await response.json();
 
         // Transform with image URLs
-        const productsWithUrls = data.map((product: { image_url: string; }) => {
+        const productsWithUrls = data.map((product:  { category: string; image_url: string; form_type: string; }) => {
           const trimmedImageUrl = product.image_url?.trim();
           const imageUrl = trimmedImageUrl
-            ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/${trimmedImageUrl}`
-            : null;
+          ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`            : null;
           return { ...product, image_url: imageUrl };
         });
 
         setProducts(productsWithUrls);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         logger.error('Error fetching products:', err);
         setError(err);
@@ -58,14 +58,11 @@ export default function ProductsPage() {
     );
   }
 
-  const categoryNames = {
-    gold_bars: 'Gold Bars',
-    gold_coins: 'Gold Coins',
-    silver_bars: 'Silver Bars',
-    silver_coins: 'Silver Coins',
-    platinum_bars: 'Platinum Bars',
-    platinum_coins: 'Platinum Coins',
-    palladium_bars: 'Palladium Bars',
+  const categoryNames: Record<string, string> = {
+    Gold: 'Gold',
+    Silver: 'Silver',
+    Platinum: 'Platinum',
+    Palladium: 'Palladium',
     other: 'Other Products',
   };
 

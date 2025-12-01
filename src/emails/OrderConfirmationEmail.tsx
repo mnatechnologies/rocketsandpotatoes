@@ -15,6 +15,7 @@ import {
 } from '@react-email/components';
 
 
+
 interface OrderConfirmationEmailProps {
   orderNumber: string;
   customerName: string;
@@ -35,8 +36,13 @@ interface OrderConfirmationEmailProps {
   requiresTTR?: boolean;
 }
 
+function formatEmailPrice(amount: number, currency: string): string {
+  const symbol = currency === 'AUD' ? 'A$' : '$';
+  return `${symbol}${amount.toFixed(2)}`;
+}
+
 export default function OrderConfirmationEmail({
- orderNumber = 'ORD-123456',
+  orderNumber = 'ORD-123456',
  customerName = 'John Doe',
  customerEmail = 'customer@example.com',
  orderDate = new Date().toLocaleDateString('en-AU', {
@@ -47,11 +53,13 @@ export default function OrderConfirmationEmail({
  items = [],
  subtotal = 0,
  total = 0,
- currency = 'AUD',
- paymentMethod = 'Card',
+ currency,
+  paymentMethod = 'Card',
  requiresKYC = false,
  requiresTTR = false,
 }: OrderConfirmationEmailProps) {
+
+
   return (
     <Html>
       <Head />
@@ -126,7 +134,7 @@ export default function OrderConfirmationEmail({
                   </Column>
                   <Column style={itemPriceColumn}>
                     <Text style={itemPrice}>
-                      ${item.price.toFixed(2)} {currency}
+                      {formatEmailPrice(item.price, currency)}
                     </Text>
                   </Column>
                 </Row>

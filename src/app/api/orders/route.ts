@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
       product_details: {
         items: cartItems || [productDetails],
         mainProduct: productDetails,
+        currency: currency
       },
       stripe_payment_intent_id: stripePaymentIntentId,
       payment_method: paymentMethod,

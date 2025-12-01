@@ -31,6 +31,13 @@ interface metalsQuote {
   lastUpdated?: string
 }
 
+interface FxRateResponse {
+  success: boolean;
+  base: string;
+  rates: Record<string, number>;
+  timestamp?: number;
+}
+
 const getHistoricalDates = (days = 14) => {
   const results: string[] = [];
   const today = new Date()
@@ -156,5 +163,36 @@ export const fetchMetalsQuotes = async (
     }
   })
 }
+
+export const fetchFxRate = async (from: string, to: string): Promise<{ rate: number; timestamp: string }> => {
+  const apiKey = process.env.METALPRICEAPI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('METALPRICEAPI_API_KEY environment variable is not set');
+  }
+
+  logger.log('💱 Fetching FX rate:', `${from} → ${to}`);
+
+  const params = new URLSearchParams({
+    api_key: apiKey,
+    base: from,
+    currencies: to,
+  });
+
+  const data = await fetchJson<FxRateResponse>(`${API_HOST}/latest?${params}`);
+
+  const rate = data.rates[to];
+  if (typeof rate !== 'number') {
+    throw new Error(`Failed to fetch ${from}/${to} exchange rate`);
+  }
+
+  const timestamp = data.timestamp
+    ? new Date(data.timestamp * 1000).toISOString()
+    : new Date().toISOString();
+
+  logger.log(`✓ FX Rate ${from}/${to}: ${rate.toFixed(4)} (${timestamp})`);
+
+  return { rate, timestamp };
+};
 
 export const getMetalInfo = (symbol: MetalSymbol): MetalInfo => METAL_LOOKUP[symbol];

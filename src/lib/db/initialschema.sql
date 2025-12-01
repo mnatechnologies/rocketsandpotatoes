@@ -362,16 +362,9 @@ SELECT
 --     )
 --   );
 
--- Manual verification requirements table
-CREATE TABLE verification_requirements (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  customer_id UUID REFERENCES customers (id) ON DELETE CASCADE,
-  verification_method VARCHAR(50),
-  is_complete BOOLEAN DEFAULT FALSE,
-  required_documents JSONB,
-  submitted_documents JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- DEPRECATED: verification_requirements table removed
+-- Data now stored in identity_verifications.verification_checks JSONB field
+-- DROP TABLE IF EXISTS verification_requirements;
 
 
 // for clerk integration
@@ -469,3 +462,143 @@ CREATE INDEX IF NOT EXISTS idx_customers_source_of_funds
 ALTER TABLE transactions
 ADD COLUMN IF NOT EXISTS source_of_funds_checked BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS source_of_funds_check_date TIMESTAMPTZ;
+
+-- Add TTR deadline tracking
+ALTER TABLE transactions
+ADD COLUMN IF NOT EXISTS ttr_submission_deadline TIMESTAMPTZ;
+
+-- Add SMR deadline tracking
+ALTER TABLE suspicious_activity_reports
+ADD COLUMN IF NOT EXISTS submission_deadline TIMESTAMPTZ;
+
+-- Index for deadline queries
+CREATE INDEX IF NOT EXISTS idx_transactions_ttr_deadline
+    ON transactions(ttr_submission_deadline)
+    WHERE requires_ttr = true AND ttr_submitted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_smr_deadline
+    ON suspicious_activity_reports(submission_deadline)
+    WHERE status IN ('pending', 'under_review');
+
+-- PEP Declaration columns
+ALTER TABLE customers
+ADD COLUMN IF NOT EXISTS pep_relationship VARCHAR(50),
+ADD COLUMN IF NOT EXISTS pep_declared_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS requires_enhanced_dd BOOLEAN DEFAULT FALSE;
+
+-- Index for PEP customers
+CREATE INDEX IF NOT EXISTS idx_customers_pep
+    ON customers(is_pep)
+    WHERE is_pep = true;
+
+-- Index for customers requiring EDD
+CREATE INDEX IF NOT EXISTS idx_customers_edd
+    ON customers(requires_enhanced_dd)
+    WHERE requires_enhanced_dd = true;
+
+-- Enhanced Due Diligence (EDD) submissions table
+CREATE TABLE IF NOT EXISTS customer_edd (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    customer_id UUID REFERENCES customers(id),
+    
+    -- Source of Wealth (different from source of funds)
+    source_of_wealth VARCHAR(100) NOT NULL,
+    source_of_wealth_details TEXT,
+    
+    -- Transaction purpose
+    transaction_purpose VARCHAR(100) NOT NULL,
+    transaction_purpose_details TEXT,
+    
+    -- Expected transaction frequency
+    expected_frequency VARCHAR(50) NOT NULL,
+    expected_annual_volume VARCHAR(50),
+    
+    -- Additional documentation
+    additional_documents JSONB,
+    
+    -- Review status
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'under_review', 'approved', 'rejected')),
+    reviewed_by UUID,
+    reviewed_at TIMESTAMPTZ,
+    review_notes TEXT,
+    
+    -- Timestamps
+    submitted_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    CONSTRAINT unique_customer_edd UNIQUE (customer_id)
+);
+
+-- Add EDD completion tracking to customers
+ALTER TABLE customers
+ADD COLUMN IF NOT EXISTS edd_completed BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS edd_completed_at TIMESTAMPTZ;
+
+-- Index for pending EDD reviews
+CREATE INDEX IF NOT EXISTS idx_customer_edd_status
+    ON customer_edd(status)
+    WHERE status IN ('pending', 'under_review');
+
+-- Add screening_type column to sanctions_screenings
+ALTER TABLE sanctions_screenings
+ADD COLUMN IF NOT EXISTS screening_type VARCHAR(50) DEFAULT 'transaction';
+
+CREATE TABLE price_locks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID REFERENCES customers(id),
+  session_id VARCHAR(255) NOT NULL,  -- For guest users
+  
+  -- Lock details
+  product_id UUID REFERENCES products(id),
+  locked_price DECIMAL(15, 2) NOT NULL,
+  spot_price_per_gram DECIMAL(15, 4),
+  metal_type VARCHAR(10),
+
+  
+  -- Timing
+  locked_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,  -- locked_at + 15 minutes
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'used', 'expired')),
+  used_at TIMESTAMPTZ,
+  payment_intent_id VARCHAR(255),
+  
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_price_locks_session ON price_locks(session_id, status);
+CREATE INDEX idx_price_locks_customer ON price_locks(customer_id, status);
+CREATE INDEX idx_price_locks_expires ON price_locks(expires_at) WHERE status = 'active';
+
+ALTER TABLE products ADD COLUMN metal_type VARCHAR(10);
+
+UPDATE products SET metal_type = 'XAU' WHERE category = 'Gold';
+UPDATE products SET metal_type = 'XAG' WHERE category = 'Silver';
+UPDATE products SET metal_type = 'XPT' WHERE category = 'Platinum';
+UPDATE products SET metal_type = 'XPD' WHERE category = 'Palladium';
+
+ALTER TABLE products ADD CONSTRAINT chk_metal_type 
+CHECK (metal_type IN ('XAU', 'XAG', 'XPT', 'XPD'));
+
+ALTER TABLE products ADD COLUMN form_type VARCHAR(20);
+-- Values: 'cast', 'minted', NULL (for non-gold)
+
+ALTER TABLE price_locks ADD COLUMN currency VARCHAR(3) DEFAULT 'AUD';
+ALTER TABLE price_locks ALTER COLUMN currency SET NOT NULL;
+
+
+ALTER TABLE transactions
+ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
+
+CREATE INDEX IF NOT EXISTS idx_transactions_metadata ON transactions USING gin(metadata);
+
+COMMENT ON COLUMN transactions.metadata IS 'Stores additional transaction data including flag reasons, risk scores, and compliance details';
+
+ALTER TABLE customers
+ADD COLUMN IF NOT EXISTS last_transaction_reviewed_at TIMESTAMPTZ;
+
+-- Add index for performance
+CREATE INDEX IF NOT EXISTS idx_customers_last_transaction_reviewed
+ON customers(last_transaction_reviewed_at);

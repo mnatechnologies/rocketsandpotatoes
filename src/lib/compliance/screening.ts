@@ -260,3 +260,95 @@ export async function screenCustomer(customerId: string): Promise<ScreeningResul
 
   return result;
 }
+
+/**
+ * Re-screen all active customers against sanctions list
+ * Used by weekly cron job for ongoing monitoring
+ */
+export interface RescreeningResult {
+  totalCustomers: number;
+  screened: number;
+  newMatches: number;
+  errors: number;
+  matchedCustomerIds: string[];
+}
+
+export async function rescreenAllCustomers(): Promise<RescreeningResult> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  const result: RescreeningResult = {
+    totalCustomers: 0,
+    screened: 0,
+    newMatches: 0,
+    errors: 0,
+    matchedCustomerIds: [],
+  };
+
+  // Get all customers who are not already flagged as sanctioned
+  const { data: customers, error } = await supabase
+    .from('customers')
+    .select('id, first_name, last_name, date_of_birth, is_sanctioned')
+    .eq('is_sanctioned', false);
+
+  if (error) {
+    logger.error('Failed to fetch customers for re-screening:', error);
+    throw new Error('Failed to fetch customers');
+  }
+
+  result.totalCustomers = customers?.length || 0;
+  logger.log(`Re-screening ${result.totalCustomers} customers...`);
+
+  for (const customer of customers || []) {
+    try {
+      const screeningResult = await sanctionsScreening(
+        customer.first_name,
+        customer.last_name,
+        customer.date_of_birth
+      );
+
+      // Save screening result
+      await supabase.from('sanctions_screenings').insert({
+        customer_id: customer.id,
+        screened_name: `${customer.first_name} ${customer.last_name}`,
+        screening_service: 'DFAT',
+        is_match: screeningResult.isMatch,
+        match_score: screeningResult.matches[0]?.matchScore || 0,
+        matched_entities: screeningResult.matches,
+        status: screeningResult.isMatch ? 'potential_match' : 'clear',
+        screened_at: new Date().toISOString(),
+        screening_type: 'periodic_rescreen',
+      });
+
+      result.screened++;
+
+      // If new match found
+      if (screeningResult.isMatch) {
+        result.newMatches++;
+        result.matchedCustomerIds.push(customer.id);
+
+        // Update customer as sanctioned
+        await supabase
+          .from('customers')
+          .update({ is_sanctioned: true })
+          .eq('id', customer.id);
+
+        logger.log(`⚠️ NEW MATCH: Customer ${customer.id} - ${customer.first_name} ${customer.last_name}`);
+      }
+    } catch (err) {
+      logger.error(`Error screening customer ${customer.id}:`, err);
+      result.errors++;
+    }
+  }
+
+  logger.log(`Re-screening complete: ${result.screened} screened, ${result.newMatches} new matches, ${result.errors} errors`);
+  return result;
+}
