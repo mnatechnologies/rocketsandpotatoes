@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       }
 
       const expectedTotalUSD = locks.reduce((sum, lock) => {
-        const cartItem = cartItems?.find(item => item.productId === lock.product_id);
+        const cartItem = cartItems?.find((item: { productId: any; }) => item.productId === lock.product_id);
         const quantity = cartItem?.quantity || 1;
         return sum + (Number(lock.locked_price) * quantity);
       }, 0);
