@@ -64,14 +64,13 @@ export async function GET(req: NextRequest) {
           .single();
 
         // Send alert
+        const firstMatch = screeningResult?.matched_entities?.[0];
         await sendSanctionsMatchAlert({
           customerId,
           customerName,
-          matchedEntities: (screeningResult?.matched_entities || []).map((m: { name: string; source: string; referenceNumber: string }) => ({
-            name: m.name,
-            source: m.source,
-            referenceNumber: m.referenceNumber,
-          })),
+          matchedEntity: firstMatch?.name || 'Unknown',
+          matchScore: firstMatch?.score || 0,
+          source: firstMatch?.source || 'Unknown',
         });
 
         logger.log(`SMR generated and alert sent for customer ${customerId}`);
@@ -122,6 +121,7 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
 
 
 
