@@ -24,6 +24,7 @@
     "import-sanctions": "npx dotenvx run --env-file=.env.development --  tsx src/scripts/import-dfat-sanctions.ts",
     "ttrsmr-report-test": "dotenvx run --env-file=.env.development -- tsx src/scripts/quick-test.ts"
   },
+
   "dependencies": {
     "@aws-sdk/client-ses": "^3.940.0",
     "@clerk/nextjs": "^6.33.7",

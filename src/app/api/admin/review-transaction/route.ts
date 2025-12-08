@@ -174,6 +174,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+
   // Log audit event
   await supabase.from('audit_logs').insert({
     action_type: 'transaction_reviewed',
@@ -206,6 +207,23 @@ export async function POST(req: NextRequest) {
       logger.error('Failed to send approval email:', emailError);
     }
   }
+
+  if (decision === 'reject') {
+    updateData.payment_status = 'rejected';
+
+    // Cancel payment intent if it exists
+    if (transaction.stripe_payment_intent_id) {
+      try {
+        await stripe.paymentIntents.cancel(transaction.stripe_payment_intent_id);
+        logger.log('Payment intent canceled:', transaction.stripe_payment_intent_id);
+      } catch (stripeError: any) {
+        // Log error but don't fail the whole operation
+        // Payment intent might already be canceled or in a non-cancelable state
+        logger.error('Failed to cancel payment intent (continuing with rejection):', stripeError.message);
+      }
+    }
+  }
+
 
   if (decision === 'reject') {
     try {

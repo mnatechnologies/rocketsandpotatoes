@@ -9,6 +9,7 @@ import { screenCustomer } from "@/lib/compliance/screening";
 import { generateSMR } from "@/lib/compliance/smr-generator";
 import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
 import { fetchFxRate } from '@/lib/metals-api/metalsApi';
+import {sendTransactionFlaggedAlert} from "@/lib/email/sendComplianceAlert";
 
 
 /* eslint-disable */
@@ -241,6 +242,17 @@ export async function POST(req: NextRequest) {
         },
         created_at: new Date().toISOString(),
       });
+
+      if (flaggedTransaction && customer) {
+        await sendTransactionFlaggedAlert({
+          transactionId: flaggedTransaction.id,
+          customerId: customerId,
+          customerName: `${customer.first_name} ${customer.last_name}`,
+          transactionAmount: amountInAUD,
+          flagReason: flagReasons.join(', '),
+        });
+      }
+
     }
   }
 
