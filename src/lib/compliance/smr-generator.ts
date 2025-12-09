@@ -1,6 +1,10 @@
 import {createClient} from "@supabase/supabase-js";
 import { sendSMRCreatedAlert } from "@/lib/email/sendComplianceAlert";
 import { calculateSMRDeadline } from "./deadline-utils";
+import { createLogger} from "@/lib/utils/logger";
+import {fetchFxRate} from "@/lib/metals-api/metalsApi";
+
+const logger = createLogger('SMR-GENERATOR')
 
 export async function generateSMR(data: {
   customerId: string;
@@ -21,6 +25,34 @@ export async function generateSMR(data: {
     }
   );
 
+  let transactionAmountAUD = data.transactionAmount;
+  let originalAmount: number | undefined;
+  let originalCurrency: string | undefined;
+
+  if (data.transactionId) {
+    const { data: transaction } = await supabase
+      .from('transactions')
+      .select('amount, amount_aud, currency')
+      .eq('id', data.transactionId)
+      .single();
+
+    originalAmount = transaction?.amount;
+    originalCurrency = transaction?.currency;
+
+    if (!transactionAmountAUD) {
+        transactionAmountAUD = transaction?.amount_aud;
+        if (!transactionAmountAUD && transaction) {
+          if (transaction.currency === 'USD') {
+            const fxResult = await fetchFxRate('USD', 'AUD');
+            transactionAmountAUD = transaction.amount * fxResult.rate;
+          } else {
+            transactionAmountAUD = transaction.amount; // Already AUD
+          }
+        }
+
+      }
+    }
+
   // Calculate submission deadline (3 business days)
   const deadline = calculateSMRDeadline(new Date());
 
@@ -33,6 +65,9 @@ export async function generateSMR(data: {
       report_type: 'SMR',
       suspicion_category: data.suspicionType,
       description: generateSMRNarrative(data),
+      transaction_amount_aud: transactionAmountAUD,
+      original_amount: originalAmount,
+      original_currency: originalCurrency,
       status: 'pending',
       flagged_by_system: true,
       submission_deadline: deadline.toISOString(),
@@ -53,6 +88,9 @@ export async function generateSMR(data: {
       transaction_id: data.transactionId,
       suspicion_type: data.suspicionType,
       indicators: data.indicators,
+      amount_aud: transactionAmountAUD,
+      original_amount: originalAmount,
+      original_currency: originalCurrency,
     },
   });
 

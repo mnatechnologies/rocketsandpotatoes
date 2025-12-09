@@ -34,16 +34,23 @@ export async function getComplianceRequirements(
 
   const { data: transactions } = await supabase
     .from('transactions')
-    .select('amount')
+    .select('amount_aud, amount, currency')
     .eq('customer_id', customerId)
-   // .eq('payment_status', 'succeeded'); // Only count successful transactions
+    .eq('payment_status', 'succeeded'); // Only count successful transactions
 
   console.log(transactions)
 
-  const lifetimeTotal = transactions?.reduce(
-    (sum, tx) => sum + parseFloat(tx.amount),
-    0
-  ) || 0;
+  const lifetimeTotal = transactions?.reduce((sum, tx) => {
+    // Use amount_aud if available, otherwise convert
+    let audAmount = tx.amount_aud;
+    if (!audAmount) {
+      // Legacy transaction without amount_aud - must convert
+      audAmount = tx.currency === 'USD' ? tx.amount * 1.57 : tx.amount;
+    }
+    return sum + audAmount;
+  }, 0) || 0;
+
+
 
   const newCumulativeTotal = lifetimeTotal + currentAmount;
 

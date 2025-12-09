@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exportPendingTTRs, markTTRsAsSubmitted, exportTTRsAsCSV } from '@/lib/compliance/ttr-generator';
 import { requireAdmin } from '@/lib/auth/admin';
+import { revalidatePath} from 'next/cache'
 
 export async function GET(req: NextRequest) {
   const adminCheck = await requireAdmin();
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest) {
       }
 
       await markTTRsAsSubmitted(transactionIds, adminCheck.userId || undefined);
+      revalidatePath('/admin');
+      revalidatePath('/admin/ttr-reports');
 
       return NextResponse.json({
         success: true,

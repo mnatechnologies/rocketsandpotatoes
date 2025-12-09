@@ -20,7 +20,7 @@ export async function detectStructuring(
   );
   const {data: recentTransactions} = await supabase
     .from('transactions')
-    .select('amount, created_at')
+    .select('amount_aud, amount, created_at')
     .eq('customer_id', customerId)
     .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
     .order('created_at', {ascending: false});
@@ -31,12 +31,12 @@ export async function detectStructuring(
 // to review
 // tx = transaction. getting lazy
   const suspiciousTransactions = recentTransactions.filter(
-    tx => tx.amount >=4000 && tx.amount <  5000
+    tx => tx.amount_aud >=4000 && tx.amount_aud <  5000
   );
 
   if (suspiciousTransactions.length >= 3) return true;
 
-  const totalRecent = recentTransactions.reduce((sum, tx) => sum +parseFloat(tx.amount.toString()), 0);
+  const totalRecent = recentTransactions.reduce((sum, tx) => sum +parseFloat(tx.amount_aud.toString()), 0);
 
   if (totalRecent + currentAmount >= 10000 && suspiciousTransactions.length >= 2) {
 

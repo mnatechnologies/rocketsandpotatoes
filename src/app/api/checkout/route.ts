@@ -36,15 +36,18 @@ export async function POST(req: NextRequest) {
 
   // Convert amount to AUD for compliance checks (Australian regulations require AUD)
   let amountInAUD = amount;
+  let fxRate = 1
   if (currency === 'USD') {
     try {
       const fxResult = await fetchFxRate('USD', 'AUD');
-      amountInAUD = amount * fxResult.rate;
+      fxRate = fxResult.rate;
+      amountInAUD = amount * fxRate
       logger.log(`Converted ${amount} USD to ${amountInAUD.toFixed(2)} AUD (rate: ${fxResult.rate})`);
     } catch (error) {
       logger.error('Failed to fetch FX rate, using fallback:', error);
       // Fallback rate if API fails
-      amountInAUD = amount * 1.57;
+      fxRate = 1.57
+      amountInAUD = amount * fxRate;
       logger.log(`Using fallback rate: ${amount} USD = ${amountInAUD.toFixed(2)} AUD`);
     }
   }
@@ -194,6 +197,7 @@ export async function POST(req: NextRequest) {
         transaction_type: 'purchase',
         amount: amount,
         currency: currency,
+        amount_aud: amountInAUD,
         product_type: productDetails?.name || 'Multiple items',
         product_details: {
           items: cartItems || [productDetails],
@@ -215,6 +219,7 @@ export async function POST(req: NextRequest) {
           isStructuring,
           previousTransactionCount: previousTransactions?.length || 0,
           amountInAUD,
+          fxRate: fxRate
         },
       })
       .select()

@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('ADMIN DASHBOARD')
 interface DashboardStats {
   pendingDocuments: number;
   flaggedTransactions: number;
@@ -20,7 +22,25 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Initial fetch
     fetchDashboardStats();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchDashboardStats();
+      }
+    };
+    const handleFocus = () => {
+      fetchDashboardStats();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -28,13 +48,21 @@ export default function AdminDashboard() {
     setError(null);
 
     try {
-      const response = await fetch('/api/admin/dashboard');
-      
+      const response = await fetch(`/api/admin/dashboard?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
+
+
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard statistics');
       }
 
       const data = await response.json();
+      logger.log()
       setStats(data);
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard');
@@ -133,7 +161,7 @@ export default function AdminDashboard() {
             />
             <StatCard
               title="Transaction Value"
-              value={`$${(stats?.totalTransactionValue || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              value={` AUD $${(stats?.totalTransactionValue || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               subtitle="Last 30 days"
               icon="💵"
               color="indigo"

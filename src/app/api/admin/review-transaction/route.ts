@@ -13,6 +13,7 @@ const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
   apiVersion: '2025-09-30.clover',
 });
 
+
 export async function POST(req: NextRequest) {
   const adminCheck = await requireAdmin();
   if (!adminCheck.authorized) return adminCheck.error;
@@ -55,9 +56,21 @@ export async function POST(req: NextRequest) {
     decision,
   });
 
+  // ✅ Fetch transaction with amount_aud
   const { data: transaction, error: fetchError } = await supabase
     .from('transactions')
-    .select('*, customer:customers(id, email, first_name, last_name, clerk_user_id, requires_enhanced_dd, edd_completed)')
+    .select(`
+      *,
+      customer:customers(
+        id, 
+        email, 
+        first_name, 
+        last_name, 
+        clerk_user_id, 
+        requires_enhanced_dd, 
+        edd_completed
+      )
+    `)
     .eq('id', transactionId)
     .single();
 
@@ -66,14 +79,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
   }
 
-  // If approving, create payment intent if it doesn't exist
+  // ✅ Validate amount_aud exists
+  if (!transaction.amount_aud) {
+    logger.error('Transaction missing amount_aud field');
+    return NextResponse.json(
+      { error: 'Transaction data incomplete - missing AUD amount' },
+      { status: 500 }
+    );
+  }
+
   let paymentIntentId = transaction.stripe_payment_intent_id;
 
   if (decision === 'approve' && !paymentIntentId) {
     try {
       logger.log('Creating payment intent for approved transaction');
 
-      // Get or create Stripe customer
       let stripeCustomerId: string | undefined;
 
       if (transaction.customer?.email) {
@@ -98,15 +118,18 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Create PaymentIntent
+      // ✅ Create PaymentIntent using AUD amount (compliance requirement)
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(transaction.amount * 100), // Convert to cents
-        currency: transaction.currency.toLowerCase(),
+        amount: Math.round(transaction.amount_aud * 100), // Use AUD amount
+        currency: 'aud', // Always AUD for compliance
         customer: stripeCustomerId,
         automatic_payment_methods: {
           enabled: true,
         },
         metadata: {
+          original_amount: transaction.amount,
+          original_currency: transaction.currency,
+          amount_aud: transaction.amount_aud,
           supabase_customer_id: transaction.customer_id,
           clerk_user_id: transaction.customer?.clerk_user_id,
           transaction_id: transactionId,
@@ -114,7 +137,11 @@ export async function POST(req: NextRequest) {
       });
 
       paymentIntentId = paymentIntent.id;
-      logger.log('Payment intent created:', paymentIntentId);
+      logger.log('Payment intent created:', paymentIntentId, {
+        amountAUD: transaction.amount_aud,
+        originalAmount: transaction.amount,
+        originalCurrency: transaction.currency,
+      });
     } catch (stripeError) {
       logger.error('Error creating payment intent:', stripeError);
       return NextResponse.json(
@@ -124,7 +151,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Update transaction
   const updateData: any = {
     review_status: decision === 'approve' ? 'approved' : 'rejected',
     review_notes: notes,
@@ -136,6 +162,19 @@ export async function POST(req: NextRequest) {
     updateData.payment_status = 'pending_payment';
     if (paymentIntentId) {
       updateData.stripe_payment_intent_id = paymentIntentId;
+    }
+  }
+
+  if (decision === 'reject') {
+    updateData.payment_status = 'rejected';
+
+    if (transaction.stripe_payment_intent_id) {
+      try {
+        await stripe.paymentIntents.cancel(transaction.stripe_payment_intent_id);
+        logger.log('Payment intent canceled:', transaction.stripe_payment_intent_id);
+      } catch (stripeError: any) {
+        logger.error('Failed to cancel payment intent (continuing with rejection):', stripeError.message);
+      }
     }
   }
 
@@ -154,13 +193,11 @@ export async function POST(req: NextRequest) {
       last_transaction_reviewed_at: new Date().toISOString(),
     };
 
-    // If customer required EDD and has completed it, mark as no longer requiring it
     if (transaction.customer.requires_enhanced_dd && transaction.customer.edd_completed) {
       customerUpdateData.requires_enhanced_dd = false;
       logger.log('Clearing EDD requirement for customer:', transaction.customer.id);
     }
 
-    // Update customer record
     const { error: customerUpdateError } = await supabase
       .from('customers')
       .update(customerUpdateData)
@@ -168,12 +205,10 @@ export async function POST(req: NextRequest) {
 
     if (customerUpdateError) {
       logger.error('Error updating customer state:', customerUpdateError);
-      // Don't fail the whole operation, just log it
     } else {
       logger.log('Customer state updated successfully');
     }
   }
-
 
   // Log audit event
   await supabase.from('audit_logs').insert({
@@ -189,41 +224,33 @@ export async function POST(req: NextRequest) {
       admin_email: adminCustomer.email,
       admin_name: `${adminCustomer.first_name} ${adminCustomer.last_name}`,
       payment_intent_id: paymentIntentId,
+      amount_aud: transaction.amount_aud,
+      original_amount: transaction.amount,
+      original_currency: transaction.currency,
     },
   });
 
   if (decision === 'approve') {
     try {
+      // ✅ Send approval email with both amounts for transparency
       await sendTransactionApprovedEmail({
         customerEmail: transaction.customer.email,
         customerName: `${transaction.customer.first_name} ${transaction.customer.last_name}`,
         transactionId: transaction.id,
         amount: transaction.amount,
         currency: transaction.currency,
+        amountAUD: transaction.amount_aud, // Include AUD amount
         paymentLink: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/resume?transactionId=${transaction.id}`,
       });
-      logger.log('✅ Approval email sent to customer', `${process.env.NEXT_PUBLIC_APP_URL}/checkout/resume?transactionId=${transaction.id}`);
+      logger.log('✅ Approval email sent to customer', {
+        email: transaction.customer.email,
+        paymentLink: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/resume?transactionId=${transaction.id}`,
+        amountAUD: transaction.amount_aud,
+      });
     } catch (emailError) {
       logger.error('Failed to send approval email:', emailError);
     }
   }
-
-  if (decision === 'reject') {
-    updateData.payment_status = 'rejected';
-
-    // Cancel payment intent if it exists
-    if (transaction.stripe_payment_intent_id) {
-      try {
-        await stripe.paymentIntents.cancel(transaction.stripe_payment_intent_id);
-        logger.log('Payment intent canceled:', transaction.stripe_payment_intent_id);
-      } catch (stripeError: any) {
-        // Log error but don't fail the whole operation
-        // Payment intent might already be canceled or in a non-cancelable state
-        logger.error('Failed to cancel payment intent (continuing with rejection):', stripeError.message);
-      }
-    }
-  }
-
 
   if (decision === 'reject') {
     try {
@@ -233,6 +260,7 @@ export async function POST(req: NextRequest) {
         transactionId: transaction.id,
         amount: transaction.amount,
         currency: transaction.currency,
+        amountAUD: transaction.amount_aud, // Include AUD amount
         reason: notes,
       });
       logger.log('✅ Rejection email sent to customer');

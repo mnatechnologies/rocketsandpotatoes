@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { requireAdmin } from '@/lib/auth/admin';
+import { fetchFxRate } from '@/lib/metals-api/metalsApi';
+
 
 const logger = createLogger('ADMIN_DASHBOARD_API');
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,13 +77,12 @@ export async function GET(req: NextRequest) {
       logger.error('Error fetching verified customers:', verifiedError);
     }
 
-    // Fetch recent transactions (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const { data: recentTransactions, error: recentTxError } = await supabase
       .from('transactions')
-      .select('amount, created_at')
+      .select('amount, amount_aud, currency, created_at')
       .gte('created_at', thirtyDaysAgo.toISOString())
       .order('created_at', { ascending: false });
 
@@ -86,11 +90,23 @@ export async function GET(req: NextRequest) {
       logger.error('Error fetching recent transactions:', recentTxError);
     }
 
-    // Calculate total transaction value
-    const totalTransactionValue = recentTransactions?.reduce(
-      (sum, tx) => sum + parseFloat(tx.amount.toString()),
-      0
-    ) || 0;
+    // Get current FX rate for any USD transactions without amount_aud
+    let usdToAudRate = 1.57; // Fallback
+    try {
+      const fxResult = await fetchFxRate('USD', 'AUD');
+      usdToAudRate = fxResult.rate;
+      logger.log(`Using current FX rate: ${usdToAudRate}`);
+    } catch (error) {
+      logger.error('Failed to fetch FX rate, using fallback:', error);
+    }
+
+    // Calculate total transaction value in AUD
+    const totalTransactionValue = recentTransactions?.reduce((sum, tx) => {
+      // Prefer stored amount_aud, otherwise convert using current rate
+      const audAmount = tx.amount_aud || (tx.currency === 'USD' ? tx.amount * usdToAudRate : tx.amount);
+      return sum + audAmount;
+    }, 0) || 0;
+
 
     // Fetch suspicious activity reports
     const { count: suspiciousReports, error: sarError } = await supabase
