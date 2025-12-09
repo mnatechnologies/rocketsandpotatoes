@@ -52,51 +52,39 @@ export async function POST(req: NextRequest) {
         logger.log('Payment succeeded:', paymentIntent.id);
 
         // Find transaction by payment intent ID
-        const { data: transaction, error: txError } = await supabase
+        const { data: existingTransaction, error: findError } = await supabase
           .from('transactions')
           .select('*')
           .eq('stripe_payment_intent_id', paymentIntent.id)
           .single();
 
-        if (txError || !transaction) {
-          logger.error('Transaction not found for payment intent:', paymentIntent.id, txError);
-
-          // Create a new transaction record if one doesn't exist (edge case)
-          const { error: insertError } = await supabase
-            .from('transactions')
-            .insert({
-              customer_id: paymentIntent.metadata.supabase_customer_id,
-              transaction_type: 'purchase',
-              amount: paymentIntent.amount / 100,
-              currency: paymentIntent.currency.toUpperCase(),
-              stripe_payment_intent_id: paymentIntent.id,
-              payment_method: paymentIntent.payment_method as string,
-              payment_status: 'completed',
-              created_at: new Date().toISOString(),
-            });
-
-          if (insertError) {
-            logger.error('Failed to create transaction:', insertError);
-          }
-          break;
+        if (!existingTransaction) {
+          logger.error('⚠️ Transaction not found for payment intent:', paymentIntent.id);
+          // Log error but don't create duplicate
+          await supabase.from('audit_logs').insert({
+            action_type: 'payment_intent_orphaned',
+            entity_type: 'payment_intent',
+            entity_id: paymentIntent.id,
+            description: 'Payment succeeded but no transaction found',
+            metadata: { paymentIntentId: paymentIntent.id, amount: paymentIntent.amount },
+          });
+          return NextResponse.json({ received: true }); // Acknowledge webhook
         }
 
+
         // Update transaction status to completed
-        const { error: updateError } = await supabase
-          .from('transactions')
-          .update({
-            payment_status: 'completed',
-            payment_method: paymentIntent.payment_method as string,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', transaction.id);
+        const { error: updateError } = await supabase.from('transactions').update({
+          payment_status: 'succeeded',
+          payment_method: paymentIntent.payment_method,
+          updated_at: new Date().toISOString(),
+        }).eq('id', existingTransaction.id);
 
         if (updateError) {
           logger.error('Failed to update transaction:', updateError);
           break;
         }
 
-        logger.log('Transaction updated to completed:', transaction.id);
+        logger.log('Transaction updated to completed:', existingTransaction.id);
 
         // Mark price locks as used
         if (paymentIntent.metadata.session_id) {
@@ -112,7 +100,7 @@ export async function POST(req: NextRequest) {
         await supabase.from('audit_logs').insert({
           action_type: 'payment_completed',
           entity_type: 'transaction',
-          entity_id: transaction.id,
+          entity_id: existingTransaction.id,
           description: `Payment completed via Stripe: ${paymentIntent.id}`,
           metadata: {
             payment_intent_id: paymentIntent.id,
@@ -127,13 +115,13 @@ export async function POST(req: NextRequest) {
         const { data: customer } = await supabase
           .from('customers')
           .select('*')
-          .eq('id', transaction.customer_id)
+          .eq('id', existingTransaction.customer_id)
           .single();
 
         if (customer) {
           // Send order confirmation email
           try {
-            const emailItems = (transaction.product_details?.items || []).map((item: any) => ({
+            const emailItems = (existingTransaction.product_details?.items || []).map((item: any) => ({
               name: item.product?.name || item.name || 'Unknown Product',
               quantity: item.quantity || 1,
               price: (item.product?.calculated_price || item.product?.price || item.price || 0) * (item.quantity || 1),
@@ -142,21 +130,21 @@ export async function POST(req: NextRequest) {
             }));
 
             await sendOrderConfirmationEmail({
-              orderNumber: transaction.id,
+              orderNumber: existingTransaction.id,
               customerName: `${customer.first_name} ${customer.last_name}`,
               customerEmail: customer.email,
-              orderDate: new Date(transaction.created_at).toLocaleDateString('en-AU', {
+              orderDate: new Date(existingTransaction.created_at).toLocaleDateString('en-AU', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
               }),
               items: emailItems,
-              subtotal: transaction.amount,
-              total: transaction.amount,
-              currency: transaction.currency.toUpperCase(),
+              subtotal: existingTransaction.amount,
+              total: existingTransaction.amount,
+              currency: existingTransaction.currency.toUpperCase(),
               paymentMethod: paymentIntent.payment_method_types?.[0] || 'card',
-              requiresKYC: transaction.requires_kyc || false,
-              requiresTTR: transaction.requires_ttr || false,
+              requiresKYC: existingTransaction.requires_kyc || false,
+              requiresTTR: existingTransaction.requires_ttr || false,
             });
 
 
@@ -173,7 +161,7 @@ export async function POST(req: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         logger.log('Payment failed:', paymentIntent.id);
 
-        // Update transaction status to failed
+        // Update existingTransaction status to failed
         const { error: updateError } = await supabase
           .from('transactions')
           .update({

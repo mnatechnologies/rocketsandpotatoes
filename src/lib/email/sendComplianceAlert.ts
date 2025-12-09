@@ -28,6 +28,7 @@ interface TTRDeadlineAlertData {
   customerId: string;
   customerName: string;
   transactionAmount: number;
+  currency?: string;
   transactionDate: string;
   deadline: string;
   daysRemaining: number;
@@ -218,6 +219,9 @@ export async function sendSMRDeadlineAlert(data: {
   suspicionType: string;
   deadline: string;
   daysRemaining: number;
+  transactionCount?: number;
+  totalAmount?: number;
+  currency?: string;
 }) {
   const recipients = getComplianceAlertRecipients();
   

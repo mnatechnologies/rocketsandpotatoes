@@ -6,6 +6,8 @@ interface FlaggedTransaction {
   id: string;
   customer_id: string;
   amount: number;
+  currency: string;
+  amount_aud: number;
   created_at: string;
   risk_score: number;
   risk_level: string;
@@ -120,7 +122,15 @@ function TransactionReviewCard({
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-card-foreground">
-            ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+            <div className="text-xl font-bold">
+              AUD ${transaction.amount_aud?.toLocaleString('en-AU') || transaction.amount.toLocaleString('en-AU')}
+            </div>
+            {transaction.currency !== 'AUD' && (
+              <div className="text-sm text-gray-600">
+                Original: {transaction.currency} ${transaction.amount.toLocaleString()}
+              </div>
+            )}
+
           </div>
           <div className="text-sm text-muted-foreground">
             {new Date(transaction.created_at).toLocaleDateString('en-AU')}

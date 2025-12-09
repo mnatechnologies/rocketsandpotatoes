@@ -41,6 +41,8 @@ async function checkTTRDeadlines(): Promise<{ alertsSent: number; errors: string
         id,
         customer_id,
         amount,
+        amount_aud,
+        currency,
         created_at,
         ttr_submission_deadline,
         ttr_reference,
@@ -102,7 +104,8 @@ async function checkTTRDeadlines(): Promise<{ alertsSent: number; errors: string
         transactionId: ttr.id,
         customerId: ttr.customer_id,
         customerName,
-        transactionAmount: ttr.amount,
+        transactionAmount: ttr.amount_aud,
+        currency: "AUD",
         transactionDate: new Date(ttr.created_at).toLocaleDateString('en-AU'),
         deadline: deadline.toLocaleDateString('en-AU', {
           weekday: 'long',
@@ -216,6 +219,7 @@ async function checkSMRDeadlines(): Promise<{ alertsSent: number; errors: string
       const result = await sendSMRDeadlineAlert({
         smrId: smr.id,
         customerName,
+        currency: "AUD",
         suspicionType: smr.suspicion_category,
         deadline: deadline.toLocaleDateString('en-AU', {
           weekday: 'long',

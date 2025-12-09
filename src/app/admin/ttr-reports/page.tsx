@@ -80,6 +80,8 @@ export default function TTRReportsPage() {
       alert('Records marked as submitted successfully');
       setSelectedRecords(new Set());
       fetchTTRRecords();
+
+      window.dispatchEvent(new Event('ttr-updated'));
     } catch (err: any) {
       alert(err.message || 'Failed to mark records as submitted');
     }
@@ -233,7 +235,13 @@ export default function TTRReportsPage() {
                           {record.customer_name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
-                          ${record.transaction_amount.toLocaleString()} {record.transaction_currency}
+                          <div>AUD ${record.transaction_amount.toLocaleString()}</div>
+                          {record.original_currency && record.original_currency !== 'AUD' && (
+                            <div className="text-sm text-gray-500">
+                              ({record.original_currency} ${record.original_amount?.toLocaleString()})
+                            </div>
+                          )}
+
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
                           {record.verification_method}

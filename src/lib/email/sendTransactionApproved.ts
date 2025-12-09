@@ -9,18 +9,20 @@ interface TransactionApprovedEmailProps {
   customerName: string;
   transactionId: string;
   amount: number;
+  amountAUD: number;
   currency: string;
   paymentLink: string;
 }
 
 export async function sendTransactionApprovedEmail({
-                                                     customerEmail,
-                                                     customerName,
-                                                     transactionId,
-                                                     amount,
-                                                     currency,
-                                                     paymentLink,
-                                                   }: TransactionApprovedEmailProps) {
+   customerEmail,
+   customerName,
+   transactionId,
+   amount,
+   amountAUD,
+   currency,
+   paymentLink,
+ }: TransactionApprovedEmailProps) {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #16a34a;">✅ Transaction Approved</h2>

@@ -9,6 +9,7 @@ interface TransactionRejectedEmailProps {
   customerName: string;
   transactionId: string;
   amount: number;
+  amountAUD: number
   currency: string;
   reason: string;
 }
