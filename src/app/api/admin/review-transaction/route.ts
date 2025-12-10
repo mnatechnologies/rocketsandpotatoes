@@ -193,9 +193,14 @@ export async function POST(req: NextRequest) {
       last_transaction_reviewed_at: new Date().toISOString(),
     };
 
-    if (transaction.customer.requires_enhanced_dd && transaction.customer.edd_completed) {
-      customerUpdateData.requires_enhanced_dd = false;
-      logger.log('Clearing EDD requirement for customer:', transaction.customer.id);
+    if (transaction.requires_enhanced_dd) {
+      if (!transaction.customer.edd_completed) {
+        customerUpdateData.requires_enhanced_dd = true;
+      logger.log('Setting EDD requirement for customer:', transaction.customer.id);
+    } else {
+        customerUpdateData.requires_enhanced_dd = false;
+        logger.log('Clearing EDD requirement for customer:', transaction.customer.id)
+      }
     }
 
     const { error: customerUpdateError } = await supabase
@@ -240,11 +245,11 @@ export async function POST(req: NextRequest) {
         amount: transaction.amount,
         currency: transaction.currency,
         amountAUD: transaction.amount_aud, // Include AUD amount
-        paymentLink: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/resume?transactionId=${transaction.id}`,
+        paymentLink: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resume?transactionId=${transaction.id}`,
       });
       logger.log('✅ Approval email sent to customer', {
         email: transaction.customer.email,
-        paymentLink: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/resume?transactionId=${transaction.id}`,
+        paymentLink: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/resume?transactionId=${transaction.id}`,
         amountAUD: transaction.amount_aud,
       });
     } catch (emailError) {

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
     }
 
-    // Validate prices against server locks
+    // ✅ Validate prices against server locks (single source of truth - NO conversion!)
     if (sessionId) {
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
       const { data: locks, error: lockError } = await supabase
         .from('price_locks')
-        .select('*')
+        .select('product_id, locked_price_usd, locked_price_aud, currency, fx_rate')
         .eq('session_id', sessionId)
         .eq('status', 'active')
         .gt('expires_at', new Date().toISOString());
@@ -65,34 +65,39 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const expectedTotalUSD = locks.reduce((sum, lock) => {
+      // ✅ Get the currency these prices were locked in
+      const lockedCurrency = locks[0]?.currency || 'USD';
+
+      // ✅ Calculate expected total in the LOCKED currency (no conversion!)
+      const expectedTotal = locks.reduce((sum, lock) => {
         const cartItem = cartItems?.find((item: { productId: any; }) => item.productId === lock.product_id);
         const quantity = cartItem?.quantity || 1;
-        return sum + (Number(lock.locked_price) * quantity);
+
+        // Use the appropriate price field based on locked currency
+        const price = lockedCurrency === 'AUD' ? lock.locked_price_aud : lock.locked_price_usd;
+        return sum + (Number(price) * quantity);
       }, 0);
 
-// Convert submitted amount back to USD for validation
-      let submittedAmountUSD = amount;
-      if (currency.toLowerCase() === 'aud') {
-        // Fetch rate to convert back to USD for comparison
-        const fxResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/fx-rate?from=USD&to=AUD`);
-        if (fxResponse.ok) {
-          const fxData = await fxResponse.json();
-          if (fxData.success && fxData.rate > 0) {
-            // Convert AUD amount back to USD (divide by rate)
-            submittedAmountUSD = amount / fxData.rate;
-          }
-        }
+      // ✅ Ensure submitted currency matches locked currency
+      if (currency.toLowerCase() !== lockedCurrency.toLowerCase()) {
+        logger.log('Currency mismatch:', {
+          submittedCurrency: currency,
+          lockedCurrency,
+        });
+        return NextResponse.json(
+          { error: 'Currency mismatch. Please refresh prices and try again.' },
+          { status: 400 }
+        );
       }
 
-// Validate against USD locked prices with 1% tolerance for FX fluctuations
-      const tolerance = Math.max(0.01, expectedTotalUSD * 0.01);
-      if (Math.abs(submittedAmountUSD - expectedTotalUSD) > tolerance) {
-        logger.log('Price mismatch:', {
+      // ✅ Validate in SAME currency - NO conversion!
+      const tolerance = Math.max(0.01, expectedTotal * 0.01);
+      if (Math.abs(amount - expectedTotal) > tolerance) {
+        logger.log('❌ Price mismatch:', {
           submittedAmount: amount,
-          submittedAmountUSD,
-          expectedTotalUSD,
-          currency,
+          expectedTotal,
+          currency: lockedCurrency,
+          difference: (amount - expectedTotal).toFixed(2),
           tolerance
         });
         return NextResponse.json(
@@ -101,7 +106,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      logger.log('Price validation passed:', { submittedAmountUSD, expectedTotalUSD, currency });
+      logger.log('✅ Price validation passed:', {
+        amount,
+        expectedTotal,
+        currency: lockedCurrency,
+        fxRate: locks[0].fx_rate
+      });
     }
 
     // Create or retrieve Stripe customer

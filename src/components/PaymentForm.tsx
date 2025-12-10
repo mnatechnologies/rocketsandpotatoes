@@ -17,6 +17,7 @@ interface PaymentFormProps {
   cartItems?: any[];
   paymentIntentId: string;
   onSuccess?: (orderId: string) => void;
+  sessionId?: string | null;  // ✅ Add sessionId prop
 }
 
 export function PaymentForm({
@@ -27,6 +28,7 @@ export function PaymentForm({
   cartItems,
   paymentIntentId,
   onSuccess,
+  sessionId,  // ✅ Destructure sessionId
 }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -94,6 +96,7 @@ export function PaymentForm({
             cartItems,
             stripePaymentIntentId: paymentIntent.id,
             paymentMethod: 'card',
+            sessionId,  // ✅ Pass sessionId for locked prices
           }),
         });
 

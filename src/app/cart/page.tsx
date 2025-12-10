@@ -72,14 +72,14 @@ function CartContent() {
   }
 }, [cart, metalPrices, lockPricesOnServer]);
 
-  // Calculate and lock prices when metal prices or cart changes
+  // ✅ Re-lock prices whenever cart changes (no guard)
   useEffect(() => {
     if (loadingPrices || !metalPrices || metalPrices.length === 0 || cart.length === 0) {
       return;
     }
 
-    if (!isLoading && cart.length > 0 && !hasFetchedPrices.current) {
-      hasFetchedPrices.current = true;
+    if (!isLoading) {
+      logger.log('🔒 Cart changed, re-locking prices for', cart.length, 'items');
       calculateAndLockPrices();
     }
   }, [isLoading, cart.length, metalPrices, loadingPrices, calculateAndLockPrices]);

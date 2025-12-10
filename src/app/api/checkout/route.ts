@@ -31,27 +31,99 @@ export async function POST(req: NextRequest) {
         }
     );
   
-  const { customerId, amount, currency = 'USD', productDetails, cartItems } = await (req as any).json();
-  logger.log('Request data:', { customerId, amount, currency, productDetails });
+  const { customerId, amount, currency = 'USD', productDetails, cartItems, sessionId } = await (req as any).json();
+  logger.log('Request data:', {
+    customerId,
+    amount,
+    currency,
+    sessionId,
+    productDetails,
+    cartItemsCount: cartItems?.length,
+    cartItems: cartItems?.map((item: any) => ({
+      productId: item.productId,
+      id: item.id,
+      quantity: item.quantity,
+      price: item.price
+    }))
+  });
 
-  // Convert amount to AUD for compliance checks (Australian regulations require AUD)
-  let amountInAUD = amount;
-  let fxRate = 1
-  if (currency === 'USD') {
-    try {
-      const fxResult = await fetchFxRate('USD', 'AUD');
-      fxRate = fxResult.rate;
-      amountInAUD = amount * fxRate
-      logger.log(`Converted ${amount} USD to ${amountInAUD.toFixed(2)} AUD (rate: ${fxResult.rate})`);
-    } catch (error) {
-      logger.error('Failed to fetch FX rate, using fallback:', error);
-      // Fallback rate if API fails
-      fxRate = 1.57
-      amountInAUD = amount * fxRate;
-      logger.log(`Using fallback rate: ${amount} USD = ${amountInAUD.toFixed(2)} AUD`);
-    }
+  // ✅ NO CONVERSION - Get locked prices from database (single source of truth)
+  if (!sessionId) {
+    return NextResponse.json(
+      { success: false, error: 'Session ID required for price validation' },
+      { status: 400 }
+    );
   }
-  logger.log('Amount for compliance checks (AUD):', amountInAUD);
+
+  const { data: locks, error: lockError } = await supabase
+    .from('price_locks')
+    .select('product_id, locked_price_usd, locked_price_aud, fx_rate, currency')
+    .eq('session_id', sessionId)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString());
+
+  if (lockError) {
+    logger.error('Error fetching price locks:', lockError);
+    return NextResponse.json(
+      { success: false, error: 'Failed to validate prices' },
+      { status: 500 }
+    );
+  }
+
+  if (!locks || locks.length === 0) {
+    logger.log('No active price locks found for session:', sessionId);
+    return NextResponse.json(
+      { success: false, error: 'Price locks expired. Please refresh and try again.' },
+      { status: 400 }
+    );
+  }
+
+  logger.log('📦 Found price locks:', locks.map(lock => ({
+    product_id: lock.product_id,
+    price_usd: lock.locked_price_usd,
+    price_aud: lock.locked_price_aud,
+    fx_rate: lock.fx_rate
+  })));
+
+  // ✅ Calculate amounts in BOTH currencies using LOCKED prices (single source of truth)
+  logger.log('🧮 Calculating totals from locks...');
+
+  const amountInUSD = locks.reduce((sum, lock) => {
+    const item = cartItems?.find((i: any) => i.productId === lock.product_id);
+    const quantity = item?.quantity || 1;
+
+    logger.log(`  Product ${lock.product_id.substring(0, 8)}...: ${lock.locked_price_usd} USD × ${quantity} = ${(lock.locked_price_usd * quantity).toFixed(2)} USD ${item ? '✓' : '⚠️ (no cart item)'}`);
+
+    if (!item) {
+      logger.warn(`⚠️ No cart item found for locked product ${lock.product_id}, defaulting quantity to 1`);
+    }
+
+    return sum + (lock.locked_price_usd * quantity);
+  }, 0);
+
+  const amountInAUD = locks.reduce((sum, lock) => {
+    const item = cartItems?.find((i: any) => i.productId === lock.product_id);
+    const quantity = item?.quantity || 1;
+    return sum + (lock.locked_price_aud * quantity);
+  }, 0);
+
+  const fxRate = locks[0].fx_rate;
+
+  logger.log('✅ Using locked prices (NO conversion):', {
+    amountInUSD: amountInUSD.toFixed(2),
+    amountInAUD: amountInAUD.toFixed(2),
+    fxRate,
+    locksCount: locks.length,
+    submittedAmount: amount,
+    submittedCurrency: currency,
+  });
+
+  // ⚠️ Warn if submitted amount doesn't match calculated amount
+  const calculatedAmount = currency === 'AUD' ? amountInAUD : amountInUSD;
+  const difference = Math.abs(amount - calculatedAmount);
+  if (difference > 1) {
+    logger.warn(`⚠️ PRICE MISMATCH: Submitted ${currency} ${amount.toFixed(2)} but calculated ${calculatedAmount.toFixed(2)} (diff: ${difference.toFixed(2)})`);
+  }
 
   try {
     const sanctionsResult = await screenCustomer(customerId);
@@ -152,13 +224,14 @@ export async function POST(req: NextRequest) {
   const isStructuring = await detectStructuring(customerId, amountInAUD);
   logger.log('Structuring detection result:', isStructuring);
 
-  // 5. Calculate risk score
+  // 5. Calculate risk score (only count succeeded transactions)
   const { data: previousTransactions } = await supabase
     .from('transactions')
     .select('id')
-    .eq('customer_id', customerId);
+    .eq('customer_id', customerId)
+    .eq('payment_status', 'succeeded');
 
-  logger.log('Previous transactions count:', previousTransactions?.length || 0);
+  logger.log('Previous succeeded transactions count:', previousTransactions?.length || 0);
 
  // @ts-ignore
   const riskScore = calculateRiskScore({
@@ -195,14 +268,16 @@ export async function POST(req: NextRequest) {
       .insert({
         customer_id: customerId,
         transaction_type: 'purchase',
-        amount: amount,
-        currency: currency,
-        amount_aud: amountInAUD,
+        // ✅ Always store USD as base amount (from locked prices)
+        amount: amountInUSD,
+        currency: 'USD',  // Base currency
+        amount_aud: amountInAUD,  // For compliance
         product_type: productDetails?.name || 'Multiple items',
         product_details: {
           items: cartItems || [productDetails],
           mainProduct: productDetails,
-          currency: currency,
+          displayCurrency: currency,  // What user saw
+          lockedFxRate: fxRate,
         },
         payment_status: 'pending_review',
         flagged_for_review: true,

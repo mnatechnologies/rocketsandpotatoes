@@ -43,17 +43,20 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const [sourceOfFundsProvided, setSourceOfFundsProvided] = useState(false);
   const [eddCompleted, setEddCompleted] = useState(false);
   const paymentIntentCreated = useRef(false);
+  const paymentIntentAmount = useRef<number>(0)
   const hasValidated = useRef(false);
 
   const cartItemsWithLockedPrices = cartItems?.map(item => {
-    const lockedPrice = getLockedPriceForProduct(item.product?.id || item.id);
+    const productId = item.product?.id || item.id;
+    const lockedPrice = getLockedPriceForProduct(productId);
     const displayPrice = lockedPrice ?? (item.product?.price || item.price)
 
     return {
       ...item,
-      id: item.product?.id || item.id,
+      id: productId,
+      productId: productId,  // ✅ Add productId for backend consistency
       name: item.product?.name || item.name,
-      price: displayPrice, // ✅ Use locked price
+      price: displayPrice,
       originalPrice: item.product?.price || item.price,
       lockedPrice: lockedPrice,
       quantity: item.quantity || 1,
@@ -193,9 +196,16 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }, [customerId, thresholdAmountAUD]);
 
   const createPaymentIntent = async () => {
-    if (paymentIntentCreated.current) {
-      logger.log('Payment intent already created, skipping...');
+    const newsNewIntent = !paymentIntentCreated.current || paymentIntentAmount.current !== amount;
+
+    if (!newsNewIntent) {
+      logger.log('Payment intent already created with same amount, skipping...');
       return;
+    }
+    if (paymentIntentCreated.current && paymentIntentAmount.current !== amount){
+      logger.log('Cart Amount changed, creating new payment intent...', {
+
+      })
     }
     logger.log('Creating payment intent...');
     try {
@@ -240,12 +250,94 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }
 
   if (step === 'review') {
-    // ✅ Build detailed reason message
+    const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
+    const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
+
+    // ✅ Get backend-calculated AUD amount for consistency
+    const backendAmountAUD = validationResult?.requirements?.newCumulativeTotal
+      ? (validationResult.requirements.newCumulativeTotal - validationResult.requirements.cumulativeTotal)
+      : thresholdAmountAUD;
+
+    // ✅ Show both forms if both are required
+    if (needsEDD || needsSOF) {
+      return (
+        <div className="max-w-2xl mx-auto p-6 space-y-6">
+          <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+            <div className="text-center mb-4">
+              <div className="text-5xl mb-2">📋</div>
+              <h2 className="text-2xl font-bold text-blue-800">Additional Information Required</h2>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                This transaction: <strong>${backendAmountAUD.toFixed(2)} AUD</strong>
+              </p>
+              <p className="text-gray-700">
+                Your cumulative total {needsEDD ? 'has reached' : 'will be'}: <strong>${validationResult.requirements?.newCumulativeTotal?.toFixed(2)} AUD</strong>
+              </p>
+              {needsEDD && (
+                <p className="text-gray-700">
+                  ✓ Enhanced due diligence is required for cumulative totals over <strong>$50,000 AUD</strong>
+                </p>
+              )}
+              {needsSOF && (
+                <p className="text-gray-700">
+                  ✓ Source of funds verification is required for transactions over <strong>$10,000 AUD</strong>
+                </p>
+              )}
+              <p className="text-gray-700 font-semibold">
+                Please complete the {needsEDD && needsSOF ? 'forms' : 'form'} below to continue.
+              </p>
+            </div>
+          </div>
+
+          {/* Source of Funds Form - Show first as it's simpler */}
+          {needsSOF && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                1. Source of Funds Declaration
+              </h3>
+              <SourceOfFundsForm
+                customerId={customerId}
+                amount={backendAmountAUD}
+                onComplete={() => {
+                  setSourceOfFundsProvided(true);
+                  // If EDD not required, re-validate after SOF
+                  if (!needsEDD) {
+                    setTimeout(() => validateTransaction(), 1000);
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Enhanced Due Diligence Form */}
+          {needsEDD && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                {needsSOF ? '2. Enhanced Due Diligence' : 'Enhanced Due Diligence'}
+              </h3>
+              <EnhancedDueDiligenceForm
+                customerId={customerId}
+                amount={backendAmountAUD}
+                onComplete={() => {
+                  setEddCompleted(true);
+                  // Re-validate after EDD completion
+                  setTimeout(() => validateTransaction(), 1000);
+                }}
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ✅ Only show "wait for review" if it's actual risk flagging, not missing compliance
     const reasons = [];
     if (validationResult?.flags?.structuring) reasons.push('Potential structuring detected');
     if (validationResult?.flags?.highRisk) reasons.push('High risk assessment');
     if (validationResult?.flags?.multipleRecentTransactions) reasons.push('Multiple recent transactions detected');
-    if (validationResult?.flags?.highValue) reasons.push('High-value transaction requiring enhanced due diligence');
+    if (validationResult?.flags?.highValue && !needsEDD) reasons.push('High-value transaction requiring review');
 
     return (
       <div className="max-w-md mx-auto p-6 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -256,8 +348,15 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
         <div className="space-y-4">
           <p className="text-gray-700">
-            Your transaction of <strong>{formatPrice(amount)} {currency}</strong> (approximately <strong>${thresholdAmountAUD.toFixed(2)} AUD</strong>) has been flagged for manual compliance review.
+            {/* ✅ Use backend-calculated AUD amount (no double conversion) */}
+            Your transaction of <strong>${backendAmountAUD.toFixed(2)} AUD</strong> has been flagged for manual compliance review.
           </p>
+
+          {validationResult?.requirements?.newCumulativeTotal && (
+            <p className="text-sm text-gray-600">
+              Cumulative total: <strong>${validationResult.requirements.newCumulativeTotal.toFixed(2)} AUD</strong>
+            </p>
+          )}
 
           {reasons.length > 0 && (
             <div className="bg-white p-4 rounded border border-yellow-300">
@@ -296,6 +395,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     );
   }
 
+
+
   if (step === 'blocked') {
     return (
       <div className="max-w-md mx-auto p-6 bg-red-50 rounded-lg border border-red-200">
@@ -309,8 +410,10 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }
 
   if (step === 'payment') {
+    const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
+    const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
     // Check if source of funds is needed but not provided (for $10K+ AUD)
-    if (thresholdAmountAUD >= 10000 && !sourceOfFundsProvided) {
+    if (needsSOF) {
       return (
         <SourceOfFundsForm
           customerId={customerId}
@@ -323,7 +426,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     }
 
     // Check if EDD is needed but not completed (for $50K+ AUD)
-    if (thresholdAmountAUD >= EDD_THRESHOLD && !eddCompleted) {
+    if (needsEDD) {
       return (
         <EnhancedDueDiligenceForm
           customerId={customerId}
@@ -358,6 +461,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
           cartItems={cartItemsWithLockedPrices}
           paymentIntentId={paymentIntentId!}
           onSuccess={onSuccess}
+          sessionId={sessionId}  // ✅ Pass sessionId
         />
       </Elements>
     );

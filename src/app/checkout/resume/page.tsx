@@ -8,9 +8,14 @@ import { createLogger } from '@/lib/utils/logger';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { PaymentForm } from '@/components/PaymentForm';
+import { SourceOfFundsForm } from '@/components/SourceOfFunds';
+import { EnhancedDueDiligenceForm } from '@/components/EnhancedDueDiligence';
+
 
 const logger = createLogger('RESUME_CHECKOUT');
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const EDD_THRESHOLD = 50000;
+
 
 function ResumeCheckoutContent() {
   const router = useRouter();
@@ -22,6 +27,11 @@ function ResumeCheckoutContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [sourceOfFundsProvided, setSourceOfFundsProvided] = useState(false);
+  const [eddCompleted, setEddCompleted] = useState(false);
+  const [checkingCompliance, setCheckingCompliance] = useState(true);
+
+
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -89,6 +99,8 @@ function ResumeCheckoutContent() {
         setError('No payment intent found for this transaction');
       }
 
+      await checkComplianceRequirements(data);
+
       setLoading(false);
 
     } catch (err: any) {
@@ -98,7 +110,49 @@ function ResumeCheckoutContent() {
     }
   };
 
-  if (loading) {
+  const checkComplianceRequirements = async (txn: any) => {
+    try {
+      setCheckingCompliance(true);
+
+      const amountAUD = txn.amount_aud || txn.amount;
+
+      // Check SOF for $10K+ AUD
+      if (amountAUD >= 10000) {
+        const sofResponse = await fetch(`/api/customer/source-of-funds?customerId=${txn.customer_id}`);
+        const sofResult = await sofResponse.json();
+
+        if (sofResult.success && sofResult.data?.source_of_funds) {
+          setSourceOfFundsProvided(true);
+        }
+      } else {
+        setSourceOfFundsProvided(true); // Not required
+      }
+
+      // Check EDD for $50K+ AUD
+      if (txn.requiresEnhancedDD) {  // Uses cumulative from GET /api/orders/[id]
+        const eddResponse = await fetch(`/api/customer/enhanced-dd?customerId=${txn.customer_id}`);
+        const eddResult = await eddResponse.json();
+
+        if (eddResult.success && eddResult.data?.eddCompleted) {
+          setEddCompleted(true);
+        }
+        logger.log('EDD required (cumulative >= $50K AUD), completed:', eddResult.data?.eddCompleted);
+      } else {
+        setEddCompleted(true); // Not required
+        logger.log('EDD not required (cumulative < $50K AUD)');
+      }
+
+
+    } catch (error) {
+      logger.error('Error checking compliance:', error);
+      // Default to not completed to be safe
+    } finally {
+      setCheckingCompliance(false);
+    }
+  };
+
+
+  if (loading || checkingCompliance) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -136,6 +190,53 @@ function ResumeCheckoutContent() {
     );
   }
 
+  if (!sourceOfFundsProvided && transaction.amount_aud >= 10000) {
+    return (
+      <div className="min-h-screen bg-background/50 py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <h1 className="text-2xl font-bold text-green-900 mb-2">
+              ✅ Transaction Approved
+            </h1>
+            <p className="text-green-800">
+              Before completing payment, please provide source of funds information.
+            </p>
+          </div>
+
+          <SourceOfFundsForm
+            customerId={transaction.customer_id}
+            amount={transaction.amount_aud || transaction.amount}
+            onComplete={() => setSourceOfFundsProvided(true)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (!eddCompleted && transaction.requiresEnhancedDD) {
+    return (
+      <div className="min-h-screen bg-background/50 py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <h1 className="text-2xl font-bold text-green-900 mb-2">
+              ✅ Transaction Approved
+            </h1>
+            <p className="text-green-800">
+              Before completing payment, enhanced due diligence is required for this high-value transaction.
+            </p>
+          </div>
+
+          <EnhancedDueDiligenceForm
+            customerId={transaction.customer_id}
+            amount={transaction.amount_aud || transaction.amount}
+            onComplete={() => setEddCompleted(true)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div className="min-h-screen bg-background/50 py-12">
       <div className="max-w-2xl mx-auto px-4">
@@ -163,9 +264,15 @@ function ResumeCheckoutContent() {
             <div className="flex justify-between text-xl font-bold border-t pt-2 mt-2">
               <span>Total Amount:</span>
               <span>
-                {transaction.currency} ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                AUD ${(transaction.amount_aud || transaction.amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
               </span>
             </div>
+            {transaction.currency !== 'AUD' && transaction.amount_aud && (
+              <div className="flex justify-between text-sm text-gray-600 mt-1">
+                <span>Original:</span>
+                <span>{transaction.currency} ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -182,8 +289,8 @@ function ResumeCheckoutContent() {
             }}
           >
             <PaymentForm
-              amount={transaction.amount}
-              currency={transaction.currency}
+              amount={transaction.amount_aud || transaction.amount}
+              currency="AUD"
               customerId={transaction.customer_id}
               productDetails={transaction.product_details || { name: transaction.product_type }}
               cartItems={transaction.cart_items || []}

@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface TickerPrice {
   metal: string;
@@ -101,16 +102,19 @@ function getNextMarketOpen(now: Date): string {
 export default function PriceTicker() {
   // Use shared prices from context - no more individual fetching!
   const { prices: contextPrices, isLoading, error, lastUpdated } = useMetalPrices();
+  const { currency, exchangeRate } = useCurrency();
   const [marketStatus, setMarketStatus] = useState(getMarketStatus());
   const [isScrolled, setIsScrolled] = useState(false);
 
 
   // Transform context prices to match the component's expected format
+  // Apply currency conversion if needed
   const prices: TickerPrice[] = contextPrices.map((quote) => {
     const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
+    const priceInCurrency = currency === 'AUD' ? quote.price * exchangeRate : quote.price;
     return {
       metal: metalInfo.ticker,
-      price: quote.price,
+      price: priceInCurrency,
       change: quote.change,
       changePercent: quote.changePercent
     };
@@ -133,9 +137,9 @@ export default function PriceTicker() {
   }, []);
 
   const formatPrice = (value: number) =>
-      new Intl.NumberFormat("en-US", {
+      new Intl.NumberFormat("en-AU", {
         style: "currency",
-        currency: "USD",
+        currency: currency,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(value);
