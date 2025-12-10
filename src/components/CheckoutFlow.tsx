@@ -251,6 +251,11 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
     const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
 
+    // ✅ Get backend-calculated AUD amount for consistency
+    const backendAmountAUD = validationResult?.requirements?.newCumulativeTotal
+      ? (validationResult.requirements.newCumulativeTotal - validationResult.requirements.cumulativeTotal)
+      : thresholdAmountAUD;
+
     // ✅ Show both forms if both are required
     if (needsEDD || needsSOF) {
       return (
@@ -263,11 +268,17 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
             <div className="space-y-4">
               <p className="text-gray-700">
-                Your cumulative transaction history has reached <strong>${validationResult.requirements?.newCumulativeTotal?.toFixed(2) || thresholdAmountAUD.toFixed(2)} AUD</strong>.
+                This transaction: <strong>{formatPrice(amount)} {currency}</strong>
+                {currency !== 'AUD' && backendAmountAUD && (
+                  <span> (approximately <strong>${backendAmountAUD.toFixed(2)} AUD</strong>)</span>
+                )}
+              </p>
+              <p className="text-gray-700">
+                Your cumulative total {needsEDD ? 'has reached' : 'will be'}: <strong>${validationResult.requirements?.newCumulativeTotal?.toFixed(2)} AUD</strong>
               </p>
               {needsEDD && (
                 <p className="text-gray-700">
-                  ✓ Enhanced due diligence is required for totals over <strong>$50,000 AUD</strong>
+                  ✓ Enhanced due diligence is required for cumulative totals over <strong>$50,000 AUD</strong>
                 </p>
               )}
               {needsSOF && (
@@ -289,7 +300,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
               </h3>
               <SourceOfFundsForm
                 customerId={customerId}
-                amount={thresholdAmountAUD}
+                amount={backendAmountAUD}
                 onComplete={() => {
                   setSourceOfFundsProvided(true);
                   // If EDD not required, re-validate after SOF
@@ -309,7 +320,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
               </h3>
               <EnhancedDueDiligenceForm
                 customerId={customerId}
-                amount={thresholdAmountAUD}
+                amount={backendAmountAUD}
                 onComplete={() => {
                   setEddCompleted(true);
                   // Re-validate after EDD completion
@@ -338,8 +349,18 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
         <div className="space-y-4">
           <p className="text-gray-700">
-            Your transaction of <strong>{formatPrice(amount)} {currency}</strong> (approximately <strong>${thresholdAmountAUD.toFixed(2)} AUD</strong>) has been flagged for manual compliance review.
+            {/* ✅ Use backend calculation consistently */}
+            Your transaction of <strong>{formatPrice(amount)} {currency}</strong>
+            {currency !== 'AUD' && backendAmountAUD && (
+              <span> (approximately <strong>${backendAmountAUD.toFixed(2)} AUD</strong>)</span>
+            )} has been flagged for manual compliance review.
           </p>
+
+          {validationResult?.requirements?.newCumulativeTotal && (
+            <p className="text-sm text-gray-600">
+              Cumulative total: <strong>${validationResult.requirements.newCumulativeTotal.toFixed(2)} AUD</strong>
+            </p>
+          )}
 
           {reasons.length > 0 && (
             <div className="bg-white p-4 rounded border border-yellow-300">
@@ -377,6 +398,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       </div>
     );
   }
+
 
 
   if (step === 'blocked') {
