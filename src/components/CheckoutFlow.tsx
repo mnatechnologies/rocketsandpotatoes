@@ -248,12 +248,86 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }
 
   if (step === 'review') {
-    // ✅ Build detailed reason message
+    const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
+    const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
+
+    // ✅ Show both forms if both are required
+    if (needsEDD || needsSOF) {
+      return (
+        <div className="max-w-2xl mx-auto p-6 space-y-6">
+          <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+            <div className="text-center mb-4">
+              <div className="text-5xl mb-2">📋</div>
+              <h2 className="text-2xl font-bold text-blue-800">Additional Information Required</h2>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                Your cumulative transaction history has reached <strong>${validationResult.requirements?.newCumulativeTotal?.toFixed(2) || thresholdAmountAUD.toFixed(2)} AUD</strong>.
+              </p>
+              {needsEDD && (
+                <p className="text-gray-700">
+                  ✓ Enhanced due diligence is required for totals over <strong>$50,000 AUD</strong>
+                </p>
+              )}
+              {needsSOF && (
+                <p className="text-gray-700">
+                  ✓ Source of funds verification is required for transactions over <strong>$10,000 AUD</strong>
+                </p>
+              )}
+              <p className="text-gray-700 font-semibold">
+                Please complete the {needsEDD && needsSOF ? 'forms' : 'form'} below to continue.
+              </p>
+            </div>
+          </div>
+
+          {/* Source of Funds Form - Show first as it's simpler */}
+          {needsSOF && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                1. Source of Funds Declaration
+              </h3>
+              <SourceOfFundsForm
+                customerId={customerId}
+                amount={thresholdAmountAUD}
+                onComplete={() => {
+                  setSourceOfFundsProvided(true);
+                  // If EDD not required, re-validate after SOF
+                  if (!needsEDD) {
+                    setTimeout(() => validateTransaction(), 1000);
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Enhanced Due Diligence Form */}
+          {needsEDD && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                {needsSOF ? '2. Enhanced Due Diligence' : 'Enhanced Due Diligence'}
+              </h3>
+              <EnhancedDueDiligenceForm
+                customerId={customerId}
+                amount={thresholdAmountAUD}
+                onComplete={() => {
+                  setEddCompleted(true);
+                  // Re-validate after EDD completion
+                  setTimeout(() => validateTransaction(), 1000);
+                }}
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ✅ Only show "wait for review" if it's actual risk flagging, not missing compliance
     const reasons = [];
     if (validationResult?.flags?.structuring) reasons.push('Potential structuring detected');
     if (validationResult?.flags?.highRisk) reasons.push('High risk assessment');
     if (validationResult?.flags?.multipleRecentTransactions) reasons.push('Multiple recent transactions detected');
-    if (validationResult?.flags?.highValue) reasons.push('High-value transaction requiring enhanced due diligence');
+    if (validationResult?.flags?.highValue && !needsEDD) reasons.push('High-value transaction requiring review');
 
     return (
       <div className="max-w-md mx-auto p-6 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -303,6 +377,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       </div>
     );
   }
+
 
   if (step === 'blocked') {
     return (
