@@ -54,25 +54,29 @@ export async function GET(request: NextRequest) {
 
     let fxRate = 1;
     if (currency === 'AUD') {
-      const fxResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/fx-rate?from=USD&to=AUD`);
+      const fxResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/fx-rate?from=USD&to=AUD`);
       const fxData = await fxResponse.json();
       fxRate = fxData.rate;
     }
 
 
-    // Calculate live prices
+    // ✅ Calculate live prices (NO FALLBACK!)
     const priceMap = await calculateBulkPricing(products);
 
-    // Combine product data with calculated prices
+    // ✅ Combine product data with calculated prices - fail if no price available
     const productsWithPricing = products.map((product) => {
       const calculatedPrice = priceMap.get(product.id);
-      const basePrice = product.price || product.base_price || 0;
+
+      // ❌ NO FALLBACK - if we can't calculate live price, we can't display it
+      if (!calculatedPrice) {
+        logger.error(`No live price available for product ${product.id} (${product.name})`);
+        throw new Error(`Unable to calculate live price for ${product.name}. Please try again.`);
+      }
 
       const trimmedImageUrl = product.image_url?.trim();
       const fullImageUrl = trimmedImageUrl
         ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
         : null;
-
 
       return {
         id: product.id,
@@ -81,9 +85,10 @@ export async function GET(request: NextRequest) {
         weight: product.weight,
         purity: product.purity,
         image_url: fullImageUrl,
-        base_price: basePrice * fxRate,
-        calculated_price: (calculatedPrice || basePrice) * fxRate,
-        price_difference: calculatedPrice ? (calculatedPrice - basePrice) * fxRate : 0,
+        // ✅ Only calculated price in both currencies
+        calculated_price: calculatedPrice * fxRate,
+        price_usd: calculatedPrice,
+        price_aud: calculatedPrice * fxRate,
         currency: currency,
         fx_rate: fxRate,
       };
@@ -112,12 +117,23 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase();
     const { sessionId, customerId, products, currency = "USD" } = await request.json();
 
+    logger.log('POST /api/products/pricing called:', { sessionId, currency, productCount: products?.length });
 
+    // ✅ Always fetch FX rate for dual currency storage
     let fxRate = 1;
-    if (currency === 'AUD') {
-      const fxResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/fx-rate?from=USD&to=AUD`);
+    try {
+      const fxResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/fx-rate?from=USD&to=AUD`);
       const fxData = await fxResponse.json();
-      fxRate = fxData.rate;
+      if (fxData.success && fxData.rate > 0) {
+        fxRate = fxData.rate;
+        logger.log('✅ FX rate fetched:', fxRate);
+      } else {
+        logger.warn('FX rate API returned invalid data, using fallback');
+        fxRate = 1.57; // Fallback only if API fails
+      }
+    } catch (error) {
+      logger.error('Failed to fetch FX rate:', error);
+      fxRate = 1.57; // Fallback if fetch fails
     }
 
     if (!sessionId) {
@@ -151,8 +167,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate prices server-side (this is the secure part)
+    // ✅ Calculate live prices in USD (no fallback!)
     const priceMap = await calculateBulkPricing(dbProducts);
+
 
     // Clear any existing active locks for this session
     await supabase
@@ -161,18 +178,34 @@ export async function POST(request: NextRequest) {
       .eq('session_id', sessionId)
       .eq('status', 'active');
 
-    // Create new locks
+    // ✅ Create new locks with BOTH currencies (single source of truth)
     const expiresAt = new Date(Date.now() + LOCK_DURATION_MS);
-    const locksToInsert = dbProducts.map((product) => ({
-      session_id: sessionId,
-      customer_id: customerId || null,
-      product_id: product.id,
-      locked_price: (priceMap.get(product.id) || product.price) * fxRate,
-      currency: currency,
-      metal_type: product.metal_type,
-      expires_at: expiresAt.toISOString(),
-      status: 'active',
-    }));
+    const locksToInsert = dbProducts.map((product) => {
+      const priceUSD = priceMap.get(product.id);
+
+      // ❌ NO FALLBACK - if no live price, we can't lock
+      if (!priceUSD) {
+        throw new Error(`Unable to calculate price for product ${product.id} (${product.name})`);
+      }
+
+      const priceAUD = priceUSD * fxRate;
+
+      return {
+        session_id: sessionId,
+        customer_id: customerId || null,
+        product_id: product.id,
+        // ✅ Store BOTH currencies with the SAME FX rate
+        locked_price_usd: priceUSD,
+        locked_price_aud: priceAUD,
+        fx_rate: fxRate,
+        currency: currency,
+        // Keep legacy field for backwards compatibility
+        locked_price: currency === 'AUD' ? priceAUD : priceUSD,
+        metal_type: product.metal_type,
+        expires_at: expiresAt.toISOString(),
+        status: 'active',
+      };
+    });
 
     const { data: insertedLocks, error: insertError } = await supabase
       .from('price_locks')
@@ -181,13 +214,34 @@ export async function POST(request: NextRequest) {
 
     if (insertError) throw insertError;
 
-    logger.log('Price locks created:', { sessionId, count: insertedLocks?.length });
+    logger.log('✅ Price locks created:', {
+      sessionId,
+      count: insertedLocks?.length,
+      currency,
+      fxRate,
+      sampleLock: insertedLocks?.[0] ? {
+        product_id: insertedLocks[0].product_id,
+        locked_price_usd: insertedLocks[0].locked_price_usd,
+        locked_price_aud: insertedLocks[0].locked_price_aud,
+        fx_rate: insertedLocks[0].fx_rate,
+      } : null
+    });
 
-    // Return locked prices to client
-    const lockedPrices = dbProducts.map((product) => ({
-      productId: product.id,
-      price: priceMap.get(product.id) || product.price,
-    }));
+    // ✅ Return locked prices in user's selected currency
+    const lockedPrices = dbProducts.map((product) => {
+      const priceUSD = priceMap.get(product.id);
+      if (!priceUSD) {
+        throw new Error(`Missing price for product ${product.id}`);
+      }
+
+      return {
+        productId: product.id,
+        price: currency === 'AUD' ? priceUSD * fxRate : priceUSD,
+        priceUSD: priceUSD,
+        priceAUD: priceUSD * fxRate,
+        currency: currency,
+      };
+    });
 
     return NextResponse.json({
       success: true,

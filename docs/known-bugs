@@ -1,0 +1,58 @@
+Retrieve Payment intent logic messes with compliance stuff.
+Enhanced DD does not get trigger even when required.
+Customers keep  getting reviewed transactions even after approval.
+TTR generation behaviour is incorrect.
+Currency mismatch on order confirmation.
+
+[CHECKOUT_API] Final response: {
+  status: 'requires_review',
+  requirements: {
+    requiresEnhancedDD: true,
+    requiresKYC: true,
+    requiresTTR: true,
+    cumulativeTotal: 70916.03,
+    newCumulativeTotal: 84202.9538334309
+  },
+  riskScore: 45,
+  riskLevel: 'medium',
+  flags: {
+    structuring: false,
+    highValue: true,
+    highRisk: false,
+    multipleRecentTransactions: true
+  },
+  message: 'Transaction flagged for manual review'
+}
+ Does not line up with
+
+ [CREATE_ORDER_API] Compliance flags: { requiresKYC: true, requiresTTR: false, requiresEnhancedDD: false }
+
+Create order api is passing in USD figures, which is messing with compliance.
+
+
+[ORDER_API] Order found and authorized: {
+  id: '8908c6a0-cc94-4e15-abd2-41239c2ac928',
+  amount: 8799.83,
+  status: 'succeeded',
+  customer_id: '6d502cb6-2b00-4143-9fed-3456826d114d',
+  review_status: null
+}
+Review_status is null above, even though it was approved. Think this relates to retrieve Payment id creating a new txn id
+EDD Is not trigerring at all when payment is approved. Need to handle this better.
+Currency mismatch when handling TTR generation and handling. no TTR reference is generated so without it, transactions never get updated
+
+{"idx":45,"id":"444a2c1c-d592-474d-97dd-d29dfb9ba4cb","customer_id":"6d502cb6-2b00-4143-9fed-3456826d114d","transaction_type":"purchase","amount":"14155.49","currency":"USD","product_type":"Gold Minted Tablet 100g","product_details":"{\"items\": [{\"id\": \"e829b8fe-858e-41a3-be46-8f00d76bcff8\", \"name\": \"Gold Minted Tablet 100g\", \"price\": 14155.49, \"purity\": \"99.99%\", \"weight\": \"100g\", \"addedAt\": 1765226397461, \"product\": {\"id\": \"e829b8fe-858e-41a3-be46-8f00d76bcff8\", \"name\": \"Gold Minted Tablet 100g\", \"price\": 7500, \"stock\": true, \"purity\": \"99.99%\", \"rating\": \"5.0\", \"weight\": \"100g\", \"category\": \"Gold\", \"currency\": \"USD\", \"form_type\": \"minted\", \"image_url\": \"https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/minted/Gold Minted Tablet 100g/Gold Minted Tablet 100g.jpg\", \"metal_type\": \"XAU\", \"description\": \"100 gram minted gold tablet\", \"weight_grams\": null, \"price_per_gram\": null}, \"quantity\": 1, \"image_url\": \"https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/minted/Gold Minted Tablet 100g/Gold Minted Tablet 100g.jpg\", \"metal_type\": \"XAU\", \"totalPrice\": 14155.49, \"lockedPrice\": 14155.49, \"originalPrice\": 7500}], \"currency\": \"USD\", \"mainProduct\": {\"id\": \"e829b8fe-858e-41a3-be46-8f00d76bcff8\", \"name\": \"Gold Minted Tablet 100g\", \"price\": 7500, \"stock\": true, \"purity\": \"99.99%\", \"rating\": \"5.0\", \"weight\": \"100g\", \"category\": \"Gold\", \"currency\": \"USD\", \"form_type\": \"minted\", \"image_url\": \"https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/minted/Gold Minted Tablet 100g/Gold Minted Tablet 100g.jpg\", \"metal_type\": \"XAU\", \"description\": \"100 gram minted gold tablet\", \"weight_grams\": null, \"price_per_gram\": null}}","stripe_payment_intent_id":"pi_3ScBELPxlXvtT6rR0rkZNVgj","payment_method":null,"payment_status":"pending_payment","requires_kyc":true,"requires_ttr":true,"requires_enhanced_dd":true,"ttr_generated_at":null,"ttr_submitted_at":null,"ttr_reference":null,"risk_flags":null,"flagged_for_review":true,"reviewed_by":"6d502cb6-2b00-4143-9fed-3456826d114d","reviewed_at":"2025-12-08 20:40:25.935+00","review_notes":"EDD not trigggering","created_at":"2025-12-08 20:40:01.70771+00","updated_at":"2025-12-08 20:40:01.70771+00","review_status":"approved","source_of_funds_checked":false,"source_of_funds_check_date":null,"ttr_submission_deadline":null,"metadata":"{\"riskLevel\": \"medium\", \"riskScore\": 55, \"amountInAUD\": 21370.244985501307, \"flagReasons\": [\"Enhanced due diligence required\", \"Multiple recent transactions detected\"], \"isStructuring\": false, \"previousTransactionCount\": 14}"}
+{"idx":46,"id":"4f465737-0577-4294-a72b-ce58ece16803","customer_id":"6d502cb6-2b00-4143-9fed-3456826d114d","transaction_type":"purchase","amount":"14155.49","currency":"USD","product_type":"Multiple items","product_details":"{\"items\": [], \"currency\": \"USD\", \"mainProduct\": {\"items\": [{\"id\": \"e829b8fe-858e-41a3-be46-8f00d76bcff8\", \"name\": \"Gold Minted Tablet 100g\", \"price\": 14155.49, \"purity\": \"99.99%\", \"weight\": \"100g\", \"addedAt\": 1765226397461, \"product\": {\"id\": \"e829b8fe-858e-41a3-be46-8f00d76bcff8\", \"name\": \"Gold Minted Tablet 100g\", \"price\": 7500, \"stock\": true, \"purity\": \"99.99%\", \"rating\": \"5.0\", \"weight\": \"100g\", \"category\": \"Gold\", \"currency\": \"USD\", \"form_type\": \"minted\", \"image_url\": \"https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/minted/Gold Minted Tablet 100g/Gold Minted Tablet 100g.jpg\", \"metal_type\": \"XAU\", \"description\": \"100 gram minted gold tablet\", \"weight_grams\": null, \"price_per_gram\": null}, \"quantity\": 1, \"image_url\": \"https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/minted/Gold Minted Tablet 100g/Gold Minted Tablet 100g.jpg\", \"metal_type\": \"XAU\", \"totalPrice\": 14155.49, \"lockedPrice\": 14155.49, \"originalPrice\": 7500}], \"currency\": \"USD\", \"mainProduct\": {\"id\": \"e829b8fe-858e-41a3-be46-8f00d76bcff8\", \"name\": \"Gold Minted Tablet 100g\", \"price\": 7500, \"stock\": true, \"purity\": \"99.99%\", \"rating\": \"5.0\", \"weight\": \"100g\", \"category\": \"Gold\", \"currency\": \"USD\", \"form_type\": \"minted\", \"image_url\": \"https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/gold/minted/Gold Minted Tablet 100g/Gold Minted Tablet 100g.jpg\", \"metal_type\": \"XAU\", \"description\": \"100 gram minted gold tablet\", \"weight_grams\": null, \"price_per_gram\": null}}}","stripe_payment_intent_id":"pi_3ScBELPxlXvtT6rR0rkZNVgj","payment_method":"card","payment_status":"succeeded","requires_kyc":true,"requires_ttr":true,"requires_enhanced_dd":false,"ttr_generated_at":"2025-12-08 20:42:56.446+00","ttr_submitted_at":"2025-12-08 20:44:00.899+00","ttr_reference":"TTR-1765226576445-4f465737","risk_flags":null,"flagged_for_review":false,"reviewed_by":null,"reviewed_at":null,"review_notes":null,"created_at":"2025-12-08 20:42:55.365556+00","updated_at":"2025-12-08 20:42:55.365556+00","review_status":null,"source_of_funds_checked":true,"source_of_funds_check_date":"2025-12-08 20:42:55.262+00","ttr_submission_deadline":"2025-12-22 20:42:55.365+00","metadata":"{}"}
+
+Same transaction above, one is create and one is retrieve but the data is doesnt line up.
+
+12/10/25
+ADmin dashboard badge numbers still off. Check compliance implementation with new currency method. TTRs going in despite no TTR reference being generated.
+Duplicate entries with mismatch transaction amounts.
+Emails sending USD values.
+Compliance alert in order confirmation email?
+Weird behavior with resume cart
+Also weird behaviour when you go to checkout, dont complete and then come back.
+Need to ensure carts after approval are active for only 24 hours
+Better transaction ahndling.
+Hero price display still fucking broken lol

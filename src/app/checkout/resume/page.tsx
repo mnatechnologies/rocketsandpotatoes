@@ -264,9 +264,15 @@ function ResumeCheckoutContent() {
             <div className="flex justify-between text-xl font-bold border-t pt-2 mt-2">
               <span>Total Amount:</span>
               <span>
-                {transaction.currency} ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                AUD ${(transaction.amount_aud || transaction.amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
               </span>
             </div>
+            {transaction.currency !== 'AUD' && transaction.amount_aud && (
+              <div className="flex justify-between text-sm text-gray-600 mt-1">
+                <span>Original:</span>
+                <span>{transaction.currency} ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -283,8 +289,8 @@ function ResumeCheckoutContent() {
             }}
           >
             <PaymentForm
-              amount={transaction.amount}
-              currency={transaction.currency}
+              amount={transaction.amount_aud || transaction.amount}
+              currency="AUD"
               customerId={transaction.customer_id}
               productDetails={transaction.product_details || { name: transaction.product_type }}
               cartItems={transaction.cart_items || []}

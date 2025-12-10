@@ -47,14 +47,16 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const hasValidated = useRef(false);
 
   const cartItemsWithLockedPrices = cartItems?.map(item => {
-    const lockedPrice = getLockedPriceForProduct(item.product?.id || item.id);
+    const productId = item.product?.id || item.id;
+    const lockedPrice = getLockedPriceForProduct(productId);
     const displayPrice = lockedPrice ?? (item.product?.price || item.price)
 
     return {
       ...item,
-      id: item.product?.id || item.id,
+      id: productId,
+      productId: productId,  // ✅ Add productId for backend consistency
       name: item.product?.name || item.name,
-      price: displayPrice, // ✅ Use locked price
+      price: displayPrice,
       originalPrice: item.product?.price || item.price,
       lockedPrice: lockedPrice,
       quantity: item.quantity || 1,
@@ -268,10 +270,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
             <div className="space-y-4">
               <p className="text-gray-700">
-                This transaction: <strong>{formatPrice(amount)} {currency}</strong>
-                {currency !== 'AUD' && backendAmountAUD && (
-                  <span> (approximately <strong>${backendAmountAUD.toFixed(2)} AUD</strong>)</span>
-                )}
+                This transaction: <strong>${backendAmountAUD.toFixed(2)} AUD</strong>
               </p>
               <p className="text-gray-700">
                 Your cumulative total {needsEDD ? 'has reached' : 'will be'}: <strong>${validationResult.requirements?.newCumulativeTotal?.toFixed(2)} AUD</strong>
@@ -349,11 +348,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
         <div className="space-y-4">
           <p className="text-gray-700">
-            {/* ✅ Use backend calculation consistently */}
-            Your transaction of <strong>{formatPrice(amount)} {currency}</strong>
-            {currency !== 'AUD' && backendAmountAUD && (
-              <span> (approximately <strong>${backendAmountAUD.toFixed(2)} AUD</strong>)</span>
-            )} has been flagged for manual compliance review.
+            {/* ✅ Use backend-calculated AUD amount (no double conversion) */}
+            Your transaction of <strong>${backendAmountAUD.toFixed(2)} AUD</strong> has been flagged for manual compliance review.
           </p>
 
           {validationResult?.requirements?.newCumulativeTotal && (
@@ -414,8 +410,10 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }
 
   if (step === 'payment') {
+    const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
+    const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
     // Check if source of funds is needed but not provided (for $10K+ AUD)
-    if (thresholdAmountAUD >= 10000 && !sourceOfFundsProvided) {
+    if (needsSOF) {
       return (
         <SourceOfFundsForm
           customerId={customerId}
@@ -428,7 +426,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     }
 
     // Check if EDD is needed but not completed (for $50K+ AUD)
-    if (thresholdAmountAUD >= EDD_THRESHOLD && !eddCompleted) {
+    if (needsEDD) {
       return (
         <EnhancedDueDiligenceForm
           customerId={customerId}
@@ -463,6 +461,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
           cartItems={cartItemsWithLockedPrices}
           paymentIntentId={paymentIntentId!}
           onSuccess={onSuccess}
+          sessionId={sessionId}  // ✅ Pass sessionId
         />
       </Elements>
     );

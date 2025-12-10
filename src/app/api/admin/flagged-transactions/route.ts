@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       )
     `)
     .eq('flagged_for_review', true)
-    .not('review_status', 'in', '(approved,rejected)')
+    .or('review_status.is.null,review_status.eq.pending')
     .order('created_at', { ascending: false });
 
   if (error) {
