@@ -6,6 +6,8 @@ import { generateTTR } from '@/lib/compliance/ttr-generator';
 import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
+import { getComplianceRequirements } from '@/lib/compliance/thresholds';
+
 
 const logger = createLogger('CREATE_ORDER_API');
 
@@ -101,20 +103,21 @@ export async function POST(req: NextRequest) {
     logger.log('Customer verified:', customer.id);
 
     // ✅ Determine compliance requirements using AUD amount
-    const requiresKYC = amountInAUD >= 5000;
-    const requiresTTR = amountInAUD >= 10000;
-    const requiresEnhancedDD = amountInAUD >= 50000;
+    const requirements = await getComplianceRequirements(customerId, amountInAUD);
 
-    logger.log('🔍 Compliance flags (based on AUD):', {
+    logger.log('🔍 Compliance flags (cumulative):', {
       amountInAUD: amountInAUD.toFixed(2),
-      requiresKYC,
-      requiresTTR,
-      requiresEnhancedDD
+      cumulativeTotal: requirements.cumulativeTotal,
+      newCumulativeTotal: requirements.newCumulativeTotal,
+      requiresKYC: requirements.requiresKYC,
+      requiresTTR: requirements.requiresTTR,
+      requiresEnhancedDD: requirements.requiresEnhancedDD
     });
+
 
     // ✅ Check source of funds for $10K+ AUD transactions
     let sourceOfFundsMissing = false;
-    if (amountInAUD >= 10000) {
+    if (requirements.requiresTTR) {
       if (!customer.source_of_funds || !customer.occupation) {
         logger.log('⚠️ Source of funds missing for $10K+ AUD transaction');
         sourceOfFundsMissing = true;
@@ -144,10 +147,10 @@ export async function POST(req: NextRequest) {
       stripe_payment_intent_id: stripePaymentIntentId,
       payment_method: paymentMethod,
       payment_status: 'succeeded',
-      requires_kyc: requiresKYC,
-      requires_ttr: requiresTTR,
-      requires_enhanced_dd: requiresEnhancedDD,
-      source_of_funds_checked: amountInAUD >= 10000,
+      requires_kyc: requirements.requiresKYC,
+      requires_ttr: requirements.requiresTTR,
+      requires_enhanced_dd: requirements.requiresEnhancedDD,
+      source_of_funds_checked: requirements.requiresTTR,
       source_of_funds_check_date: amountInAUD >= 10000 ? new Date().toISOString() : null,
       flagged_for_review: sourceOfFundsMissing,
       review_status: sourceOfFundsMissing ? 'pending' : null,
@@ -193,7 +196,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ✅ Generate TTR if required (using AUD amount)
-    if (requiresTTR) {
+    if (requirements.requiresTTR) {
       try {
         logger.log('🚀 Starting TTR generation for transaction:', transaction.id);
         logger.log('TTR params:', {
@@ -282,8 +285,8 @@ export async function POST(req: NextRequest) {
           total: displayTotal,
           currency: currency,
           paymentMethod: paymentMethod === 'card' ? 'Credit/Debit Card' : paymentMethod,
-          requiresKYC: requiresKYC,
-          requiresTTR: requiresTTR,
+          requiresKYC: requirements.requiresKYC,
+          requiresTTR: requirements.requiresTTR,
         });
 
         if (emailResult.success) {
@@ -311,9 +314,9 @@ export async function POST(req: NextRequest) {
         payment_intent_id: stripePaymentIntentId,
         source_of_funds_checked: amountInAUD >= 10000,
         flagged_for_review: sourceOfFundsMissing,
-        requiresTTR,
-        requiresKYC,
-        requiresEnhancedDD,
+        requires_ttr: requirements.requiresTTR,
+        requires_kyc: requirements.requiresKYC,
+        requires_edd: requirements.requiresEnhancedDD,
       },
       created_at: new Date().toISOString(),
     });
@@ -328,9 +331,9 @@ export async function POST(req: NextRequest) {
         amount: amount,
         currency: currency,
         amountInAUD: amountInAUD,
-        requiresKYC,
-        requiresTTR,
-        requiresEnhancedDD,
+        requires_kyc: requirements.requiresKYC,
+        requires_ttr: requirements.requiresTTR,
+        requires_edd: requirements.requiresEnhancedDD,
         flaggedForReview: sourceOfFundsMissing,
       },
     });

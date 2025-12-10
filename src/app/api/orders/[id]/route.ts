@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {createClient} from "@supabase/supabase-js";
 import { auth } from '@clerk/nextjs/server';
 import { createLogger } from '@/lib/utils/logger';
+import {getComplianceRequirements} from "@/lib/compliance/thresholds";
 /* eslint-disable */
 
 const logger = createLogger('ORDER_API');
@@ -54,6 +55,12 @@ export async function GET(
       .eq('id', orderId)
       .single();
 
+    const requirements = await getComplianceRequirements(
+      order.customer_id,
+      order.amount_aud || order.amount
+    );
+
+
     if (orderError) {
       logger.error('Error fetching order:', orderError);
       return NextResponse.json(
@@ -94,6 +101,7 @@ export async function GET(
       transaction_type: order.transaction_type,
       amount: order.amount,
       currency: order.currency,
+      amount_aud: order.amount_aud || order.amount,
       product_type: order.product_type,
       product_details: order.product_details,
       payment_method: order.payment_method,
@@ -102,6 +110,9 @@ export async function GET(
       stripe_payment_intent_id: order.stripe_payment_intent_id,
       requires_kyc: order.requires_kyc || false,
       requires_ttr: order.requires_ttr || false,
+      requires_enhanced_dd: order.requires_enhanced_dd || false,
+      requiresEnhancedDD: requirements.requiresEnhancedDD,
+      cumulativeTotal: requirements.newCumulativeTotal,
       flagged_for_review: order.flagged_for_review || false,
       review_status: order.review_status || null, // Ensure this is always present
       review_notes: order.review_notes || null,

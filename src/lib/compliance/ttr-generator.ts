@@ -341,8 +341,7 @@ export async function exportPendingTTRs() {
         occupation,
         source_of_funds,
         employer,
-        verification_level,
-        customer_type
+        verification_level
       )
     `)
     .eq('requires_ttr', true)

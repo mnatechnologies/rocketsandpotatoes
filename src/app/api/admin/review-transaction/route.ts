@@ -193,9 +193,14 @@ export async function POST(req: NextRequest) {
       last_transaction_reviewed_at: new Date().toISOString(),
     };
 
-    if (transaction.customer.requires_enhanced_dd && transaction.customer.edd_completed) {
-      customerUpdateData.requires_enhanced_dd = false;
-      logger.log('Clearing EDD requirement for customer:', transaction.customer.id);
+    if (transaction.requires_enhanced_dd) {
+      if (!transaction.customer.edd_completed) {
+        customerUpdateData.requires_enhanced_dd = true;
+      logger.log('Setting EDD requirement for customer:', transaction.customer.id);
+    } else {
+        customerUpdateData.requires_enhanced_dd = false;
+        logger.log('Clearing EDD requirement for customer:', transaction.customer.id)
+      }
     }
 
     const { error: customerUpdateError } = await supabase

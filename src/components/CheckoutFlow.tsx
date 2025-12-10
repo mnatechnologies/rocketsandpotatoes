@@ -43,6 +43,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const [sourceOfFundsProvided, setSourceOfFundsProvided] = useState(false);
   const [eddCompleted, setEddCompleted] = useState(false);
   const paymentIntentCreated = useRef(false);
+  const paymentIntentAmount = useRef<number>(0)
   const hasValidated = useRef(false);
 
   const cartItemsWithLockedPrices = cartItems?.map(item => {
@@ -193,9 +194,16 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }, [customerId, thresholdAmountAUD]);
 
   const createPaymentIntent = async () => {
-    if (paymentIntentCreated.current) {
-      logger.log('Payment intent already created, skipping...');
+    const newsNewIntent = !paymentIntentCreated.current || paymentIntentAmount.current !== amount;
+
+    if (!newsNewIntent) {
+      logger.log('Payment intent already created with same amount, skipping...');
       return;
+    }
+    if (paymentIntentCreated.current && paymentIntentAmount.current !== amount){
+      logger.log('Cart Amount changed, creating new payment intent...', {
+
+      })
     }
     logger.log('Creating payment intent...');
     try {
