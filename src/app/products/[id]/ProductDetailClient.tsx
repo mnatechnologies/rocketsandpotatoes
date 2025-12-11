@@ -30,7 +30,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [livePrice, setLivePrice] = useState<number>(product.price);
   const [spotPricePerGram, setSpotPricePerGram] = useState<number>(0);
   const [addingToCart, setAddingToCart] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'details' | 'specs' | 'shipping'>('details');
+  const [selectedTab, setSelectedTab] = useState<'details' | 'specs' | 'pickup'>('details');
 
   // Calculate product price when metal prices change - same logic as ProductsClient
   useEffect(() => {
@@ -188,7 +188,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow">
               <div className="text-2xl mb-1">🔒</div>
               <div className="font-semibold text-foreground">Secure</div>
-              <div className="text-muted-foreground text-xs">Insured Shipping</div>
+              <div className="text-muted-foreground text-xs">Pickup Location</div>
             </div>
             <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow">
               <div className="text-2xl mb-1">⭐</div>
@@ -361,14 +361,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               Specifications
             </button>
             <button
-              onClick={() => setSelectedTab('shipping')}
+              onClick={() => setSelectedTab('pickup')}
               className={`pb-4 px-2 font-semibold transition-colors ${
-                selectedTab === 'shipping'
+                selectedTab === 'pickup'
                   ? 'border-b-2 border-primary text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Shipping & Returns
+              Pickup & Returns
             </button>
           </nav>
         </div>
@@ -385,7 +385,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   <h3 className="font-semibold text-foreground mb-2">Features</h3>
                   <ul className="space-y-2 text-muted-foreground">
                     <li>✓ Certified authentic {metalDisplayName.toLowerCase()}</li>
-                    <li>✓ Secure packaging and delivery</li>
+                    <li>✓ Secure pickup location</li>
                     <li>✓ Investment grade quality</li>
                   </ul>
                 </div>
@@ -468,7 +468,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   {/* Subtle value proposition instead of premium percentage */}
                   <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                     <div className="text-sm text-green-800 dark:text-green-100">
-                      <span className="font-semibold">✓ Competitive Pricing</span> - Includes secure shipping, insurance, and authentication guarantee
+                      <span className="font-semibold">✓ Competitive Pricing</span> - Includes secure storage and authentication guarantee
                     </div>
                   </div>
                 </div>
@@ -486,21 +486,21 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               </div>
             </div>
           )}
-          {selectedTab === 'shipping' && (
+          {selectedTab === 'pickup' && (
             <div>
-              <h2 className="text-2xl font-bold text-foreground mb-6">Shipping & Returns</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-6">Pickup & Returns</h2>
               <div className="space-y-6">
                 <div>
                   <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <span className="text-xl">📦</span> Shipping Information
+                    <span className="text-xl">📍</span> Pickup Information
                   </h3>
                   <ul className="space-y-2 text-muted-foreground ml-7">
-                    <li>• Free insured shipping on orders over $5,000 AUD</li>
-                    <li>• Standard shipping: 2-5 business days</li>
-                    <li>• Express shipping available at checkout</li>
-                    <li>• All shipments are fully insured</li>
-                    <li>• Signature required on delivery</li>
-                    <li>• Tracking information provided</li>
+                    <li>• Orders ready for pickup within 1-2 business days</li>
+                    <li>• Email notification sent when order is ready</li>
+                    <li>• Valid photo ID required for collection</li>
+                    <li>• Secure pickup location in Sydney</li>
+                    <li>• Signature required for collection</li>
+                    <li>• Pickup hours: Monday-Friday, 9 AM - 5 PM AEST</li>
                   </ul>
                 </div>
 
@@ -511,7 +511,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   <ul className="space-y-2 text-muted-foreground ml-7">
                     <li>• 30-day return policy on unopened products</li>
                     <li>• Products must be in original sealed packaging</li>
-                    <li>• Return shipping costs apply</li>
+                    <li>• Returns accepted at pickup location</li>
                     <li>• Refunds processed within 5-7 business days</li>
                     <li>• Contact support for return authorization</li>
                   </ul>
@@ -519,14 +519,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
                 <div>
                   <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <span className="text-xl">🛡️</span> Security & Insurance
+                    <span className="text-xl">🛡️</span> Security & Storage
                   </h3>
                   <ul className="space-y-2 text-muted-foreground ml-7">
-                    <li>• All shipments fully insured for declared value</li>
-                    <li>• Discreet packaging for security</li>
-                    <li>• Secure courier services only</li>
-                    <li>• Real-time tracking available</li>
-                    <li>• Claims process available if needed</li>
+                    <li>• Secure storage facility with 24/7 monitoring</li>
+                    <li>• All products fully insured until collection</li>
+                    <li>• Discreet packaging for your privacy</li>
+                    <li>• Identity verification for compliance</li>
+                    <li>• Safe and secure collection process</li>
                   </ul>
                 </div>
 

@@ -83,15 +83,15 @@ export default function Header() {
     const items = [
       { name: "Products", href: "/products" },
       { name: "Pricing", href: "/#pricing" },
-      { name: "About", href: "/#about" },
-      { name: "Contact", href: "/#contact" },
+      { name: "About", href: "/about" },
+      { name: "Contact", href: "/contact" },
     ];
-    
+
     // Only show Admin link to users with admin role
     if (isAdmin) {
       items.push({ name: "Admin", href: '/admin' });
     }
-    
+
     return items;
   }, [isAdmin]);
 

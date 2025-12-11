@@ -241,11 +241,11 @@ function OrderConfirmationContent() {
             </div>
             <div className="flex items-start">
               <span className="mr-3">3.</span>
-              <span>You&#39;ll receive shipping information once your order is dispatched</span>
+              <span>You&#39;ll receive pickup instructions once your order is ready</span>
             </div>
             <div className="flex items-start">
               <span className="mr-3">4.</span>
-              <span>Insured delivery typically takes 2-5 business days</span>
+              <span>Orders are typically ready for pickup within 1-2 business days</span>
             </div>
           </div>
         </div>

@@ -23,7 +23,7 @@ export default function Footer() {
               <h3 className="text-white font-bold text-lg">Australian National Bullion</h3>
             </div>
             <p className="text-sm mb-4">
-              Australia's trusted source for investment-grade precious metals. 
+              Australia&#39;s trusted source for investment-grade precious metals. 
               Providing secure bullion transactions since establishment.
             </p>
             <div className="flex space-x-4">
@@ -66,12 +66,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#about" className="hover:text-yellow-500 transition-colors">
+                <Link href="/about" className="hover:text-yellow-500 transition-colors">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/#contact" className="hover:text-yellow-500 transition-colors">
+                <Link href="/contact" className="hover:text-yellow-500 transition-colors">
                   Contact Us
                 </Link>
               </li>
@@ -82,7 +82,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/#" className="hover:text-yellow-500 transition-colors">
-                  Shipping Information
+                  Pickup Information
                 </Link>
               </li>
               <li>

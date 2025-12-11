@@ -47,11 +47,12 @@ export async function GET(req: NextRequest) {
       logger.error('Error fetching flagged transactions:', txsError);
     }
 
-    // Fetch TTR-eligible transactions
+    // Fetch TTR-eligible transactions (only those with generated TTR references)
     const { data: ttrTransactions, error: ttrError } = await supabase
       .from('transactions')
       .select('id')
       .eq('requires_ttr', true)
+      .not('ttr_reference', 'is', null)
       .is('ttr_submitted_at', null);
 
     if (ttrError) {

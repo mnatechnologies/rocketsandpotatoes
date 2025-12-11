@@ -53,7 +53,7 @@ export default function OrderConfirmationEmail({
  items = [],
  subtotal = 0,
  total = 0,
- currency,
+ currency = 'USD',
   paymentMethod = 'Card',
  requiresKYC = false,
  requiresTTR = false,
@@ -150,7 +150,7 @@ export default function OrderConfirmationEmail({
               </Column>
               <Column style={totalValueColumn}>
                 <Text style={totalValue}>
-                  ${subtotal.toFixed(2)} {currency}
+                  {formatEmailPrice(subtotal, currency)}
                 </Text>
               </Column>
             </Row>
@@ -160,7 +160,7 @@ export default function OrderConfirmationEmail({
               </Column>
               <Column style={totalValueColumn}>
                 <Text style={totalValueBold}>
-                  ${total.toFixed(2)} {currency}
+                  {formatEmailPrice(total, currency)}
                 </Text>
               </Column>
             </Row>
@@ -201,13 +201,13 @@ export default function OrderConfirmationEmail({
             <Heading style={sectionHeading}>What Happens Next?</Heading>
             <ul style={nextStepsList}>
               <li style={nextStepsItem}>
-                <strong>1. Order Processing:</strong> We&#39;ll prepare your order for shipment
+                <strong>1. Order Processing:</strong> We&#39;ll prepare your order for pickup
               </li>
               <li style={nextStepsItem}>
-                <strong>2. Shipping:</strong> You&#39;ll receive tracking information via email
+                <strong>2. Pickup Notification:</strong> You&#39;ll receive an email when your order is ready
               </li>
               <li style={nextStepsItem}>
-                <strong>3. Delivery:</strong> Signature required upon delivery (fully insured)
+                <strong>3. Collection:</strong> Pick up your order at our secure location with valid ID
               </li>
             </ul>
           </Section>

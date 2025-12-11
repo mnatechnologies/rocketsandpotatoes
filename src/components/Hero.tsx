@@ -32,8 +32,8 @@ export default function Hero() {
   });
 
   // Get Gold and Silver prices (prices are in USD from API)
-  const goldPrice = prices.find(p => p.metal === 'XAU')?.price || 0;
-  const silverPrice = prices.find(p => p.metal === 'XAG')?.price || 0;
+  const goldPrice = prices.find(p => p.metal === 'GOLD')?.price || 0;
+  const silverPrice = prices.find(p => p.metal === 'SILVER')?.price || 0;
 
   logger.log('Hero prices:', { goldPrice, silverPrice, currency, isLoading });
 

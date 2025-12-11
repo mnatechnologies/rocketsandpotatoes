@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
         .from('transactions')
         .select('id')
         .eq('customer_id', customerId)
-        .eq('payment_status', 'pending')
+        .in('payment_status', ['pending', 'pending_review'])
         .order('created_at', { ascending: false })
         .limit(1)
         .single();

@@ -75,6 +75,19 @@ function ResumeCheckoutContent() {
         return;
       }
 
+      // Check if approval has expired (24 hours)
+      if (data.approved_at) {
+        const approvedDate = new Date(data.approved_at);
+        const expiryDate = new Date(approvedDate.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+        const now = new Date();
+
+        if (now > expiryDate) {
+          setError('This transaction approval has expired. Please contact support to request a new approval.');
+          setLoading(false);
+          return;
+        }
+      }
+
       setTransaction(data);
 
       // Get the existing payment intent ID from the transaction

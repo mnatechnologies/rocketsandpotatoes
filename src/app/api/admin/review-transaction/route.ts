@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
 
   if (decision === 'approve') {
     updateData.payment_status = 'pending_payment';
+    updateData.approved_at = new Date().toISOString(); // Track approval time for 24-hour expiry
     if (paymentIntentId) {
       updateData.stripe_payment_intent_id = paymentIntentId;
     }
