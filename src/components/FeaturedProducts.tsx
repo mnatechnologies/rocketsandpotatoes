@@ -1,19 +1,45 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { Product } from '@/types/product';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { useMetalPrices } from '@/contexts/MetalPricesContext';
+import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
+import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 
 interface FeaturedProductsProps {
   products: Product[];
 }
 
 export default function FeaturedProducts({ products }: FeaturedProductsProps) {
-  const formatPrice = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+  const { formatPrice, currency } = useCurrency();
+  const { prices: metalPrices, isLoading: loadingPrices } = useMetalPrices();
+  const [livePrices, setLivePrices] = useState<Map<string, number>>(new Map());
+
+  // Calculate live prices when metal prices update
+  useEffect(() => {
+    if (loadingPrices || !metalPrices || metalPrices.length === 0) {
+      return;
+    }
+
+    const metalPriceMap = new Map<MetalSymbol, number>(
+      metalPrices.map(price => [price.symbol, price.price])
+    );
+
+    const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
+
+    const newLivePrices = new Map<string, number>();
+    priceMap.forEach((priceInfo, productId) => {
+      newLivePrices.set(productId, priceInfo.calculatedPrice);
+    });
+
+    setLivePrices(newLivePrices);
+  }, [products, metalPrices, loadingPrices]);
+
+  const getProductPrice = (product: Product): number => {
+    return livePrices.get(product.id) ?? product.price;
   };
 
   return (
@@ -67,9 +93,12 @@ export default function FeaturedProducts({ products }: FeaturedProductsProps) {
                 {/* Price */}
                 <div className="mb-4 pt-4 border-t border-border">
                   <div className="text-2xl font-bold text-foreground">
-                    {formatPrice(product.price)}
+                    {formatPrice(getProductPrice(product))}
                   </div>
-                  <div className="text-xs text-muted-foreground">USD</div>
+                  <div className="text-xs text-muted-foreground">
+                    {currency}
+                    {loadingPrices && <span className="ml-1">⟳</span>}
+                  </div>
                 </div>
 
                 {/* Buttons */}
