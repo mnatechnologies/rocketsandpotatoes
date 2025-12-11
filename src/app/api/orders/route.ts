@@ -311,6 +311,16 @@ export async function POST(req: NextRequest) {
           stack: ttrError.stack,
         });
 
+        // Mark transaction as needing TTR retry
+        await supabase
+          .from('transactions')
+          .update({
+            review_notes: 'TTR generation failed - requires manual generation or retry',
+            flagged_for_review: true,
+            review_status: transaction.review_status || 'pending',
+          })
+          .eq('id', transaction.id);
+
         await supabase.from('audit_logs').insert({
           action_type: 'ttr_generation_failed',
           entity_type: 'transaction',
@@ -327,7 +337,7 @@ export async function POST(req: NextRequest) {
           created_at: new Date().toISOString(),
         });
 
-        logger.log('⚠️ Order created but TTR generation failed - will need manual generation');
+        logger.log('⚠️ Order created but TTR generation failed - transaction flagged for manual review');
       }
     } else {
       logger.log('⏭️ Skipping TTR generation - amount below $10K AUD threshold');

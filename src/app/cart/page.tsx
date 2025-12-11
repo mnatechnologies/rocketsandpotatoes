@@ -282,10 +282,6 @@ function CartContent() {
                     <span>Items ({getCartCount()})</span>
                     {formatPrice(getCartTotal())} {currency}
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Shipping</span>
-                    <span>Calculated at checkout</span>
-                  </div>
                   <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
                     <span>Total</span>
                     {formatPrice(getCartTotal())} {currency}
@@ -314,7 +310,7 @@ function CartContent() {
                 <div className="mt-6 pt-6 border-t text-sm text-gray-600">
                   <p className="mb-2">✓ Secure checkout</p>
                   <p className="mb-2">✓ Compliance verification included</p>
-                  <p>✓ Insured shipping available</p>
+                  <p>✓ Secure pickup location</p>
                   {loadingPrices && (
                     <p className="mt-2 text-blue-600">⟳ Updating prices...</p>
                   )}

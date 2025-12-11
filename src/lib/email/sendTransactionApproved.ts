@@ -23,17 +23,21 @@ export async function sendTransactionApprovedEmail({
    currency,
    paymentLink,
  }: TransactionApprovedEmailProps) {
+  // Always show AUD amount (compliance requirement - we charge in AUD)
+  const displayAmount = amountAUD;
+  const formattedAmount = `A$${displayAmount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #16a34a;">✅ Transaction Approved</h2>
-      
+
       <p>Dear ${customerName},</p>
-      
+
       <p>Good news! Your transaction has been approved by our compliance team.</p>
-      
+
       <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; margin: 20px 0;">
         <p style="margin: 0;"><strong>Transaction ID:</strong> ${transactionId}</p>
-        <p style="margin: 8px 0 0 0;"><strong>Amount:</strong> ${currency} ${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</p>
+        <p style="margin: 8px 0 0 0;"><strong>Amount:</strong> ${formattedAmount}</p>
       </div>
       
       <p><strong>Next Step:</strong> Please complete your payment to finalize your order.</p>
