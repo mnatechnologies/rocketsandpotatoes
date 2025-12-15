@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
       trainingRecords?.filter(t => t.completion_status === 'completed').map(t => t.staff_id)
     ).size;
 
-    const verificationRate = totalCustomers
+    const verificationRate = totalCustomers && verifiedCustomers !== null
       ? ((verifiedCustomers / totalCustomers) * 100).toFixed(1)
       : '0';
 
