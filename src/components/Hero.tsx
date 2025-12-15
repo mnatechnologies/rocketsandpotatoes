@@ -1,6 +1,7 @@
 "use client";
 import Link from 'next/link'
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -16,10 +17,44 @@ interface MetalPrice {
   changePercent: number;
 }
 
+function getMarketStatus() {
+  const now = new Date();
+  const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
+  const utcHour = now.getUTCHours();
+
+  // Precious metals markets: Open Sunday 6pm ET (23:00 UTC), Close Friday 5pm ET (22:00 UTC)
+
+  // Saturday - closed all day
+  if (utcDay === 6) {
+    return { isOpen: false, reason: 'Weekend' };
+  }
+
+  // Friday after 10pm UTC (5pm ET) - closed
+  if (utcDay === 5 && utcHour >= 22) {
+    return { isOpen: false, reason: 'Weekend' };
+  }
+
+  // Sunday before 11pm UTC (6pm ET) - closed
+  if (utcDay === 0 && utcHour < 23) {
+    return { isOpen: false, reason: 'Weekend' };
+  }
+
+  // Otherwise markets are open (Sunday 11pm UTC - Friday 10pm UTC)
+  return { isOpen: true, reason: 'Live' };
+}
+
 export default function Hero() {
   // Use shared prices from context
   const { prices: contextPrices, isLoading, error } = useMetalPrices();
   const { formatPrice, currency } = useCurrency();
+  const [marketStatus, setMarketStatus] = useState(getMarketStatus());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMarketStatus(getMarketStatus());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const prices: MetalPrice[] = contextPrices.map((quote) => {
     const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
@@ -62,7 +97,7 @@ export default function Hero() {
                 <span className="block">Australia</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-xl">
-                Secure your wealth with certified precious metals. Live pricing, guaranteed authenticity,
+                Secure your wealth with certified precious metals. {marketStatus.isOpen ? 'Live' : 'Market'} pricing, guaranteed authenticity,
                 and expert guidance for your investment journey.
               </p>
             </div>
@@ -73,7 +108,7 @@ export default function Hero() {
                 <svg className="ml-2 h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </Link>
               <a href="#pricing" className="inline-flex items-center justify-center px-6 py-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
-                View Live Prices
+                View {marketStatus.isOpen ? 'Live' : 'Current'} Prices
               </a>
             </div>
 
@@ -109,7 +144,7 @@ export default function Hero() {
                 <div className="space-y-6">
                   <div className="text-center">
                     <h3 className="text-2xl font-bold mb-2">Market Overview</h3>
-                    <p className="text-muted-foreground">Live Spot Prices</p>
+                    <p className="text-muted-foreground">{marketStatus.isOpen ? 'Live Spot Prices' : 'Market Prices'}</p>
                   </div>
 
                   {error ? (

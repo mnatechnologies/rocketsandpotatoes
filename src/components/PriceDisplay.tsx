@@ -14,21 +14,27 @@ interface MetalPrice {
 
 function getMarketStatus() {
   const now = new Date();
-  const utcDay = now.getUTCDay();
+  const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
   const utcHour = now.getUTCHours();
 
-  if (utcDay === 0 || utcDay === 6) {
+  // Precious metals markets: Open Sunday 6pm ET (23:00 UTC), Close Friday 5pm ET (22:00 UTC)
+
+  // Saturday - closed all day
+  if (utcDay === 6) {
     return { isOpen: false, reason: 'Weekend' };
   }
 
-  if (utcDay === 5 && utcHour >= 21) {
+  // Friday after 10pm UTC (5pm ET) - closed
+  if (utcDay === 5 && utcHour >= 22) {
     return { isOpen: false, reason: 'Weekend' };
   }
 
-  if (utcDay === 1 && utcHour < 22) {
+  // Sunday before 11pm UTC (6pm ET) - closed
+  if (utcDay === 0 && utcHour < 23) {
     return { isOpen: false, reason: 'Weekend' };
   }
 
+  // Otherwise markets are open (Sunday 11pm UTC - Friday 10pm UTC)
   return { isOpen: true, reason: 'Live' };
 }
 
@@ -113,7 +119,7 @@ export default function MetalsPricing() {
               marketStatus.isOpen ? (
                 <>Last updated: {formatDateTime(lastUpdated)} • Updates every 5 minutes</>
               ) : (
-                <>Prices from: {formatDateTime(lastUpdated)} • Markets closed for weekend</>
+                <>Prices from: {formatDateTime(lastUpdated)} • Markets currently closed</>
               )
             ) : (
               "Real-time market data"

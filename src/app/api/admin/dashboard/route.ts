@@ -119,6 +119,33 @@ export async function GET(req: NextRequest) {
       logger.error('Error fetching suspicious reports:', sarError);
     }
 
+    // Fetch staff training compliance data
+    const { data: activeStaff, error: staffError } = await supabase
+      .from('staff')
+      .select('id, requires_aml_training')
+      .eq('is_active', true);
+
+    if (staffError) {
+      logger.error('Error fetching active staff:', staffError);
+    }
+
+    const staffRequiringTraining = activeStaff?.filter(s => s.requires_aml_training) || [];
+
+    // Get overdue training
+    const today = new Date().toISOString().split('T')[0];
+    const { data: overdueTraining, error: overdueError } = await supabase
+      .from('staff_training')
+      .select('staff_id')
+      .lt('next_training_due', today);
+
+    if (overdueError) {
+      logger.error('Error fetching overdue training:', overdueError);
+    }
+
+    // Get unique staff with overdue training
+    const overdueStaffIds = new Set(overdueTraining?.map(t => t.staff_id) || []);
+    const overdueStaffCount = overdueStaffIds.size;
+
     return NextResponse.json({
       pendingDocuments: pendingDocs?.length || 0,
       flaggedTransactions: flaggedTxs?.length || 0,
@@ -128,6 +155,8 @@ export async function GET(req: NextRequest) {
       recentTransactionsCount: recentTransactions?.length || 0,
       totalTransactionValue: totalTransactionValue,
       suspiciousReports: suspiciousReports || 0,
+      staffRequiringTraining: staffRequiringTraining.length,
+      overdueTraining: overdueStaffCount,
     });
   } catch (error: any) {
     logger.error('Unexpected error:', error);

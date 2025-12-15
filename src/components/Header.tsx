@@ -221,7 +221,7 @@ export default function Header() {
                   <CurrencySelector />
                 </div>
 
-                  <Link href={'/cart'}>
+                  <Link href={'/cart'} onClick={() => setIsMenuOpen(false)}>
                     <button className=" cursor-pointer inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
                       <ShoppingCartIcon/>
                       {cartCount > 0 && (

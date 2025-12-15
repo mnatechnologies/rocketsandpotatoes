@@ -14,6 +14,8 @@ interface DashboardStats {
   recentTransactionsCount: number;
   totalTransactionValue: number;
   suspiciousReports: number;
+  staffRequiringTraining: number;
+  overdueTraining: number;
 }
 
 export default function AdminDashboard() {
@@ -141,10 +143,26 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Training Compliance - Separate section if overdue */}
+        {(stats?.overdueTraining ?? 0) > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">🎓 Training Compliance</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <ActionCard
+                title="Overdue Training"
+                count={stats?.overdueTraining || 0}
+                link="/admin/staff"
+                color="red"
+                icon="⏰"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Statistics Overview */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">📈 Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <StatCard
               title="Total Customers"
               value={stats?.totalCustomers || 0}
@@ -172,6 +190,13 @@ export default function AdminDashboard() {
               subtitle={`${stats?.verifiedCustomers || 0} of ${stats?.totalCustomers || 0}`}
               icon="✓"
               color="teal"
+            />
+            <StatCard
+              title="Staff Training"
+              value={stats?.staffRequiringTraining || 0}
+              subtitle={`${stats?.overdueTraining || 0} overdue`}
+              icon="🎓"
+              color="green"
             />
           </div>
         </div>
@@ -203,6 +228,12 @@ export default function AdminDashboard() {
               description="View and manage customers"
               link="/admin/customers"
               icon="👤"
+            />
+            <QuickLink
+              title="Staff Training"
+              description="AML/CTF training compliance register"
+              link="/admin/staff"
+              icon="🎓"
             />
             <QuickLink
               title="Audit Logs"

@@ -16,6 +16,18 @@ import { toast } from 'sonner';
 
 const logger = createLogger('PRODUCT_DETAIL_CLIENT')
 
+// Market hours checker
+function getMarketStatus() {
+  const now = new Date();
+  const utcDay = now.getUTCDay();
+  const utcHour = now.getUTCHours();
+
+  if (utcDay === 6) return { isOpen: false };
+  if (utcDay === 5 && utcHour >= 22) return { isOpen: false };
+  if (utcDay === 0 && utcHour < 23) return { isOpen: false };
+  return { isOpen: true };
+}
+
 // Helper function to format category name
 const formatCategoryName = (category: string): string => {
   return category
@@ -47,6 +59,15 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [spotPricePerGram, setSpotPricePerGram] = useState<number>(0);
   const [addingToCart, setAddingToCart] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'details' | 'specs' | 'pickup'>('details');
+  const [marketStatus, setMarketStatus] = useState(getMarketStatus());
+
+  // Update market status every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMarketStatus(getMarketStatus());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Calculate product price when metal prices change - same logic as ProductsClient
   useEffect(() => {
@@ -188,7 +209,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       {/* Price Loading/Error Banner */}
       {loadingPrices && (
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-          <p className="text-blue-800">Loading live metal prices...</p>
+          <p className="text-blue-800">Loading {marketStatus.isOpen ? 'live' : 'current'} metal prices...</p>
         </div>
       )}
 
@@ -284,7 +305,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 {hasLivePrice && (
                   <>
                     <div className="text-xs text-green-600 font-medium mt-1">
-                      ✓ Live Market Price
+                      ✓ {marketStatus.isOpen ? 'Live Market Price' : 'Current Market Price'}
                     </div>
                     {spotPricePerGram > 0 && (
                       <div className="text-xs text-gray-500 mt-1">

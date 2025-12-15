@@ -51,7 +51,7 @@ export default function FeaturedProducts({ products }: FeaturedProductsProps) {
             <span className="gold-shimmer bg-clip-text text-transparent">Featured Products</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Discover our top precious metals with live pricing
+            Discover our top precious metals with market-based pricing
           </p>
         </div>
 

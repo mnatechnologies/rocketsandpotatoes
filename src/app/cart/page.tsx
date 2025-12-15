@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, Suspense, useState, useCallback } from 'react';
+import { useEffect, useRef, Suspense, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Product } from '@/types/product';
 import Image from 'next/image';
@@ -16,6 +16,18 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { toast } from 'sonner';
 
 const logger = createLogger('CART_PAGE')
+
+// Market hours checker
+function getMarketStatus() {
+  const now = new Date();
+  const utcDay = now.getUTCDay();
+  const utcHour = now.getUTCHours();
+
+  if (utcDay === 6) return { isOpen: false };
+  if (utcDay === 5 && utcHour >= 22) return { isOpen: false };
+  if (utcDay === 0 && utcHour < 23) return { isOpen: false };
+  return { isOpen: true };
+}
 
 function CartContent() {
   const {
@@ -43,7 +55,37 @@ function CartContent() {
   const hasAddedProduct = useRef(false);
   const hasFetchedPrices = useRef(false);
   const { formatPrice, currency } = useCurrency();
+  const [marketStatus, setMarketStatus] = useState(getMarketStatus());
 
+  // Update market status every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMarketStatus(getMarketStatus());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate current market prices for all cart items (memoized to prevent loops)
+  const currentCartPrices = useMemo(() => {
+    if (!metalPrices || metalPrices.length === 0 || cart.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const metalPriceMap = new Map<MetalSymbol, number>(
+      metalPrices.map(price => [price.symbol, price.price])
+    );
+
+    const products = cart.map(item => item.product);
+    const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
+
+    // Convert to simple price map (productId -> price)
+    const simplePriceMap = new Map<string, number>();
+    priceMap.forEach((priceInfo, productId) => {
+      simplePriceMap.set(productId, priceInfo.calculatedPrice);
+    });
+
+    return simplePriceMap;
+  }, [cart, metalPrices]); // Only recalculate when cart or metal prices change
 
   const calculateAndLockPrices = useCallback(async () => {
   if (cart.length === 0 || !metalPrices || metalPrices.length === 0) return;
@@ -73,17 +115,9 @@ function CartContent() {
   }
 }, [cart, metalPrices, lockPricesOnServer]);
 
-  // ✅ Re-lock prices whenever cart changes (no guard)
-  useEffect(() => {
-    if (loadingPrices || !metalPrices || metalPrices.length === 0 || cart.length === 0) {
-      return;
-    }
-
-    if (!isLoading) {
-      logger.log('🔒 Cart changed, re-locking prices for', cart.length, 'items');
-      calculateAndLockPrices();
-    }
-  }, [isLoading, cart.length, metalPrices, loadingPrices, calculateAndLockPrices]);
+  // Note: We NO LONGER re-lock prices in cart
+  // Cart displays current market prices in real-time
+  // Prices are only locked when user proceeds to checkout
 
   // Handle adding product from URL parameter
   useEffect(() => {
@@ -108,7 +142,7 @@ function CartContent() {
 
 
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!isLoaded) {
       return;
     }
@@ -118,15 +152,14 @@ function CartContent() {
       return;
     }
 
-    if (isTimerExpired) {
-      toast.warning('Price lock has expired', {
-        description: 'Please refresh prices before checkout',
-      });
-      // Force price recalculation
-      hasFetchedPrices.current = false;
-      calculateAndLockPrices();
-      return;
-    }
+    // Lock prices at current market rates and start 15-minute timer
+    logger.log('[CART] Locking prices for checkout');
+    startPricingTimer();
+    await calculateAndLockPrices();
+
+    toast.success('Prices locked for 15 minutes', {
+      description: 'Complete your purchase within this time',
+    });
 
     router.push('/checkout');
   };
@@ -144,40 +177,32 @@ function CartContent() {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 
-        {timerRemaining > 0 && !isTimerExpired && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-            <p className="text-green-800 font-semibold">
-              🔒 Prices locked for: <span className="text-xl font-bold">{timerFormatted}</span>
-            </p>
-            <p className="text-green-700 text-sm mt-1">
-              Your prices are guaranteed for the next {timerFormatted}
-            </p>
-          </div>
-        )}
-
-        {isTimerExpired && cart.length > 0 && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-            <p className="text-red-800 font-semibold mb-2">
-              ⏰ Price lock expired - prices need to be refreshed
-            </p>
-            <button
-              onClick={() => {
-                logger.log('[CART] Refreshing prices and restarting timer');
-                clearPricingTimer();
-                hasFetchedPrices.current = false;
-                startPricingTimer();
-                calculateAndLockPrices();
-              }}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
-            >
-              Refresh Prices & Restart Timer
-            </button>
+        {/* Pricing Information Banner */}
+        {cart.length > 0 && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="text-blue-600 mt-0.5">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-blue-900 font-semibold mb-1">
+                  {marketStatus.isOpen ? '📊 Live Market Pricing' : '📋 Current Market Pricing'}
+                </p>
+                <p className="text-blue-800 text-sm">
+                  {marketStatus.isOpen
+                    ? 'Prices update every minute based on live precious metals markets. Prices will be locked for 15 minutes when you proceed to checkout.'
+                    : 'Markets are currently closed. Prices shown are from the last market close and will be locked for 15 minutes when you proceed to checkout.'}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
         {loadingPrices && (
           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-            <p className="text-blue-800">Updating prices with live market data...</p>
+            <p className="text-blue-800">Updating prices with {marketStatus.isOpen ? 'live' : 'current'} market data...</p>
           </div>
         )}
 
@@ -214,22 +239,22 @@ function CartContent() {
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
               {cart.map((item) => {
-                const lockedPrice = getLockedPriceForProduct(item.product.id);
-                const displayPrice = lockedPrice ?? item.product.price;
-                const isPriceLocked = lockedPrice !== null;
+                // Get pre-calculated current market price (from memoized map)
+                const currentPrice = currentCartPrices.get(item.product.id) ?? item.product.price;
+                const displayPrice = currentPrice;
 
                 return (
                   <div
                     key={item.product.id}
                     className="bg-white rounded-lg shadow-md p-6 flex flex-col md:flex-row gap-4"
                   >
-                    <div className="relative w-full md:w-32 h-32 bg-gray-100 rounded flex-shrink-0">
+                    <div className="relative w-32 h-32 mx-auto md:mx-0 md:w-32 bg-gray-100 rounded flex-shrink-0">
                       <Image
                         src={item.product.image_url || '/images/placeholder-product.jpg'}
                         alt={item.product.name}
                         fill
-                        className="object-cover rounded"
-                        sizes="128px"
+                        className="object-contain rounded p-2"
+                        sizes="(max-width: 768px) 128px, 128px"
                       />
                     </div>
 
@@ -243,16 +268,9 @@ function CartContent() {
                       </div>
                       <div className="text-xl font-bold text-gray-900">
                         {formatPrice(displayPrice)}
-                        {isPriceLocked && (
-                          <div className="text-xs text-green-600 font-medium mt-1">
-                            🔒 Price Locked
-                          </div>
-                        )}
-                        {!isPriceLocked && (
-                          <div className="text-xs text-blue-600 font-medium mt-1">
-                            ⟳ Live Market Price
-                          </div>
-                        )}
+                        <div className="text-xs text-blue-600 font-medium mt-1">
+                          ⟳ {marketStatus.isOpen ? 'Live' : 'Current'} Market Price
+                        </div>
                       </div>
                     </div>
 
@@ -315,14 +333,9 @@ function CartContent() {
 
                 <button
                   onClick={handleCheckout}
-                  disabled={isTimerExpired} 
-                  className={`cursor-pointer w-full py-3 font-bold rounded-lg transition-colors mb-4 ${
-                    isTimerExpired
-                      ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                      : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                  }`}
+                  className="cursor-pointer w-full py-3 font-bold rounded-lg transition-colors mb-4 bg-yellow-500 hover:bg-yellow-600 text-white"
                 >
-                  {isTimerExpired ? '⏰ Prices Expired - Refresh Required' : 'Proceed to Checkout'}
+                  Proceed to Checkout
                 </button>
 
                 <Link

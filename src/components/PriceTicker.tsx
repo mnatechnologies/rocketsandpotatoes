@@ -15,56 +15,55 @@ interface TickerPrice {
 
 function getMarketStatus() {
   const now = new Date();
-
-  // Convert to Australian Eastern Time
-  const australiaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
   const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
+  const utcHour = now.getUTCHours();
 
-  // Markets are closed on weekends (Saturday and Sunday in US time)
-  if (utcDay === 0 || utcDay === 6) {
-    return {
-      isOpen: false,
-      reason: 'Weekend',
-      nextOpen: getNextMarketOpen(now)
-    };
+  // Precious metals markets: Open Sunday 6pm ET (23:00 UTC), Close Friday 5pm ET (22:00 UTC)
+
+  // Saturday - closed all day
+  if (utcDay === 6) {
+    return { isOpen: false, reason: 'Weekend', nextOpen: getNextMarketOpen(now) };
   }
 
-  // Friday evening US time = Saturday morning Australia
-  if (utcDay === 5) {
-    const utcHour = now.getUTCHours();
-    if (utcHour >= 21) { // 5pm ET Friday
-      return {
-        isOpen: false,
-        reason: 'Weekend',
-        nextOpen: getNextMarketOpen(now)
-      };
-    }
+  // Friday after 10pm UTC (5pm ET) - closed
+  if (utcDay === 5 && utcHour >= 22) {
+    return { isOpen: false, reason: 'Weekend', nextOpen: getNextMarketOpen(now) };
   }
 
-  // Sunday evening US time = Monday morning Australia
-  if (utcDay === 1) {
-    const utcHour = now.getUTCHours();
-    if (utcHour < 22) { // Before 6pm ET Sunday
-      return {
-        isOpen: false,
-        reason: 'Weekend',
-        nextOpen: getNextMarketOpen(now)
-      };
-    }
+  // Sunday before 11pm UTC (6pm ET) - closed
+  if (utcDay === 0 && utcHour < 23) {
+    return { isOpen: false, reason: 'Weekend', nextOpen: getNextMarketOpen(now) };
   }
 
+  // Otherwise markets are open (Sunday 11pm UTC - Friday 10pm UTC)
   return { isOpen: true, reason: 'Live', nextOpen: null };
 }
 function getNextMarketOpen(now: Date): string {
   const utcDay = now.getUTCDay();
   const utcHour = now.getUTCHours();
 
-  // If it's Friday evening or Saturday, market opens Sunday 6pm ET (Monday morning AEDT)
-  if (utcDay === 5 || utcDay === 6) {
-    const daysUntilSunday = utcDay === 5 ? 2 : 1;
+  // If it's Friday evening or Saturday, market opens Sunday 6pm ET (23:00 UTC Sunday)
+  if (utcDay === 5 && utcHour >= 22) {
+    // Friday evening - market opens Sunday 23:00 UTC
     const nextOpen = new Date(now);
-    nextOpen.setUTCDate(now.getUTCDate() + daysUntilSunday);
-    nextOpen.setUTCHours(22, 0, 0, 0); // 6pm ET = 22:00 UTC (10am AEDT Monday)
+    nextOpen.setUTCDate(now.getUTCDate() + 2);
+    nextOpen.setUTCHours(23, 0, 0, 0);
+    return nextOpen.toLocaleString('en-AU', {
+      timeZone: 'Australia/Sydney',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+  }
+
+  if (utcDay === 6) {
+    // Saturday - market opens Sunday 23:00 UTC
+    const nextOpen = new Date(now);
+    nextOpen.setUTCDate(now.getUTCDate() + 1);
+    nextOpen.setUTCHours(23, 0, 0, 0);
 
     return nextOpen.toLocaleString('en-AU', {
       timeZone: 'Australia/Sydney',
@@ -77,13 +76,10 @@ function getNextMarketOpen(now: Date): string {
     });
   }
 
-  // If it's Sunday before market open
-  if (utcDay === 0 || (utcDay === 1 && utcHour < 22)) {
+  // If it's Sunday before market open (before 23:00 UTC)
+  if (utcDay === 0 && utcHour < 23) {
     const nextOpen = new Date(now);
-    if (utcDay === 0) {
-      nextOpen.setUTCDate(now.getUTCDate() + 1);
-    }
-    nextOpen.setUTCHours(22, 0, 0, 0);
+    nextOpen.setUTCHours(23, 0, 0, 0);
 
     return nextOpen.toLocaleString('en-AU', {
       timeZone: 'Australia/Sydney',
