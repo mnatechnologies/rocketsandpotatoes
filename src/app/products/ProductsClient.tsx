@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Product } from '@/types/product';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
@@ -25,6 +26,8 @@ interface ProductWithDynamicPrice extends Product {
 }
 
 export default function ProductsClient({ products, categoryNames }: ProductsClientProps) {
+    const searchParams = useSearchParams();
+
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name'>('price-asc');
@@ -34,6 +37,20 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     // Use shared metal prices from context
     const { prices: metalPrices, isLoading: loadingPrices, error, lastUpdated } = useMetalPrices();
     const priceError = error ? 'Using static prices' : null;
+
+    // Read URL query parameters and set filters on mount/URL change
+    useEffect(() => {
+        const categoryParam = searchParams.get('category');
+        const formTypeParam = searchParams.get('formType');
+
+        if (categoryParam) {
+            setSelectedCategory(categoryParam);
+        }
+
+        if (formTypeParam) {
+            setSelectedFormType(formTypeParam);
+        }
+    }, [searchParams]);
 
     // Calculate product prices when metal prices change
     useEffect(() => {
@@ -257,9 +274,47 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
           ))}
 
           {filteredProducts.length === 0 && (
-            <div className="text-center py-12">
-                <p className="text-xl text-gray-600">No products found matching your criteria.</p>
-                <p className="text-gray-500 mt-2">Try adjusting your search or filters.</p>
+            <div className="text-center py-8 sm:py-12 max-w-md mx-auto px-4">
+                <div className="mb-6">
+                    <div className="text-5xl sm:text-6xl mb-4">🔍</div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                        No products found
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-600">
+                        We couldn&apos;t find any products matching your criteria.
+                    </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6">
+                    <p className="text-sm font-semibold text-gray-700 mb-3">
+                        Try the following:
+                    </p>
+                    <ul className="text-sm text-gray-600 space-y-2 text-left">
+                        <li className="flex items-start gap-2">
+                            <span className="text-primary">•</span>
+                            <span>Clear your filters or search query</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-primary">•</span>
+                            <span>Browse all categories</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-primary">•</span>
+                            <span>Check back later for new inventory</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <button
+                    onClick={() => {
+                        setSearchQuery('');
+                        setSelectedCategory('all');
+                        setSelectedFormType('all');
+                    }}
+                    className="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-colors shadow-md text-sm sm:text-base w-full sm:w-auto"
+                >
+                    Clear All Filters
+                </button>
             </div>
           )}
       </>
@@ -284,6 +339,20 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
         });
     };
 
+    // Format category name
+    const formatCategoryName = (category: string): string => {
+        return category
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+
+    // Format form type (subcategory)
+    const formatFormType = (formType: 'cast' | 'minted' | null | undefined): string | null => {
+        if (!formType) return null;
+        return formType === 'cast' ? 'Cast' : 'Minted';
+    };
+
     return (
       <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
           <div className="relative h-48 bg-gray-100">
@@ -294,6 +363,17 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
                 className="object-contain"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
               />
+              {/* Category Badge Overlay */}
+              <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-white/95 text-primary border border-primary/20 shadow-sm">
+                      {formatCategoryName(product.category)}
+                  </span>
+                  {product.form_type && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-blue-500/95 text-white shadow-sm">
+                          {formatFormType(product.form_type)}
+                      </span>
+                  )}
+              </div>
               {/*{!product.stock && (*/}
               {/*  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">*/}
               {/*      <span className="text-white text-xl font-bold">Out of Stock</span>*/}

@@ -7,6 +7,7 @@ import PriceTicker from "@/components/PriceTicker";
 import {MetalPricesProvider} from "@/contexts/MetalPricesContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider} from "@/contexts/CurrencyContext";
+import { Toaster } from 'sonner';
 
 import {
   ClerkProvider,
@@ -39,6 +40,7 @@ export default function RootLayout({
           <MetalPricesProvider>
             <CurrencyProvider>
               <CartProvider>
+                <Toaster position="top-center" richColors closeButton />
                 <PriceTicker />
                 <Header />
                 {children}

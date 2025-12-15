@@ -26,7 +26,6 @@
     "delete-clerk-users": "dotenvx run --env-file=.env.development -- tsx src/scripts/delete-all-clerk-users.ts",
     "sync-clerk-users": "dotenvx run --env-file=.env.development  -- tsx src/scripts/sync-clerk-users.ts"
   },
-
   "dependencies": {
     "@aws-sdk/client-ses": "^3.940.0",
     "@clerk/nextjs": "^6.33.7",
@@ -43,6 +42,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-email": "^5.0.4",
+    "sonner": "^2.0.7",
     "stripe": "^19.1.0",
     "svix": "^1.77.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"

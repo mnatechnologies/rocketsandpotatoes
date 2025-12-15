@@ -139,12 +139,17 @@ export default function Header() {
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center space-x-3 " >
               <CurrencySelector />
-              <Link href={'/cart'}>
-                <button className=" mt-2 relative cursor-pointer inline-flex items-center...">
-                  <ShoppingCartIcon/>
+              <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
+                <button
+                  className=" mt-2 relative cursor-pointer inline-flex items-center..."
+                  aria-label={`View shopping cart (${cartCount} items)`}
+                >
+                  <ShoppingCartIcon aria-hidden="true" />
                   {cartCount > 0 && (
                     <span
-                      className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
+                      aria-label={`${cartCount} items in cart`}
+                    >
                     {cartCount}
                   </span>
                   )}
@@ -154,12 +159,18 @@ export default function Header() {
               {/* Clerk Authentication Components */}
               <SignedOut>
                 <SignInButton>
-                  <button className="bg-[#6c47ff] text-white rounded-full font-medium text-sm h-9 px-4 cursor-pointer hover:opacity-95 transition-opacity">
+                  <button
+                    className="bg-[#6c47ff] text-white rounded-full font-medium text-sm h-9 px-4 cursor-pointer hover:opacity-95 transition-opacity"
+                    aria-label="Sign in to your account"
+                  >
                     Login
                   </button>
                 </SignInButton>
                 <SignUpButton>
-                  <button className="bg-[#6c47ff] text-white rounded-full font-medium text-sm h-9 px-4 cursor-pointer hover:opacity-95 transition-opacity">
+                  <button
+                    className="bg-[#6c47ff] text-white rounded-full font-medium text-sm h-9 px-4 cursor-pointer hover:opacity-95 transition-opacity"
+                    aria-label="Create a new account"
+                  >
                     Sign Up
                   </button>
                 </SignUpButton>
@@ -174,7 +185,8 @@ export default function Header() {
               <button
                   className=" cursor-pointer inline-flex items-center justify-center h-9 w-9 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth"
                   onClick={() => setIsMenuOpen((v) => !v)}
-                  aria-label="Toggle menu"
+                  aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                  aria-expanded={isMenuOpen}
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   {isMenuOpen ? (

@@ -13,6 +13,7 @@ import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { createLogger} from "@/lib/utils/logger";
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { toast } from 'sonner';
 
 const logger = createLogger('CART_PAGE')
 
@@ -91,7 +92,11 @@ function CartContent() {
       hasAddedProduct.current = true;
       addToCartById(productId).then((success) => {
         if (!success) {
-          alert('Failed to add product to cart');
+          toast.error('Failed to add product to cart', {
+            description: 'The product could not be found or added',
+          });
+        } else {
+          toast.success('Product added to cart!');
         }
         router.replace('/cart');
       });
@@ -114,7 +119,9 @@ function CartContent() {
     }
 
     if (isTimerExpired) {
-      alert('⏰ Price lock has expired. Please refresh prices before checkout.');
+      toast.warning('Price lock has expired', {
+        description: 'Please refresh prices before checkout',
+      });
       // Force price recalculation
       hasFetchedPrices.current = false;
       calculateAndLockPrices();
@@ -175,11 +182,29 @@ function CartContent() {
         )}
 
         {cart.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-xl text-gray-600 mb-6">Your cart is empty</p>
+          <div className="bg-white rounded-lg shadow-md p-6 sm:p-8 md:p-12 text-center max-w-md mx-auto">
+            <div className="mb-6">
+              <div className="text-5xl sm:text-6xl mb-4">🛒</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                Your cart is empty
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600">
+                Start building your precious metals portfolio today
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="text-sm text-gray-600 mb-2">Popular products:</p>
+              <ul className="text-sm text-gray-500 space-y-1">
+                <li>• Gold bars and coins</li>
+                <li>• Silver bullion</li>
+                <li>• Platinum products</li>
+              </ul>
+            </div>
+
             <Link
               href="/products"
-              className="inline-block px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg transition-colors"
+              className="inline-block px-6 sm:px-8 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-colors shadow-md text-sm sm:text-base"
             >
               Browse Products
             </Link>

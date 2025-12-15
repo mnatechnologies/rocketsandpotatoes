@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import ProductsClient from './ProductsClient';
 import { createLogger } from '@/lib/utils/logger';
+import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton';
 
 const logger = createLogger('PRODUCTS_PAGE');
 
@@ -41,8 +42,22 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading products...
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-primary my-4">
+              Precious Metals Products
+            </h1>
+            <p className="text-xl text-secondary">
+              Premium bullion from Australia&#39;s most trusted mints
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -77,7 +92,9 @@ export default function ProductsPage() {
             Premium bullion from Australia&#39;s most trusted mints
           </p>
         </div>
-        <ProductsClient products={products} categoryNames={categoryNames} />
+        <Suspense fallback={<div className="text-center">Loading filters...</div>}>
+          <ProductsClient products={products} categoryNames={categoryNames} />
+        </Suspense>
       </div>
     </div>
   );

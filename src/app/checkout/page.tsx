@@ -10,6 +10,7 @@ import { useCart} from '@/contexts/CartContext';
 import {formatRemainingTime} from "@/lib/pricing/pricingTimer";
 import { createLogger } from '@/lib/utils/logger';
 import {useCurrency} from "@/contexts/CurrencyContext";
+import { toast } from 'sonner';
 
 const logger = createLogger('CHECKOUT_PAGE');
 
@@ -27,7 +28,9 @@ export default function CheckoutPage() {
       return;
     }
     if (isTimerExpired) {
-      alert('Your price lock has expired. Please refresh prices in your cart.');
+      toast.warning('Price lock has expired', {
+        description: 'Please refresh prices in your cart',
+      });
       router.push('/cart');
       return;
     }

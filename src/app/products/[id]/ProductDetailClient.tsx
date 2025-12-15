@@ -11,8 +11,24 @@ import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { getMetalInfo, type MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { createLogger } from '@/lib/utils/logger'
 import {useCurrency} from "@/contexts/CurrencyContext";
+import Breadcrumb, { BreadcrumbItem } from '@/components/Breadcrumb';
+import { toast } from 'sonner';
 
 const logger = createLogger('PRODUCT_DETAIL_CLIENT')
+
+// Helper function to format category name
+const formatCategoryName = (category: string): string => {
+  return category
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+// Helper function to format form type (subcategory)
+const formatFormType = (formType: 'cast' | 'minted' | null | undefined): string | null => {
+  if (!formType) return null;
+  return formType === 'cast' ? 'Cast Bars' : 'Minted Tablets';
+};
 
 interface ProductDetailClientProps {
   product: Product;
@@ -71,12 +87,17 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       logger.log('[PRODUCT_DETAIL] Added to cart:', product.name, 'Qty:', quantity, 'Price:', livePrice);
 
       // Show success message and redirect to cart
+      toast.success('Added to cart!', {
+        description: `${quantity}x ${product.name}`,
+      });
       setTimeout(() => {
         router.push('/cart');
       }, 500);
     } catch (error) {
       logger.error('[PRODUCT_DETAIL] Error adding to cart:', error);
-      alert('Failed to add item to cart. Please try again.');
+      toast.error('Failed to add item to cart', {
+        description: 'Please try again',
+      });
     } finally {
       setAddingToCart(false);
     }
@@ -90,10 +111,15 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         price: livePrice
       };
       addToCart(productWithLivePrice, quantity);
+      toast.success('Proceeding to checkout...', {
+        description: `${quantity}x ${product.name}`,
+      });
       router.push('/checkout');
     } catch (error) {
       logger.error('[PRODUCT_DETAIL] Error in buy now:', error);
-      alert('Failed to proceed to checkout. Please try again.');
+      toast.error('Failed to proceed to checkout', {
+        description: 'Please try again',
+      });
     } finally {
       setAddingToCart(false);
     }
@@ -123,6 +149,38 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     });
   };
 
+  // Build breadcrumb items
+  const buildBreadcrumbs = (): BreadcrumbItem[] => {
+    const items: BreadcrumbItem[] = [
+      { label: 'Home', href: '/' },
+      { label: 'Products', href: '/products' },
+    ];
+
+    // Add category
+    if (product.category) {
+      items.push({
+        label: formatCategoryName(product.category),
+        href: `/products?category=${product.category}`,
+      });
+    }
+
+    // Add subcategory (form_type) if it exists
+    const formTypeLabel = formatFormType(product.form_type);
+    if (formTypeLabel) {
+      items.push({
+        label: formTypeLabel,
+        href: `/products?category=${product.category}&formType=${product.form_type}`,
+      });
+    }
+
+    // Add product name (current page, no link)
+    items.push({ label: product.name });
+
+    return items;
+  };
+
+  const breadcrumbItems = buildBreadcrumbs();
+
 
   return (
   <div className="min-h-screen bg-background py-12 mt-16">
@@ -140,24 +198,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         </div>
       )}
 
-      {/* Breadcrumb */}
-      <nav className="mb-8 text-sm">
-        <ol className="flex items-center space-x-2 text-muted-foreground">
-          <li>
-            <Link href="/" className="hover:text-primary transition-colors">
-              Home
-            </Link>
-          </li>
-          <li>/</li>
-          <li>
-            <Link href="/products" className="hover:text-primary transition-colors">
-              Products
-            </Link>
-          </li>
-          <li>/</li>
-          <li className="text-foreground font-medium">{product.name}</li>
-        </ol>
-      </nav>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb items={breadcrumbItems} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Product Image */}
@@ -202,9 +244,21 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         <div className="space-y-6">
           {/* Product Title & Category */}
           <div>
-            <div className="text-sm text-primary font-semibold mb-2">
-              {metalDisplayName}
+            {/* Category and Subcategory Badges */}
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                {formatCategoryName(product.category)}
+              </span>
+              {product.form_type && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                  {formatFormType(product.form_type)}
+                </span>
+              )}
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                {metalDisplayName}
+              </span>
             </div>
+
             <h1 className="text-4xl font-bold text-foreground mb-4">
               {product.name}
             </h1>
