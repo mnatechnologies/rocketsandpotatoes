@@ -51,3 +51,4 @@ next-env.d.ts
 /CART_CONTEXT_REFACTORING.md
 
 .env.keys
+/docs/

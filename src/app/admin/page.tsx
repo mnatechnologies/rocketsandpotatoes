@@ -236,6 +236,12 @@ export default function AdminDashboard() {
               icon="🎓"
             />
             <QuickLink
+              title="Reports & Analytics"
+              description="Generate compliance and AUSTRAC reports"
+              link="/admin/reports"
+              icon="📊"
+            />
+            <QuickLink
               title="Audit Logs"
               description="View system audit trail"
               link="/admin/audit-logs"
