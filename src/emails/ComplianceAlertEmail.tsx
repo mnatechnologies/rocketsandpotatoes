@@ -16,7 +16,7 @@ export type AlertType = 'sanctions_match' | 'smr_created' | 'ttr_deadline' | 'sm
 interface ComplianceAlertEmailProps {
   alertType: AlertType;
   title: string;
-  severity: 'critical' | 'high' | 'medium';
+  severity: 'low' | 'medium' | 'high' | 'critical';
   summary: string;
   details: {
     label: string;
@@ -31,6 +31,7 @@ const severityColors = {
   critical: { bg: '#fef2f2', border: '#dc2626', text: '#991b1b', icon: '🚨' },
   high: { bg: '#fff7ed', border: '#ea580c', text: '#9a3412', icon: '⚠️' },
   medium: { bg: '#fefce8', border: '#ca8a04', text: '#854d0e', icon: '📋' },
+  low: { bg: '#f0f9ff', border: '#0284c7', text: '#075985', icon: 'ℹ️' },
 };
 
 export default function ComplianceAlertEmail({
