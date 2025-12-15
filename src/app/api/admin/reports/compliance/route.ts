@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
       .from('transactions')
       .select('id, amount, amount_aud, currency, created_at, requires_ttr')
       .gte('created_at', startDate)
-      .lte('created_at', endDate);
+      .lte('created_at', endDate)
+      .eq('payment_status', 'succeeded');
 
     if (txError) throw txError;
 

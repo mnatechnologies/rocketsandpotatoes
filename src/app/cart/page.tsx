@@ -7,7 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { useCart } from '@/contexts/CartContext';
-import { lockPrices, startPricingTimer, clearPricingTimer } from '@/lib/pricing/pricingTimer';
+import { startPricingTimer } from '@/lib/pricing/pricingTimer';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
@@ -38,11 +38,7 @@ function CartContent() {
     clearCart,
     getCartTotal,
     getCartCount,
-    getLockedPriceForProduct,
     isLoading,
-    timerRemaining,
-    timerFormatted,
-    isTimerExpired,
     lockPricesOnServer,
   } = useCart();
 
@@ -87,57 +83,45 @@ function CartContent() {
     return simplePriceMap;
   }, [cart, metalPrices]); // Only recalculate when cart or metal prices change
 
-  const calculateAndLockPrices = useCallback(async () => {
-  if (cart.length === 0 || !metalPrices || metalPrices.length === 0) return;
+  // This function is ONLY called when user clicks "Proceed to Checkout"
+  const lockPricesForCheckout = useCallback(async () => {
+    if (cart.length === 0 || !metalPrices || metalPrices.length === 0) {
+      throw new Error('Cannot lock prices: cart or metal prices not available');
+    }
 
-  try {
-    const metalPriceMap = new Map<MetalSymbol, number>(
-      metalPrices.map(price => [price.symbol, price.price])
-    );
+    try {
+      logger.log('[CART] Locking prices for checkout at current market rates');
 
-    const products = cart.map(item => item.product);
-    const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
+      const metalPriceMap = new Map<MetalSymbol, number>(
+          metalPrices.map(price => [price.symbol, price.price])
+      );
 
-    const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
-      productId,
-      price: priceInfo.calculatedPrice,
-      spotPricePerGram: priceInfo.spotPricePerGram
-    }));
+      const products = cart.map(item => item.product);
+      const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
 
-    // Lock locally
-    lockPrices(pricesToLock);
-    
-    // Lock on server (ADD THIS)
-    await lockPricesOnServer(products);
-    
-  } catch (error) {
-    logger.error('[CART] Error calculating prices:', error);
-  }
-}, [cart, metalPrices, lockPricesOnServer]);
+      const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
+        productId,
+        price: priceInfo.calculatedPrice,
+        spotPricePerGram: priceInfo.spotPricePerGram
+      }));
+
+      // Lock prices on server (this also locks locally)
+      await lockPricesOnServer(products);
+
+      logger.log('[CART] ✅ Prices locked successfully for checkout');
+
+    } catch (error) {
+      logger.error('[CART] ❌ Error locking prices:', error);
+      throw error; // Re-throw so handleCheckout can catch it
+    }
+  }, [cart, metalPrices, lockPricesOnServer]);
+
 
   // Note: We NO LONGER re-lock prices in cart
   // Cart displays current market prices in real-time
   // Prices are only locked when user proceeds to checkout
 
-  // Handle adding product from URL parameter
-  useEffect(() => {
-    const productId = searchParams.get('add');
-    if (productId && !hasAddedProduct.current) {
-      hasAddedProduct.current = true;
-      addToCartById(productId).then((success) => {
-        if (!success) {
-          toast.error('Failed to add product to cart', {
-            description: 'The product could not be found or added',
-          });
-        } else {
-          toast.success('Product added to cart!');
-        }
-        router.replace('/cart');
-      });
-      // Trigger price calculation after cart updates
-      setTimeout(() => calculateAndLockPrices(), 100);
-    }
-  }, [searchParams, addToCartById, router, calculateAndLockPrices]);
+  // Handle adding product from URL paramete
 
 
 
@@ -152,17 +136,25 @@ function CartContent() {
       return;
     }
 
-    // Lock prices at current market rates and start 15-minute timer
-    logger.log('[CART] Locking prices for checkout');
-    startPricingTimer();
-    await calculateAndLockPrices();
+    try {
+      // Start 15-minute timer and lock prices at current market rates
+      logger.log('[CART] Starting checkout - locking prices and starting timer');
+      startPricingTimer();
+      await lockPricesForCheckout();
 
-    toast.success('Prices locked for 15 minutes', {
-      description: 'Complete your purchase within this time',
-    });
+      toast.success('Prices locked for 15 minutes', {
+        description: 'Complete your purchase within this time',
+      });
 
-    router.push('/checkout');
+      router.push('/checkout');
+    } catch (error) {
+      logger.error('[CART] Failed to lock prices for checkout:', error);
+      toast.error('Failed to lock prices', {
+        description: 'Please try again or contact support',
+      });
+    }
   };
+
 
   if (isLoading) {
     return (
@@ -177,27 +169,26 @@ function CartContent() {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 
-        {/* Pricing Information Banner */}
         {cart.length > 0 && (
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <div className="text-blue-600 mt-0.5">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-blue-900 font-semibold mb-1">
-                  {marketStatus.isOpen ? '📊 Live Market Pricing' : '📋 Current Market Pricing'}
-                </p>
-                <p className="text-blue-800 text-sm">
-                  {marketStatus.isOpen
-                    ? 'Prices update every minute based on live precious metals markets. Prices will be locked for 15 minutes when you proceed to checkout.'
-                    : 'Markets are currently closed. Prices shown are from the last market close and will be locked for 15 minutes when you proceed to checkout.'}
-                </p>
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="text-blue-600 mt-0.5">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-blue-900 font-semibold mb-1">
+                    {marketStatus.isOpen ? '📊 Live Market Pricing' : '📋 Current Market Pricing'}
+                  </p>
+                  <p className="text-blue-800 text-sm">
+                    {marketStatus.isOpen
+                        ? 'Prices shown are live and may change. Click "Proceed to Checkout" to lock current prices for 15 minutes.'
+                        : 'Markets are currently closed. Prices shown are from the last market close. Click "Proceed to Checkout" to lock current prices for 15 minutes.'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
         )}
 
         {loadingPrices && (
@@ -267,7 +258,7 @@ function CartContent() {
                         <span>Purity: {item.product.purity}</span>
                       </div>
                       <div className="text-xl font-bold text-gray-900">
-                        {formatPrice(displayPrice)}
+                        {formatPrice(displayPrice)} {currency}
                         <div className="text-xs text-blue-600 font-medium mt-1">
                           ⟳ {marketStatus.isOpen ? 'Live' : 'Current'} Market Price
                         </div>
@@ -323,11 +314,11 @@ function CartContent() {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
                     <span>Items ({getCartCount()})</span>
-                    {formatPrice(getCartTotal())} {currency}
+                    {formatPrice(getCartTotal(currentCartPrices))} {currency}
                   </div>
                   <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
                     <span>Total</span>
-                    {formatPrice(getCartTotal())} {currency}
+                    {formatPrice(getCartTotal(currentCartPrices))} {currency}
                   </div>
                 </div>
 

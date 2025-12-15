@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
+import { comparePaymentMethodName } from '@/lib/compliance/name-matching';
+
 
 const logger = createLogger('STRIPE_PAYMENT_WEBHOOK');
 
@@ -53,14 +55,13 @@ export async function POST(req: NextRequest) {
 
         // Find transaction by payment intent ID
         const { data: existingTransaction, error: findError } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('stripe_payment_intent_id', paymentIntent.id)
-          .single();
+            .from('transactions')
+            .select('*')
+            .eq('stripe_payment_intent_id', paymentIntent.id)
+            .single();
 
         if (!existingTransaction) {
           logger.error('⚠️ Transaction not found for payment intent:', paymentIntent.id);
-          // Log error but don't create duplicate
           await supabase.from('audit_logs').insert({
             action_type: 'payment_intent_orphaned',
             entity_type: 'payment_intent',
@@ -68,14 +69,87 @@ export async function POST(req: NextRequest) {
             description: 'Payment succeeded but no transaction found',
             metadata: { paymentIntentId: paymentIntent.id, amount: paymentIntent.amount },
           });
-          return NextResponse.json({ received: true }); // Acknowledge webhook
+          return NextResponse.json({ received: true });
         }
 
+        // ✅ Fetch customer for name comparison
+        const { data: customer } = await supabase
+            .from('customers')
+            .select('id, first_name, last_name, verification_status, verification_level')
+            .eq('id', existingTransaction.customer_id)
+            .single();
 
-        // Update transaction status to completed
+        // ✅ Check payment name mismatch (fraud detection)
+        let paymentCardholderName = null;
+        let paymentNameMismatch = false;
+        let paymentNameMismatchSeverity: 'none' | 'low' | 'medium' | 'high' = 'none';
+        let nameComparisonDetails = null;
+
+        if (customer && paymentIntent.payment_method) {
+          try {
+            logger.log('🔍 Checking payment name mismatch...');
+
+            const paymentMethodId = paymentIntent.payment_method as string;
+
+            // Retrieve payment method to get cardholder name
+            const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+            paymentCardholderName = paymentMethod.billing_details.name;
+
+            logger.log(`Cardholder name: "${paymentCardholderName}"`);
+
+            // Compare if customer has name
+            if (customer.first_name && customer.last_name) {
+              const hasKYCVerification = customer.verification_status === 'verified' &&
+                  customer.verification_level === 'stripe_identity';
+
+              const nameComparison = await comparePaymentMethodName(
+                  customer.first_name,
+                  customer.last_name,
+                  hasKYCVerification,
+                  paymentMethodId,
+                  stripe
+              );
+
+              paymentNameMismatch = !nameComparison.isMatch;
+              paymentNameMismatchSeverity = nameComparison.mismatchSeverity;
+              nameComparisonDetails = {
+                severity: nameComparison.mismatchSeverity,
+                confidence: nameComparison.confidence,
+                details: nameComparison.details,
+                customerName: nameComparison.customerName,
+                paymentName: nameComparison.paymentName,
+                hasKYC: hasKYCVerification,
+              };
+
+              if (paymentNameMismatch) {
+                logger.log(`⚠️ Payment name mismatch detected:`, nameComparisonDetails);
+
+                // Log to audit trail
+                await supabase.from('audit_logs').insert({
+                  action_type: 'payment_name_mismatch',
+                  entity_type: 'transaction',
+                  entity_id: existingTransaction.id,
+                  description: `Payment name mismatch: Card "${nameComparison.paymentName}" vs ${hasKYCVerification ? 'verified ID' : 'registered'} "${nameComparison.customerName}" (Severity: ${paymentNameMismatchSeverity})`,
+                  metadata: nameComparisonDetails,
+                  created_at: new Date().toISOString(),
+                });
+              } else {
+                logger.log(`✅ Payment name matches customer name (${nameComparison.confidence}% confidence)`);
+              }
+            }
+          } catch (error) {
+            logger.error('❌ Error checking payment name mismatch:', error);
+            // Continue processing even if name check fails
+          }
+        }
+
+        // Update transaction with payment details and name mismatch info
         const { error: updateError } = await supabase.from('transactions').update({
           payment_status: 'succeeded',
           payment_method: paymentIntent.payment_method,
+          payment_cardholder_name: paymentCardholderName,
+          payment_name_mismatch: paymentNameMismatch,
+          payment_name_mismatch_severity: paymentNameMismatchSeverity,
           updated_at: new Date().toISOString(),
         }).eq('id', existingTransaction.id);
 
@@ -89,9 +163,9 @@ export async function POST(req: NextRequest) {
         // Mark price locks as used
         if (paymentIntent.metadata.session_id) {
           await supabase
-            .from('price_locks')
-            .update({ status: 'used' })
-            .eq('session_id', paymentIntent.metadata.session_id);
+              .from('price_locks')
+              .update({ status: 'used' })
+              .eq('session_id', paymentIntent.metadata.session_id);
 
           logger.log('Price locks marked as used for session:', paymentIntent.metadata.session_id);
         }
@@ -107,18 +181,19 @@ export async function POST(req: NextRequest) {
             amount: paymentIntent.amount / 100,
             currency: paymentIntent.currency,
             payment_method: paymentIntent.payment_method,
+            paymentNameMismatch: nameComparisonDetails,  // ✅ ADD
           },
           created_at: new Date().toISOString(),
         });
 
-        // Fetch customer data for email
-        const { data: customer } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('id', existingTransaction.customer_id)
-          .single();
+        // Fetch full customer data for email
+        const { data: customerForEmail } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('id', existingTransaction.customer_id)
+            .single();
 
-        if (customer) {
+        if (customerForEmail) {
           // Send order confirmation email
           try {
             const emailItems = (existingTransaction.product_details?.items || []).map((item: any) => ({
@@ -131,8 +206,8 @@ export async function POST(req: NextRequest) {
 
             await sendOrderConfirmationEmail({
               orderNumber: existingTransaction.id,
-              customerName: `${customer.first_name} ${customer.last_name}`,
-              customerEmail: customer.email,
+              customerName: `${customerForEmail.first_name} ${customerForEmail.last_name}`,
+              customerEmail: customerForEmail.email,
               orderDate: new Date(existingTransaction.created_at).toLocaleDateString('en-AU', {
                 year: 'numeric',
                 month: 'long',
@@ -147,8 +222,7 @@ export async function POST(req: NextRequest) {
               requiresTTR: existingTransaction.requires_ttr || false,
             });
 
-
-            logger.log('Order confirmation email sent to:', customer.email);
+            logger.log('Order confirmation email sent to:', customerForEmail.email);
           } catch (emailError) {
             logger.error('Failed to send order confirmation email:', emailError);
           }
@@ -156,6 +230,7 @@ export async function POST(req: NextRequest) {
 
         break;
       }
+
 
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;

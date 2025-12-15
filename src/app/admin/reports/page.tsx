@@ -474,8 +474,73 @@ function AustracTrackerTab() {
 
       {/* Reports Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+        {/* Mobile: Card View */}
+        <div className="block md:hidden">
+          <div className="divide-y divide-gray-200">
+            {loading ? (
+                <div className="px-6 py-8 text-center text-gray-500">
+                  Loading reports...
+                </div>
+            ) : reports.length === 0 ? (
+                <div className="px-6 py-8 text-center text-gray-500">
+                  No reports found. Try adjusting your filters.
+                </div>
+            ) : (
+                reports.map((report, idx) => (
+                    <div key={idx} className="p-4 hover:bg-gray-50">
+                      <div className="space-y-3">
+                        {/* Type and Status */}
+                        <div className="flex items-center justify-between">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                      report.type === 'TTR' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                  }`}>
+                    {report.type}
+                  </span>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                              report.status === 'submitted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                    {report.status}
+                  </span>
+                        </div>
+
+                        {/* Reference */}
+                        <div>
+                          <div className="text-xs text-gray-500">Reference</div>
+                          <div className="text-sm font-medium text-gray-900">{report.reference || 'N/A'}</div>
+                        </div>
+
+                        {/* Date */}
+                        <div>
+                          <div className="text-xs text-gray-500">Date</div>
+                          <div className="text-sm text-gray-900">{new Date(report.date).toLocaleDateString()}</div>
+                        </div>
+
+                        {/* Customer */}
+                        <div>
+                          <div className="text-xs text-gray-500">Customer</div>
+                          <div className="text-sm text-gray-900">{report.customerName}</div>
+                          <div className="text-xs text-gray-500">{report.customerEmail}</div>
+                        </div>
+
+                        {/* Details */}
+                        <div>
+                          <div className="text-xs text-gray-500">Details</div>
+                          <div className="text-sm text-gray-900">
+                            {report.amount && `$${report.amount.toFixed(2)} ${report.currency || 'AUD'}`}
+                            {report.transactionCount && `${report.transactionCount} transactions`}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                ))
+            )}
+          </div>
+        </div>
+
+        {/* Desktop: Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
@@ -484,57 +549,59 @@ function AustracTrackerTab() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
+            </thead>
+            <tbody className="divide-y divide-gray-200">
             {loading ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  Loading reports...
-                </td>
-              </tr>
-            ) : reports.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No reports found. Try adjusting your filters.
-                </td>
-              </tr>
-            ) : (
-              reports.map((report, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                      report.type === 'TTR' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
-                      {report.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {report.reference || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(report.date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                      report.status === 'submitted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {report.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div>{report.customerName}</div>
-                    <div className="text-xs text-gray-500">{report.customerEmail}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {report.amount && `$${report.amount.toFixed(2)} ${report.currency || 'AUD'}`}
-                    {report.transactionCount && `${report.transactionCount} transactions`}
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    Loading reports...
                   </td>
                 </tr>
-              ))
+            ) : reports.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    No reports found. Try adjusting your filters.
+                  </td>
+                </tr>
+            ) : (
+                reports.map((report, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                      report.type === 'TTR' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                  }`}>
+                    {report.type}
+                  </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {report.reference || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(report.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                      report.status === 'submitted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {report.status}
+                  </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        <div>{report.customerName}</div>
+                        <div className="text-xs text-gray-500">{report.customerEmail}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {report.amount && `$${report.amount.toFixed(2)} ${report.currency || 'AUD'}`}
+                        {report.transactionCount && `${report.transactionCount} transactions`}
+                      </td>
+                    </tr>
+                ))
             )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
+
     </div>
   );
 }

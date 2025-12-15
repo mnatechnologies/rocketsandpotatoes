@@ -347,7 +347,7 @@ export async function exportPendingTTRs() {
     .eq('requires_ttr', true)
     .not('ttr_reference', 'is', null)
     .is('ttr_submitted_at', null)
-    .gte('created_at', new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString());
+    .order('created_at', { ascending: false });
 
   if (error) {
     throw new Error(`Failed to fetch pending TTRs: ${error.message}`);

@@ -12,6 +12,7 @@ import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 import {sendTransactionFlaggedAlert} from "@/lib/email/sendComplianceAlert";
 
 
+
 /* eslint-disable */
 
 const logger = createLogger('CHECKOUT_API');
@@ -233,16 +234,38 @@ export async function POST(req: NextRequest) {
 
   logger.log('Previous succeeded transactions count:', previousTransactions?.length || 0);
 
- // @ts-ignore
+  const { data: pastMismatches } = await supabase
+      .from('transactions')
+      .select('payment_name_mismatch_severity, created_at')
+      .eq('customer_id', customerId)
+      .eq('payment_name_mismatch', true)
+      .eq('payment_status', 'succeeded')
+      .order('created_at', { ascending: false });
+
+  const hasPastMismatches = (pastMismatches?.length ?? 0) > 0;
+  const hasHighSeverityMismatch = pastMismatches?.some(m => m.payment_name_mismatch_severity === 'high') ?? false;
+  const mismatchCount = pastMismatches?.length || 0;
+
+  if (hasPastMismatches) {
+    logger.log(`⚠️ Customer has ${mismatchCount} previous payment name mismatch(es)`, {
+      highSeverity: hasHighSeverityMismatch,
+      severities: pastMismatches?.map(m => m.payment_name_mismatch_severity),
+    });
+  }
+  // @ts-ignore
   const riskScore = calculateRiskScore({
-   transactionAmount: amountInAUD,
-   customerAge: Math.floor((Date.now() - new Date(customer.created_at).getTime()) / (1000 * 60 * 60 * 24)),
-   previousTransactionCount: previousTransactions?.length || 0,
-   isInternational: customer?.residential_address?.country !== 'AU',
-    // @ts-ignore fuck linting
-   hasMultipleRecentTransactions: previousTransactions && previousTransactions.length >= 3,
-   unusualPattern: isStructuring,
- });
+    transactionAmount: amountInAUD,
+    customerAge: Math.floor((Date.now() - new Date(customer.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+    previousTransactionCount: previousTransactions?.length || 0,
+    isInternational: customer?.residential_address?.country !== 'AU',
+    // @ts-ignore
+    hasMultipleRecentTransactions: previousTransactions && previousTransactions.length >= 3,
+    unusualPattern: isStructuring,
+    paymentNameMismatch: hasPastMismatches ?? false,  // ✅ ADD
+    mismatchSeverity: hasHighSeverityMismatch ? 'high' : hasPastMismatches ? 'medium' : 'none',  // ✅ ADD
+    hasKYCVerification: customer.verification_status === 'verified',  // ✅ ADD
+  });
+
 
   const riskLevel = getRiskLevel(riskScore);
   logger.log('Risk assessment:', { riskScore, riskLevel });
@@ -259,6 +282,12 @@ export async function POST(req: NextRequest) {
     if (requirements.requiresEnhancedDD) flagReasons.push('Enhanced due diligence required');
     if (previousTransactions && previousTransactions.length >= 3) {
       flagReasons.push('Multiple recent transactions detected');
+    }
+    if (hasHighSeverityMismatch) {
+      flagReasons.push('Previous high-severity payment name mismatch detected');
+    }
+    if (mismatchCount >= 2) {
+      flagReasons.push(`Multiple payment name mismatches (${mismatchCount} previous incidents)`);
     }
 
     logger.log('🚩 Creating flagged transaction record:', flagReasons);
@@ -302,6 +331,13 @@ export async function POST(req: NextRequest) {
 
     if (flagError) {
       logger.error('Failed to create flagged transaction:', flagError);
+      return NextResponse.json(
+          {
+            error: 'Failed to process transaction. Please contact support.',
+            details: flagError.message
+          },
+          { status: 500 }
+      );
     } else {
       logger.log('✅ Flagged transaction created:', flaggedTransaction.id);
 

@@ -84,6 +84,7 @@ export async function GET(req: NextRequest) {
     const { data: recentTransactions, error: recentTxError } = await supabase
       .from('transactions')
       .select('amount, amount_aud, currency, created_at')
+      .eq('payment_status', 'succeeded')
       .gte('created_at', thirtyDaysAgo.toISOString())
       .order('created_at', { ascending: false });
 

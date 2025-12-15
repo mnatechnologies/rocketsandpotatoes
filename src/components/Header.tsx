@@ -180,10 +180,32 @@ export default function Header() {
               </SignedIn>
             </div>
 
-            {/* Mobile menu button */}
-            <div className="md:hidden">
+            {/* Mobile Actions - Currency, Cart, and Menu Button */}
+            <div className="md:hidden flex items-center gap-2">
+              {/* Currency Selector */}
+              <CurrencySelector />
+
+              {/* Cart Button */}
+              <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
+                <button
+                    className="relative cursor-pointer inline-flex items-center justify-center h-9 w-9 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth"
+                    aria-label={`View shopping cart (${cartCount} items)`}
+                >
+                  <ShoppingCartIcon className="h-5 w-5" aria-hidden="true" />
+                  {cartCount > 0 && (
+                      <span
+                          className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
+                          aria-label={`${cartCount} items in cart`}
+                      >
+            {cartCount}
+          </span>
+                  )}
+                </button>
+              </Link>
+
+              {/* Hamburger Menu Button */}
               <button
-                  className=" cursor-pointer inline-flex items-center justify-center h-9 w-9 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth"
+                  className="cursor-pointer inline-flex items-center justify-center h-9 w-9 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth"
                   onClick={() => setIsMenuOpen((v) => !v)}
                   aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                   aria-expanded={isMenuOpen}
@@ -217,21 +239,6 @@ export default function Header() {
                         {item.name}
                       </Link>
                   ))}
-                  <div className="py-2">
-                  <CurrencySelector />
-                </div>
-
-                  <Link href={'/cart'} onClick={() => setIsMenuOpen(false)}>
-                    <button className=" cursor-pointer inline-flex items-center justify-center h-9 px-3 rounded-md border border-border text-foreground hover:bg-muted/30 transition-smooth">
-                      <ShoppingCartIcon/>
-                      {cartCount > 0 && (
-                        <span
-                          className= "bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartCount}
-                  </span>
-                      )}
-                    </button>
-                  </Link>
                   {/* Mobile Authentication */}
                   <div className="pt-4 space-y-2">
                     <SignedOut>

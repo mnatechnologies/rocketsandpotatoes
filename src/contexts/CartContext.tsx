@@ -29,7 +29,7 @@ interface CartContextType {
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  getCartTotal: () => number;
+  getCartTotal: (currentPrices?: Map<string, number>) => number;
   getCartCount: () => number;
   getLockedPriceForProduct: (productId: string) => number | null;
   isLoading: boolean;
@@ -272,11 +272,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     logger.log('Cart cleared');
   }, [sessionId]);
 
-  const getCartTotal = useCallback(() => {
+  const getCartTotal = useCallback((currentPrices?: Map<string, number>) => {
     return cart.reduce((total, item) => {
-      // Try to get locked price first, fallback to product price
       const lockedPrice = getLockedPrice(item.product.id);
-      const price = lockedPrice?.price ?? item.product.price;
+
+      // Priority: locked price > current market price > database price (last resort)
+      let price: number;
+      if (lockedPrice) {
+        price = lockedPrice.price;
+      } else if (currentPrices && currentPrices.has(item.product.id)) {
+        price = currentPrices.get(item.product.id)!;
+      } else {
+        price = item.product.price; // fallback to DB price
+      }
+
       return total + price * item.quantity;
     }, 0);
   }, [cart]);
