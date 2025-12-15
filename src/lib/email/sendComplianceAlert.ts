@@ -224,7 +224,7 @@ export async function sendSMRDeadlineAlert(data: {
   currency?: string;
 }) {
   const recipients = getComplianceAlertRecipients();
-  
+
   if (recipients.length === 0) {
     logger.error('No compliance alert recipients configured (COMPLIANCE_ALERT_EMAILS)');
     return { success: false, error: 'No recipients configured' };
@@ -260,6 +260,79 @@ export async function sendSMRDeadlineAlert(data: {
     logger.log('SMR deadline alert sent successfully');
   } else {
     logger.error('Failed to send SMR deadline alert:', result.error);
+  }
+
+  return result;
+}
+
+// Generic compliance alert function for custom alerts
+export async function sendComplianceAlert(data: {
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  description: string;
+  metadata?: any;
+  actionUrl?: string;
+}) {
+  const recipients = getComplianceAlertRecipients();
+
+  if (recipients.length === 0) {
+    logger.error('No compliance alert recipients configured (COMPLIANCE_ALERT_EMAILS)');
+    return { success: false, error: 'No recipients configured' };
+  }
+
+  // Convert metadata to details array for email template
+  const details: Array<{ label: string; value: string }> = [];
+
+  if (data.metadata) {
+    if (data.metadata.count) {
+      details.push({ label: 'Count', value: data.metadata.count.toString() });
+    }
+    if (data.metadata.days_until_due) {
+      details.push({ label: 'Days Until Due', value: data.metadata.days_until_due.toString() });
+    }
+    if (data.metadata.days_overdue) {
+      details.push({ label: 'Days Overdue', value: data.metadata.days_overdue.toString() });
+    }
+    if (data.metadata.staff && Array.isArray(data.metadata.staff)) {
+      details.push({
+        label: 'Staff Members',
+        value: data.metadata.staff.map((s: any) =>
+          `${s.name} (${s.training_type || 'Training'} - Due: ${s.due_date})`
+        ).join(', ')
+      });
+    }
+  }
+
+  const emailHtml = await render(
+    ComplianceAlertEmail({
+      alertType: data.type as AlertType,
+      title: data.title,
+      severity: data.severity,
+      summary: data.description,
+      details,
+      actionRequired: 'Review and take appropriate action.',
+      adminUrl: data.actionUrl || `${baseUrl}/admin`,
+    })
+  );
+
+  const severityEmoji = {
+    critical: '🚨',
+    high: '⚠️',
+    medium: '📋',
+    low: 'ℹ️',
+  }[data.severity] || '📧';
+
+  const result = await sendEmail({
+    to: recipients,
+    subject: `${severityEmoji} ${data.title}`,
+    html: emailHtml,
+  });
+
+  if (result.success) {
+    logger.log(`Compliance alert sent successfully: ${data.type}`);
+  } else {
+    logger.error(`Failed to send compliance alert: ${data.type}`, result.error);
   }
 
   return result;
