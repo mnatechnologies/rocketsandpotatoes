@@ -10,14 +10,14 @@ const supabase = createClient(
 // GET /api/admin/staff/[id] - Get single staff member
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
     if (!user || user.publicMetadata?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const { id }  = await params
+    const { id } = await params
 
     const { data: staff, error } = await supabase
       .from('staff')
@@ -49,7 +49,7 @@ export async function GET(
 // PUT /api/admin/staff/[id] - Update staff member
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
@@ -57,6 +57,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await request.json();
     const {
       full_name,
@@ -84,7 +85,7 @@ export async function PUT(
     const { data: updatedStaff, error } = await supabase
       .from('staff')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -103,13 +104,15 @@ export async function PUT(
 // DELETE /api/admin/staff/[id] - Soft delete (mark as inactive)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
     if (!user || user.publicMetadata?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const { id } = await params;
 
     // Soft delete - mark as inactive and set end date
     const { data, error } = await supabase
@@ -118,7 +121,7 @@ export async function DELETE(
         is_active: false,
         employment_end_date: new Date().toISOString().split('T')[0],
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
