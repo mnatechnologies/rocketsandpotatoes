@@ -108,7 +108,7 @@ function CartContent() {
       lockPrices(pricesToLock)
 
       // Lock prices on server (this also locks locally) with user's selected currency
-      await lockPricesOnServer(products);
+      await lockPricesOnServer(products, currency);
 
       logger.log('[CART] ✅ Prices locked successfully for checkout in', currency);
 
