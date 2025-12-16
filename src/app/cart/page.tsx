@@ -7,7 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { useCart } from '@/contexts/CartContext';
-import { startPricingTimer } from '@/lib/pricing/pricingTimer';
+import {lockPrices, startPricingTimer} from '@/lib/pricing/pricingTimer';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
@@ -105,16 +105,18 @@ function CartContent() {
         spotPricePerGram: priceInfo.spotPricePerGram
       }));
 
-      // Lock prices on server (this also locks locally)
-      await lockPricesOnServer(products);
+      lockPrices(pricesToLock)
 
-      logger.log('[CART] ✅ Prices locked successfully for checkout');
+      // Lock prices on server (this also locks locally) with user's selected currency
+      await lockPricesOnServer(products, currency);
+
+      logger.log('[CART] ✅ Prices locked successfully for checkout in', currency);
 
     } catch (error) {
       logger.error('[CART] ❌ Error locking prices:', error);
       throw error; // Re-throw so handleCheckout can catch it
     }
-  }, [cart, metalPrices, lockPricesOnServer]);
+  }, [cart, metalPrices, lockPricesOnServer, currency]);
 
 
   // Note: We NO LONGER re-lock prices in cart

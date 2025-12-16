@@ -47,13 +47,13 @@ export default function CheckoutPage() {
       const price = lockedPrice ?? item.product.price;
       return sum + (price * item.quantity);
     }, 0);
-    logger.log('Total amount calculated with locked prices:', total);
+    logger.log('Total amount calculated with locked prices:', total, currency);
     return total;
   };
 
-  // Get converted total for display and payment
+  // ✅ Locked prices are already in the user's selected currency - no conversion needed!
   const getConvertedTotal = () => {
-    return convertPrice(getTotalAmount());
+    return getTotalAmount(); // Already in correct currency
   };
 
   // Get AUD equivalent for compliance threshold display

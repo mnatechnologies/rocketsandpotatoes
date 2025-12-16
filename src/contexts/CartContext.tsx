@@ -299,9 +299,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return lockedPrice?.price ?? null;
   }, []);
   
-  const lockPricesOnServer = useCallback(async (products: Product[]) => {
+  const lockPricesOnServer = useCallback(async (products: Product[], currency: string) => {
     if (!sessionId || products.length === 0) return null;
-  
+
     try {
       const response = await fetch('/api/products/pricing', {
         method: 'POST',
@@ -310,6 +310,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           sessionId,
           customerId: customerId || undefined,
           products: products.map(p => ({ productId: p.id })),
+          currency,  // ✅ Pass currency to lock prices in user's selected currency
         }),
       });
   
