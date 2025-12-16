@@ -39,7 +39,7 @@ interface CartContextType {
   customerId: string | null;
   customerEmail: string | null;
   sessionId: string | null;
-  lockPricesOnServer: (products: Product[]) => Promise<any>;
+  lockPricesOnServer: ( products: Product[], currency:string) => Promise<any>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
