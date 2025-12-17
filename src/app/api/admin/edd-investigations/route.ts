@@ -7,7 +7,7 @@ import { createLogger} from "@/lib/utils/logger";
 const logger = createLogger('EDD-Investigations');
 
 // Helper to get staff UUID from Clerk ID
-async function getStaffId(supabase: any, clerkUserId: string): Promise<string | null> {
+async function getStaffId(supabase: any, clerkUserId: string | null): Promise<string | null> {
   const { data: staff } = await supabase
     .from('staff')
     .select('id')
