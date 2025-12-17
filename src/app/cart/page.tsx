@@ -92,20 +92,7 @@ function CartContent() {
     try {
       logger.log('[CART] Locking prices for checkout at current market rates');
 
-      const metalPriceMap = new Map<MetalSymbol, number>(
-          metalPrices.map(price => [price.symbol, price.price])
-      );
-
       const products = cart.map(item => item.product);
-      const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
-
-      const pricesToLock = Array.from(priceMap.entries()).map(([productId, priceInfo]) => ({
-        productId,
-        price: priceInfo.calculatedPrice,
-        spotPricePerGram: priceInfo.spotPricePerGram
-      }));
-
-      lockPrices(pricesToLock)
 
       // Lock prices on server (this also locks locally) with user's selected currency
       await lockPricesOnServer(products, currency);
