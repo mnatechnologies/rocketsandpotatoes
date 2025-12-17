@@ -174,11 +174,11 @@ export default function EDDInvestigationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">EDD Investigations</h1>
-          <p className="text-gray-600">Enhanced Due Diligence compliance investigations</p>
+          <h1 className="text-3xl font-bold text-primary mb-2">EDD Investigations</h1>
+          <p className="text-secondary">Enhanced Due Diligence compliance investigations</p>
         </div>
 
         {/* Status Filters */}
@@ -295,24 +295,24 @@ function InvestigationCard({
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-500">Customer:</span>{' '}
-                <span className="font-medium">{investigation.customer_name}</span>
+                <span className="font-medium text-primary-foreground">{investigation.customer_name}</span>
               </div>
               <div>
                 <span className="text-gray-500">Email:</span>{' '}
-                <span className="font-medium">{investigation.customer_email}</span>
+                <span className="font-medium text-primary-foreground">{investigation.customer_email}</span>
               </div>
               <div>
                 <span className="text-gray-500">Trigger:</span>{' '}
-                <span className="font-medium">{investigation.triggered_by}</span>
+                <span className="font-medium text-primary-foreground">{investigation.triggered_by}</span>
               </div>
               <div>
                 <span className="text-gray-500">Opened:</span>{' '}
-                <span className="font-medium">{new Date(investigation.opened_at).toLocaleDateString()}</span>
+                <span className="font-medium text-primary-foreground">{new Date(investigation.opened_at).toLocaleDateString()}</span>
               </div>
               {investigation.transaction_amount_aud && (
                 <div>
                   <span className="text-gray-500">Amount:</span>{' '}
-                  <span className="font-medium">${investigation.transaction_amount_aud.toLocaleString()} AUD</span>
+                  <span className="font-medium text-primary-foreground">${investigation.transaction_amount_aud.toLocaleString()} AUD</span>
                 </div>
               )}
               <div>
@@ -584,7 +584,7 @@ function CompleteTab({
           value={findings}
           onChange={(e) => setFindings(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border text-primary-foreground border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Summarize the key findings from your investigation..."
         />
       </div>
@@ -597,7 +597,7 @@ function CompleteTab({
           value={assessment}
           onChange={(e) => setAssessment(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border text-primary-foreground border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Assess the overall risk level and implications..."
         />
       </div>
@@ -609,7 +609,7 @@ function CompleteTab({
         <select
           value={recommendation}
           onChange={(e) => setRecommendation(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border text-primary-foreground border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="">Select a decision...</option>
           {decisions.map((d) => (
@@ -646,7 +646,7 @@ function CompleteTab({
       <button
         onClick={() => onComplete(investigation.id, findings, assessment, recommendation)}
         disabled={!canComplete}
-        className={`w-full py-3 rounded-lg font-medium transition ${
+        className={`w-full cursor-pointer py-3 rounded-lg font-medium transition ${
           canComplete
             ? 'bg-green-600 text-white hover:bg-green-700'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'

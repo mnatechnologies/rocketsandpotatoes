@@ -7,7 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { useCart } from '@/contexts/CartContext';
-import {lockPrices, startPricingTimer} from '@/lib/pricing/pricingTimer';
+import {lockPrices, startPricingTimer, formatRemainingTime} from '@/lib/pricing/pricingTimer';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
@@ -40,7 +40,12 @@ function CartContent() {
     getCartCount,
     isLoading,
     lockPricesOnServer,
+    isTimerExpired,
+    timerRemaining,
   } = useCart();
+
+  // Check if prices are currently locked
+  const arePricesLocked = !isTimerExpired && timerRemaining > 0;
 
   // Use shared metal prices from context
   const { prices: metalPrices, isLoading: loadingPrices } = useMetalPrices();
@@ -178,22 +183,39 @@ function CartContent() {
         <h1 className="text-4xl font-bold text-primary my-8">Shopping Cart</h1>
 
         {cart.length > 0 && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className={`mb-4 p-4 ${arePricesLocked ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'} border rounded-lg`}>
               <div className="flex items-start gap-3">
-                <div className="text-blue-600 mt-0.5">
+                <div className={`${arePricesLocked ? 'text-green-600' : 'text-blue-600'} mt-0.5`}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    {arePricesLocked ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    )}
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <p className="text-blue-900 font-semibold mb-1">
-                    {marketStatus.isOpen ? '📊 Live Market Pricing' : '📋 Current Market Pricing'}
-                  </p>
-                  <p className="text-blue-800 text-sm">
-                    {marketStatus.isOpen
-                        ? 'Prices shown are live and may change. Click "Proceed to Checkout" to lock current prices for 15 minutes.'
-                        : 'Markets are currently closed. Prices shown are from the last market close. Click "Proceed to Checkout" to lock current prices for 15 minutes.'}
-                  </p>
+                  {arePricesLocked ? (
+                    <>
+                      <p className="text-green-900 font-semibold mb-1">
+                        🔒 Prices Currently Locked - {formatRemainingTime()} Remaining
+                      </p>
+                      <p className="text-green-800 text-sm">
+                        Your prices are locked at checkout rates. Return to checkout to complete your purchase before the timer expires.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-blue-900 font-semibold mb-1">
+                        {marketStatus.isOpen ? '📊 Live Market Pricing - Not Locked' : '📋 Current Market Pricing - Not Locked'}
+                      </p>
+                      <p className="text-blue-800 text-sm">
+                        {marketStatus.isOpen
+                            ? 'Prices shown are live and may change. Click "Proceed to Checkout" to lock current prices for 15 minutes.'
+                            : 'Markets are currently closed. Prices shown are from the last market close. Click "Proceed to Checkout" to lock current prices for 15 minutes.'}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

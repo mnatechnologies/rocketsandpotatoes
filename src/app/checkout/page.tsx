@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { CheckoutFlow } from '@/components/CheckoutFlow';
@@ -20,25 +20,16 @@ export default function CheckoutPage() {
   const { formatPrice, currency, convertPrice } = useCurrency();
 
   const { getLockedPriceForProduct, isTimerExpired, timerRemaining, cart, customerId, isLoading: cartLoading, sessionId } = useCart();
+  const [timeDisplay, setTimeDisplay] = useState(formatRemainingTime());
 
+  // Update timer display every second
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!user) {
-      router.push('/sign-in?redirect_url=/checkout');
-      return;
-    }
-    if (isTimerExpired) {
-      toast.warning('Price lock has expired', {
-        description: 'Please refresh prices in your cart',
-      });
-      router.push('/cart');
-      return;
-    }
-    if (cart.length === 0 && !cartLoading) {
-      router.push('/cart');
-      return;
-    }
-  }, [user, isLoaded, router, isTimerExpired, cart.length, cartLoading]);
+    const interval = setInterval(() => {
+      setTimeDisplay(formatRemainingTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const getTotalAmount = () => {
     const total = cart.reduce((sum, item) => {
@@ -77,6 +68,56 @@ export default function CheckoutPage() {
     logger.log('Main product for compliance:', sorted[0]?.product.name);
     return sorted[0]?.product || null;
   };
+
+  // Memoize timer styling to prevent re-calculations (must be before early returns)
+  const timerStyle = useMemo(() => {
+    if (timerRemaining > 600000) { // > 10 minutes
+      return {
+        bg: 'bg-green-50',
+        border: 'border-green-200',
+        text: 'text-green-800',
+        textBold: 'text-green-900',
+        icon: '✓'
+      };
+    } else if (timerRemaining > 300000) { // 5-10 minutes
+      return {
+        bg: 'bg-yellow-50',
+        border: 'border-yellow-200',
+        text: 'text-yellow-800',
+        textBold: 'text-yellow-900',
+        icon: '⏰'
+      };
+    } else { // < 5 minutes
+      return {
+        bg: 'bg-red-50',
+        border: 'border-red-200',
+        text: 'text-red-800',
+        textBold: 'text-red-900',
+        icon: '⚠️'
+      };
+    }
+  }, [timerRemaining]);
+
+  // Handle redirects after all hooks are called
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!user) {
+      router.push('/sign-in?redirect_url=/checkout');
+      return;
+    }
+    if (isTimerExpired) {
+      toast.warning('15-Minute Price Lock Expired', {
+        description: 'Returning to cart. Prices will show current market rates. You can checkout again to lock new prices.',
+        duration: 5000,
+      });
+      router.push('/cart?from=checkout');
+      return;
+    }
+    if (cart.length === 0 && !cartLoading) {
+      router.push('/cart');
+      return;
+    }
+  }, [user, isLoaded, router, isTimerExpired, cart.length, cartLoading]);
 
   if ( !isLoaded || cartLoading) {
     return (
@@ -121,6 +162,7 @@ export default function CheckoutPage() {
   }
 
   const mainProduct = getMainProduct();
+
   if (!mainProduct) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -137,22 +179,29 @@ export default function CheckoutPage() {
     );
   }
 
-  const amountInAUD = getAmountInAUDForThresholds();
-
   return (
     <div className="min-h-screen bg-background/50 py-12">
       <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Checkout</h1>
-        {timerRemaining > 0 && timerRemaining < 300000 && ( // Show if less than 5 minutes
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-            <p className="text-yellow-800 font-semibold">
-              ⏰ Price lock expires in: <span className="text-xl font-bold">{formatRemainingTime()}</span>
-            </p>
-            <p className="text-yellow-700 text-sm mt-1">
-              Complete checkout before timer expires to secure these prices
-            </p>
+
+        {/* Always-visible persistent timer */}
+        <div className={`mb-4 p-4 ${timerStyle.bg} border ${timerStyle.border} rounded-lg sticky top-20 z-10 shadow-md`}>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-2xl">{timerStyle.icon}</span>
+            <div className="text-center flex-1">
+              <p className={`${timerStyle.textBold} font-semibold`}>
+                🔒 Prices Locked - Expires In: <span className="text-2xl font-mono font-bold">{timeDisplay}</span>
+              </p>
+              <p className={`${timerStyle.text} text-sm mt-1`}>
+                {timerRemaining > 600000
+                  ? 'Your prices are locked at checkout rates. Complete your purchase before the timer expires.'
+                  : timerRemaining > 300000
+                  ? 'Complete checkout soon to secure these locked prices.'
+                  : 'Time running out! Complete checkout now or prices will reset to current market rates.'}
+              </p>
+            </div>
           </div>
-        )}
+        </div>
         {/* Order Summary */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Summary</h2>
@@ -187,7 +236,7 @@ export default function CheckoutPage() {
           <p className="text-sm text-blue-800">
             All precious metal transactions are subject to Australian compliance requirements.
             Your order will be verified for anti-money laundering (AML) compliance.
-            {amountInAUD >= 5000 && (
+            {getAmountInAUDForThresholds() >= 5000 && (
               <span className="block mt-2 font-semibold">
                 ⚠️ Transactions over $5,000 AUD require identity verification (KYC).
               </span>

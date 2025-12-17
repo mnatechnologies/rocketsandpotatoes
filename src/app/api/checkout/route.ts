@@ -91,20 +91,28 @@ export async function POST(req: NextRequest) {
 
   const amountInUSD = locks.reduce((sum, lock) => {
     const item = cartItems?.find((i: any) => i.productId === lock.product_id);
-    const quantity = item?.quantity || 1;
 
-    logger.log(`  Product ${lock.product_id.substring(0, 8)}...: ${lock.locked_price_usd} USD × ${quantity} = ${(lock.locked_price_usd * quantity).toFixed(2)} USD ${item ? '✓' : '⚠️ (no cart item)'}`);
-
+    // SKIP locks for products not in current cart (old locks from previous sessions)
     if (!item) {
-      logger.warn(`⚠️ No cart item found for locked product ${lock.product_id}, defaulting quantity to 1`);
+      logger.warn(`⚠️ Skipping lock for product ${lock.product_id} - not in current cart`);
+      return sum;
     }
+
+    const quantity = item.quantity;
+    logger.log(`  Product ${lock.product_id.substring(0, 8)}...: ${lock.locked_price_usd} USD × ${quantity} = ${(lock.locked_price_usd * quantity).toFixed(2)} USD ✓`);
 
     return sum + (lock.locked_price_usd * quantity);
   }, 0);
 
   const amountInAUD = locks.reduce((sum, lock) => {
     const item = cartItems?.find((i: any) => i.productId === lock.product_id);
-    const quantity = item?.quantity || 1;
+
+    // SKIP locks for products not in current cart
+    if (!item) {
+      return sum;
+    }
+
+    const quantity = item.quantity;
     return sum + (lock.locked_price_aud * quantity);
   }, 0);
 

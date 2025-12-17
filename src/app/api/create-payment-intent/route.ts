@@ -71,7 +71,14 @@ export async function POST(req: NextRequest) {
       // ✅ Calculate expected total in the LOCKED currency (no conversion!)
       const expectedTotal = locks.reduce((sum, lock) => {
         const cartItem = cartItems?.find((item: { productId: any; }) => item.productId === lock.product_id);
-        const quantity = cartItem?.quantity || 1;
+
+        // SKIP locks for products not in current cart (old locks from previous sessions)
+        if (!cartItem) {
+          logger.warn(`⚠️ Skipping lock for product ${lock.product_id} - not in current cart`);
+          return sum;
+        }
+
+        const quantity = cartItem.quantity;
 
         // Use the appropriate price field based on locked currency
         const price = lockedCurrency === 'AUD' ? lock.locked_price_aud : lock.locked_price_usd;
