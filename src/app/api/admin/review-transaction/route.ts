@@ -18,7 +18,12 @@ export async function POST(req: NextRequest) {
   const adminCheck = await requireAdmin();
   if (!adminCheck.authorized) return adminCheck.error;
 
-  const { transactionId, decision, notes } = await req.json();
+  const { transactionId, decision, notes, action } = await req.json();
+
+  // Handle trigger_edd action
+  if (action === 'trigger_edd') {
+    return await triggerEDDInvestigation(req, transactionId, notes || '', adminCheck.userId!);
+  }
 
   if (!notes || notes.trim().length === 0) {
     return NextResponse.json({ error: 'Review notes are required' }, { status: 400 });
@@ -278,4 +283,136 @@ export async function POST(req: NextRequest) {
   logger.log('✅ Transaction review completed successfully');
 
   return NextResponse.json({ success: true });
+}
+
+// Helper function to trigger EDD investigation from transaction review
+async function triggerEDDInvestigation(
+  req: NextRequest,
+  transactionId: string,
+  reason: string,
+  adminUserId: string
+) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  // Get admin customer ID
+  const { data: adminCustomer } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('clerk_user_id', adminUserId)
+    .single();
+
+  if (!adminCustomer) {
+    return NextResponse.json({ error: 'Admin customer not found' }, { status: 404 });
+  }
+
+  // Get transaction and customer
+  const { data: transaction } = await supabase
+    .from('transactions')
+    .select('customer_id, amount_aud')
+    .eq('id', transactionId)
+    .single();
+
+  if (!transaction) {
+    return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+  }
+
+  // Check for existing active investigation
+  const { data: existingInvestigation } = await supabase
+    .from('edd_investigations')
+    .select('id, investigation_number, status')
+    .eq('customer_id', transaction.customer_id)
+    .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
+    .single();
+
+  if (existingInvestigation) {
+    // Link transaction to existing investigation
+    await supabase
+      .from('transactions')
+      .update({ edd_investigation_id: existingInvestigation.id })
+      .eq('id', transactionId);
+
+    logger.log('Transaction linked to existing investigation:', existingInvestigation.investigation_number);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Transaction linked to existing investigation',
+      existingInvestigation: {
+        id: existingInvestigation.id,
+        investigation_number: existingInvestigation.investigation_number,
+        status: existingInvestigation.status,
+      },
+    });
+  }
+
+  // Create new investigation
+  const { data: investigation, error: createError } = await supabase
+    .from('edd_investigations')
+    .insert({
+      customer_id: transaction.customer_id,
+      transaction_id: transactionId,
+      trigger_reason: reason || 'Admin-triggered from transaction review',
+      triggered_by: 'transaction_review',
+      triggered_by_admin_id: adminCustomer.id,
+      assigned_to: adminCustomer.id,
+      status: 'open',
+    })
+    .select()
+    .single();
+
+  if (createError) {
+    logger.error('Failed to create investigation:', createError);
+    return NextResponse.json({ error: 'Failed to create investigation' }, { status: 500 });
+  }
+
+  // Update customer flags
+  await supabase
+    .from('customers')
+    .update({
+      requires_enhanced_dd: true,
+      edd_completed: false,
+      current_investigation_id: investigation.id,
+    })
+    .eq('id', transaction.customer_id);
+
+  // Link transaction to investigation
+  await supabase
+    .from('transactions')
+    .update({ edd_investigation_id: investigation.id })
+    .eq('id', transactionId);
+
+  // Audit log
+  await supabase.from('audit_logs').insert({
+    action_type: 'edd_investigation_triggered',
+    entity_type: 'edd_investigation',
+    entity_id: investigation.id,
+    description: `EDD investigation triggered from transaction review: ${reason}`,
+    metadata: {
+      investigation_number: investigation.investigation_number,
+      transaction_id: transactionId,
+      customer_id: transaction.customer_id,
+      admin_id: adminCustomer.id,
+    },
+  });
+
+  logger.log('✅ EDD investigation created:', investigation.investigation_number);
+
+  // TODO: Send investigation opened email to customer
+
+  return NextResponse.json({
+    success: true,
+    investigation: {
+      id: investigation.id,
+      investigation_number: investigation.investigation_number,
+      status: investigation.status,
+    },
+  });
 }

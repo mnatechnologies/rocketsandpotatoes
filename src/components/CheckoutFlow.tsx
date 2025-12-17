@@ -35,7 +35,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const { getLockedPriceForProduct } = useCart();
 
 
-  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'blocked'| 'payment'>('validate');
+  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked'| 'payment'>('validate');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -70,22 +70,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   // Use currency context for formatting and conversion
   const { formatPrice, currency, convertPrice, exchangeRate, isLoadingRate } = useCurrency();
 
-  // Calculate amount in AUD for threshold checks using context
-  const amountInAUD = currency === 'AUD'
-    ? amount
-    : amount * exchangeRate; // exchangeRate is USD->AUD when currency is AUD
 
-  const getAmountInAUDForThresholds = () => {
-    if (currency === 'AUD') {
-      return amount;
-    }
-    // If in USD, we need USD->AUD rate (approximately 1.57)
-    // The context provides the rate for the selected currency
-    // For threshold checks, fetch AUD equivalent
-    return amount * 1.57; // Fallback rate, or you could fetch dynamically
-  };
-
-  const thresholdAmountAUD = getAmountInAUDForThresholds();
+  const thresholdAmountAUD = convertPrice(amount);
 
   useEffect(() => {
     // Add guard to prevent duplicate validation
@@ -134,6 +120,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
       if (result.status === 'kyc_required') {
         setStep('kyc');
+      } else if (result.status === 'sof_required') {
+        setStep('sof');
       } else if (result.status === 'requires_review' || result.status === 'screening_error') {
         setStep('review');
       } else if (result.status === 'approved') {
@@ -196,6 +184,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }, [customerId, thresholdAmountAUD]);
 
   const createPaymentIntent = async () => {
+    logger.log(thresholdAmountAUD)
     const newsNewIntent = !paymentIntentCreated.current || paymentIntentAmount.current !== amount;
 
     if (!newsNewIntent) {
@@ -213,8 +202,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount,
-          currency: currency.toLowerCase(),
+          amount: thresholdAmountAUD,
+          currency,
           customerId,
           customerEmail,
           sessionId,
@@ -248,6 +237,24 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   if (step === 'kyc') {
     return <KYCVerification customerId={customerId} />;
   }
+
+  if (step === 'sof') {
+    return (
+      <SourceOfFundsForm
+        customerId={customerId}
+        amount={thresholdAmountAUD}
+        onComplete={() => {
+          logger.log('SOF completed, re-validating...');
+          setSourceOfFundsProvided(true);
+          // Re-validate to proceed to next step
+          setTimeout(() => {
+            validateTransaction();
+          }, 500);
+        }}
+      />
+    );
+  }
+
 
   if (step === 'review') {
     const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
@@ -398,12 +405,64 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
 
   if (step === 'blocked') {
+    const blockReason = validationResult?.reason;
+
+    // Show EDD form if blocked due to EDD investigation
+    if (blockReason === 'edd_investigation_required') {
+      return (
+        <EnhancedDueDiligenceForm
+          customerId={customerId}
+          amount={thresholdAmountAUD}
+          onComplete={() => {
+            // After EDD submission, the investigation status screen will show
+            // Customer stays blocked until admin approves
+          }}
+        />
+      );
+    }
+
+    // Show account blocked message
+    if (blockReason === 'account_blocked') {
+      return (
+        <div className="max-w-md mx-auto p-6 bg-red-50 rounded-lg border border-red-200">
+          <h2 className="text-xl font-bold text-red-800 mb-4">Account Blocked</h2>
+          <p className="text-red-700 mb-4">
+            {validationResult?.message || 'Your account has been blocked. Please contact our compliance team for further information.'}
+          </p>
+          <p className="text-sm text-red-600">
+            If you believe this is an error, please contact support.
+          </p>
+        </div>
+      );
+    }
+
+    // Show pending review message
+    if (blockReason === 'pending_review') {
+      return (
+        <div className="max-w-md mx-auto p-6 bg-amber-50 rounded-lg border border-amber-200">
+          <h2 className="text-xl font-bold text-amber-800 mb-4">Transaction Under Review</h2>
+          <p className="text-amber-700 mb-4">
+            {validationResult?.message || 'You have a transaction pending review. Our compliance team will contact you once the review is complete.'}
+          </p>
+          {validationResult?.existingTransaction && (
+            <div className="bg-amber-100 rounded p-3 text-sm text-amber-800">
+              <p><strong>Transaction ID:</strong> {validationResult.existingTransaction.id}</p>
+              <p className="mt-1"><strong>Submitted:</strong> {new Date(validationResult.existingTransaction.createdAt).toLocaleString()}</p>
+            </div>
+          )}
+          <p className="text-sm text-amber-600 mt-4">
+            Please do not attempt additional transactions while your current transaction is under review.
+          </p>
+        </div>
+      );
+    }
+
+    // Generic blocked message (fallback)
     return (
       <div className="max-w-md mx-auto p-6 bg-red-50 rounded-lg border border-red-200">
         <h2 className="text-xl font-bold text-red-800 mb-4">Transaction Cannot Proceed</h2>
         <p className="text-red-700">
-          Your transaction requires additional verification.
-          Our compliance team will contact you within 1-2 business days.
+          {validationResult?.message || 'Your transaction requires additional verification. Our compliance team will contact you within 1-2 business days.'}
         </p>
       </div>
     );
@@ -454,7 +513,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         key={clientSecret}
       >
         <PaymentForm
-          amount={amount}
+          amount={thresholdAmountAUD}
           currency={currency}
           customerId={customerId}
           productDetails={productDetails}

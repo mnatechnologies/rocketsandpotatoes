@@ -8,6 +8,7 @@ const logger = createLogger('ADMIN DASHBOARD')
 interface DashboardStats {
   pendingDocuments: number;
   flaggedTransactions: number;
+  activeInvestigations: number;
   pendingTTRs: number;
   totalCustomers: number;
   verifiedCustomers: number;
@@ -127,6 +128,13 @@ export default function AdminDashboard() {
               icon="🚩"
             />
             <ActionCard
+              title="Active EDD Investigations"
+              count={stats?.activeInvestigations || 0}
+              link="/admin/edd-investigations"
+              color="purple"
+              icon="🔬"
+            />
+            <ActionCard
               title="Pending TTRs"
               count={stats?.pendingTTRs || 0}
               link="/admin/ttr-reports"
@@ -216,6 +224,12 @@ export default function AdminDashboard() {
               description="Review flagged transactions"
               link="/admin/reviews"
               icon="🔍"
+            />
+            <QuickLink
+              title="EDD Investigations"
+              description="Manage Enhanced Due Diligence investigations"
+              link="/admin/edd-investigations"
+              icon="🔬"
             />
             <QuickLink
               title="TTR Reports"

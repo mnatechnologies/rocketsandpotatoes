@@ -109,18 +109,18 @@ export async function POST(req: NextRequest) {
   }, 0);
 
   const fxRate = locks[0].fx_rate;
+  const calculatedAmount = currency === 'AUD' ? amountInAUD : amountInUSD;
 
   logger.log('✅ Using locked prices (NO conversion):', {
     amountInUSD: amountInUSD.toFixed(2),
     amountInAUD: amountInAUD.toFixed(2),
     fxRate,
     locksCount: locks.length,
-    submittedAmount: amount,
+    submittedAmount: calculatedAmount,
     submittedCurrency: currency,
   });
 
   // ⚠️ Warn if submitted amount doesn't match calculated amount
-  const calculatedAmount = currency === 'AUD' ? amountInAUD : amountInUSD;
   const difference = Math.abs(amount - calculatedAmount);
   if (difference > 1) {
     logger.warn(`⚠️ PRICE MISMATCH: Submitted ${currency} ${amount.toFixed(2)} but calculated ${calculatedAmount.toFixed(2)} (diff: ${difference.toFixed(2)})`);
@@ -204,13 +204,116 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
   }
 
-  logger.log('Customer data:', { 
-    id: customer.id, 
+  logger.log('Customer data:', {
+    id: customer.id,
     verification_status: customer.verification_status,
-    risk_level: customer.risk_level 
+    risk_level: customer.risk_level
   });
 
-  // 3. Check if KYC is required but not completed
+  // 3. EDD AUTO-TRIGGER & BLOCKING CHECKS (MUST HAPPEN BEFORE TRANSACTION CREATION)
+  // Calculate cumulative transaction total to check $50K AUD threshold
+  const { data: previousSuccessfulTransactions } = await supabase
+    .from('transactions')
+    .select('amount_aud')
+    .eq('customer_id', customerId)
+    .eq('payment_status', 'succeeded');
+
+  const cumulativeTotal = (previousSuccessfulTransactions || []).reduce(
+    (sum, tx) => sum + parseFloat(tx.amount_aud.toString()),
+    0
+  ) + amountInAUD;
+
+  logger.log('Cumulative transaction total (AUD):', cumulativeTotal);
+
+  // Auto-trigger EDD investigation at $50K threshold
+  if (cumulativeTotal >= 50000 && !customer.requires_enhanced_dd) {
+    logger.log('🚨 $50K threshold crossed - auto-triggering EDD investigation');
+
+    // Check if an active investigation already exists
+    const { data: existingInvestigation } = await supabase
+      .from('edd_investigations')
+      .select('id, investigation_number')
+      .eq('customer_id', customerId)
+      .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
+      .single();
+
+    if (!existingInvestigation) {
+      // Create new investigation
+      const { data: newInvestigation, error: investigationError } = await supabase
+        .from('edd_investigations')
+        .insert({
+          customer_id: customerId,
+          triggered_by: 'system',
+          trigger_reason: `Automatic EDD trigger: Cumulative transactions reached $${cumulativeTotal.toFixed(2)} AUD (threshold: $50,000 AUD)`,
+          status: 'open',
+        })
+        .select()
+        .single();
+
+      if (!investigationError && newInvestigation) {
+        // Update customer flags
+        await supabase
+          .from('customers')
+          .update({
+            requires_enhanced_dd: true,
+            edd_completed: false,
+            current_investigation_id: newInvestigation.id,
+          })
+          .eq('id', customerId);
+
+        // Log to audit
+        await supabase.from('audit_logs').insert({
+          action_type: 'edd_investigation_created',
+          entity_type: 'edd_investigation',
+          entity_id: newInvestigation.id,
+          description: 'EDD investigation auto-triggered at $50K threshold',
+          metadata: {
+            customer_id: customerId,
+            cumulative_total_aud: cumulativeTotal,
+            investigation_number: newInvestigation.investigation_number,
+            triggered_by: 'system',
+          },
+        });
+
+        logger.log('✅ EDD investigation created:', newInvestigation.investigation_number);
+
+        // Note: Email will be sent later when we have email functions created
+        // TODO: Send investigation opened email to customer
+      }
+    }
+
+    // Reload customer to get updated EDD flags
+    const { data: updatedCustomer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', customerId)
+      .single();
+
+    if (updatedCustomer) {
+      Object.assign(customer, updatedCustomer);
+    }
+  }
+
+  // 🔒 CRITICAL: Block if customer relationship is blocked (BEFORE all other checks)
+  if (customer.monitoring_level === 'blocked') {
+    logger.log('❌ Transaction blocked: Customer relationship blocked');
+
+    await supabase.from('audit_logs').insert({
+      action_type: 'transaction_blocked_relationship',
+      entity_type: 'customer',
+      entity_id: customerId,
+      description: 'Transaction blocked: Customer relationship status is blocked',
+      metadata: { amount_aud: amountInAUD },
+    });
+
+    return NextResponse.json({
+      status: 'blocked',
+      reason: 'account_blocked',
+      message: 'Your account has been blocked. Please contact our compliance team for further information.',
+    }, { status: 403 });
+  }
+
+  // 4. COMPLIANCE HIERARCHY: Check KYC first (must complete before SOF and EDD)
   if (requirements.requiresKYC && customer.verification_status !== 'verified') {
     logger.log('KYC required but not completed');
     return NextResponse.json({
@@ -220,12 +323,69 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // 5. Check Source of Funds for $10K+ transactions (after KYC, before EDD)
+  if (requirements.requiresTTR && !customer.source_of_funds) {
+    logger.log('Source of Funds required but not provided');
+    return NextResponse.json({
+      status: 'sof_required',
+      message: 'Source of funds declaration required for transactions over $10,000 AUD',
+      requirements,
+      amountInAUD,
+    });
+  }
 
-  // 4. Check for structuring (using AUD amount for threshold comparison)
+  // 6. Check if EDD investigation is under review (customer already submitted, waiting for admin)
+  if (customer.requires_enhanced_dd && !customer.edd_completed) {
+    const { data: activeInvestigation } = await supabase
+      .from('edd_investigations')
+      .select('id, investigation_number, status, customer_edd_id')
+      .eq('customer_id', customerId)
+      .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
+      .order('opened_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Only block if customer has already submitted EDD (status = under_review or later)
+    // If status is 'open' or 'awaiting_customer_info', let them proceed to checkout
+    // where they'll be shown the EDD form
+    if (activeInvestigation && (activeInvestigation.status === 'under_review' || activeInvestigation.status === 'escalated')) {
+      logger.log('❌ Transaction blocked: EDD investigation under review/escalated');
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'transaction_blocked_edd',
+        entity_type: 'customer',
+        entity_id: customerId,
+        description: 'Transaction blocked: EDD investigation under review by admin',
+        metadata: {
+          amount_aud: amountInAUD,
+          investigation_id: activeInvestigation.id,
+          investigation_number: activeInvestigation.investigation_number,
+          investigation_status: activeInvestigation.status,
+        },
+      });
+
+      return NextResponse.json({
+        status: 'blocked',
+        reason: 'edd_investigation_required',
+        message: 'Your Enhanced Due Diligence information has been submitted and is under review. Your account will remain blocked until the review is complete.',
+        investigation: {
+          number: activeInvestigation.investigation_number,
+          status: activeInvestigation.status,
+        },
+      }, { status: 403 });
+    }
+
+    // If investigation is 'open' or 'awaiting_customer_info', don't block
+    // Let them proceed - CheckoutFlow will show EDD form in the payment step
+    logger.log('EDD investigation exists but not yet submitted - allowing checkout to show EDD form');
+  }
+
+
+  // 5. Check for structuring (using AUD amount for threshold comparison)
   const isStructuring = await detectStructuring(customerId, amountInAUD);
   logger.log('Structuring detection result:', isStructuring);
 
-  // 5. Calculate risk score (only count succeeded transactions)
+  // 6. Calculate risk score (only count succeeded transactions)
   const { data: previousTransactions } = await supabase
     .from('transactions')
     .select('id')
@@ -270,11 +430,47 @@ export async function POST(req: NextRequest) {
   const riskLevel = getRiskLevel(riskScore);
   logger.log('Risk assessment:', { riskScore, riskLevel });
 
-  // 6. Flag for manual review if high risk
+  // 7. Flag for manual review if high risk (only if not already blocked by EDD)
   const requiresReview = riskLevel === 'high' || customer.risk_level === "high" || isStructuring || requirements.requiresEnhancedDD;
   logger.log('Requires manual review:', requiresReview);
 
   if (requiresReview) {
+    // 🔒 Check if customer already has a pending transaction under review
+    const { data: existingPendingTx } = await supabase
+      .from('transactions')
+      .select('id, created_at')
+      .eq('customer_id', customerId)
+      .eq('payment_status', 'pending_review')
+      .eq('flagged_for_review', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingPendingTx) {
+      logger.log('❌ Customer already has pending transaction under review:', existingPendingTx.id);
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'transaction_blocked_pending_review',
+        entity_type: 'customer',
+        entity_id: customerId,
+        description: 'Transaction blocked: Customer has pending transaction under review',
+        metadata: {
+          amount_aud: amountInAUD,
+          existing_transaction_id: existingPendingTx.id,
+        },
+      });
+
+      return NextResponse.json({
+        status: 'blocked',
+        reason: 'pending_review',
+        message: 'You have a transaction pending review. Our compliance team will contact you once the review is complete. Please do not attempt additional transactions at this time.',
+        existingTransaction: {
+          id: existingPendingTx.id,
+          createdAt: existingPendingTx.created_at,
+        },
+      }, { status: 403 });
+    }
+
     const flagReasons = [];
     if (isStructuring) flagReasons.push('Potential structuring detected');
     if (riskLevel === 'high') flagReasons.push('High risk score');

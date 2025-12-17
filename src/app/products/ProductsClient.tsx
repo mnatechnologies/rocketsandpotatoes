@@ -11,6 +11,8 @@ import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { ShoppingCartIcon } from "lucide-react";
 import { createLogger } from '@/lib/utils/logger'
 import { useCurrency } from '@/contexts/CurrencyContext'
+import { useCart } from '@/contexts/CartContext';
+import { toast } from 'sonner';
 
 const logger = createLogger('PRODUCT_CLIENT')
 
@@ -324,8 +326,21 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
 function ProductCard({ product, loadingPrices, lastUpdated }: { product: ProductWithDynamicPrice; loadingPrices: boolean; lastUpdated: Date }) {
     const { formatPrice, currency } = useCurrency();
+    const { addToCartById } = useCart();
 
     const displayPrice = product.calculated_price ?? product.price;
+
+    const handleAddToCart = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        const success = await addToCartById(product.id);
+        if (success) {
+            toast.success('Added to cart!', {
+                description: product.name,
+            });
+        } else {
+            toast.error('Failed to add to cart');
+        }
+    };
 
     const formatDateTime = (date: Date) => {
         return date.toLocaleString("en-AU", {
@@ -439,12 +454,13 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
                       )}
                   </div>
 
-                  <Link
-                    href={`/cart?add=${product.id}`}
-                    className="px-4 py-2 rounded-lg font-semibold transition-colors bg-yellow-500 hover:bg-yellow-600 text-white"
+                  <button
+                    onClick={handleAddToCart}
+                    className="px-4 py-2 rounded-lg font-semibold transition-colors bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer"
+                    aria-label="Add to cart"
                   >
                       <ShoppingCartIcon/>
-                  </Link>
+                  </button>
               </div>
           </div>
       </div>

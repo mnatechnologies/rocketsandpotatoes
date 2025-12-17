@@ -62,7 +62,7 @@ export default function CheckoutPage() {
       return getTotalAmount();
     }
     // If in USD, convert to AUD for compliance display (approx rate)
-    return getTotalAmount() * 1.57;
+    return convertPrice(getTotalAmount());
   };
 
   const getMainProduct = (): Product | null => {

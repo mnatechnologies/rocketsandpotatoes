@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createLogger } from "@/lib/utils/logger";
+import {useCurrency} from "@/contexts/CurrencyContext";
 
 const logger = createLogger('SOURCE_OF_FUNDS_FORM');
 
@@ -21,6 +22,8 @@ export function SourceOfFundsForm({
   const [pepRelationship, setPepRelationship] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const {formatPrice, currency} = useCurrency();
+
 
   const handleSubmit = async () => {
     // Validate
@@ -81,7 +84,7 @@ export function SourceOfFundsForm({
 
       <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
         <p className="text-sm text-blue-800">
-          <strong>Transaction Amount:</strong> ${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+          <strong>Transaction Amount:</strong> {formatPrice(amount)} {currency}
         </p>
       </div>
 

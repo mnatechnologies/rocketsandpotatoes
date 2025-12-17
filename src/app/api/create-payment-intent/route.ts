@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // Parse body ONCE - include sessionId
-    const { amount, currency = 'aud', customerId, customerEmail, clerkUserId, sessionId, cartItems } = await req.json();
+    const { amount, currency, customerId, customerEmail, clerkUserId, sessionId, cartItems } = await req.json();
 
     const { userId: clerkUserIdFromAuth } = await auth();
     const finalClerkUserId = clerkUserIdFromAuth || clerkUserId;

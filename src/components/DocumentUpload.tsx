@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createLogger } from '@/lib/utils/logger';
+import { AUTHORIZED_CERTIFIERS, CERTIFICATION_STATEMENT_TEMPLATE, requiresRegistrationNumber } from '@/lib/compliance/authorized-certifiers';
 
 const logger = createLogger('DOCUMENT_UPLOAD');
 
@@ -35,6 +36,17 @@ export function DocumentUploadFlow({ customerId  }: Props) {
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
   const [uploadResults, setUploadResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
+  // Certification state for each document
+  const [certificationData, setCertificationData] = useState<Record<string, {
+    isCertified: boolean;
+    certifierName: string;
+    certifierType: string;
+    certifierRegistration: string;
+    certificationDate: string;
+  }>>({});
+
+  const [showCertificationInfo, setShowCertificationInfo] = useState(false);
+
   const handleMethodSelection = (method: 'auto' | 'manual') => {
     setVerificationMethod(method);
   };
@@ -67,6 +79,18 @@ export function DocumentUploadFlow({ customerId  }: Props) {
     formData.append('customerId', customerId);
     formData.append('documentType', docType);
     formData.append('documentCategory', category);
+
+    // Add certification data if document is certified
+    const certData = certificationData[docType];
+    if (certData?.isCertified) {
+      formData.append('isCertified', 'true');
+      formData.append('certifierName', certData.certifierName);
+      formData.append('certifierType', certData.certifierType);
+      formData.append('certifierRegistration', certData.certifierRegistration);
+      formData.append('certificationDate', certData.certificationDate);
+    } else {
+      formData.append('isCertified', 'false');
+    }
 
     try {
       const response = await fetch('/api/kyc/upload-document', {
@@ -190,6 +214,60 @@ export function DocumentUploadFlow({ customerId  }: Props) {
 
       {verificationMethod === 'manual' && (
         <div className="space-y-6">
+          {/* Important Notice */}
+          <div className="bg-blue-50 border-2 border-blue-300 p-5 rounded-lg">
+            <h3 className="font-bold text-blue-900 mb-3 flex items-center">
+              <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+              </svg>
+              Important: Document Certification Required
+            </h3>
+            <div className="space-y-2 text-sm text-blue-900">
+              <p className="font-semibold">All documents MUST be certified copies of the original.</p>
+              <p>A certified copy is a document that has been verified as a true copy of the original by an authorized person.</p>
+
+              <div className="mt-3 bg-white/50 p-3 rounded border border-blue-200">
+                <p className="font-semibold mb-2">How to get your documents certified:</p>
+                <ol className="list-decimal ml-4 space-y-1">
+                  <li>Make a photocopy or scan of your original document</li>
+                  <li>Take both the original and copy to an authorized certifier (see list below)</li>
+                  <li>The certifier will compare them and certify the copy is accurate</li>
+                  <li>Upload the certified copy here and enter the certifier&apos;s details</li>
+                </ol>
+              </div>
+
+              <button
+                onClick={() => setShowCertificationInfo(!showCertificationInfo)}
+                className="mt-2 text-blue-700 underline font-medium hover:text-blue-800"
+              >
+                {showCertificationInfo ? '▼ Hide' : '▶'} Who can certify my documents?
+              </button>
+
+              {showCertificationInfo && (
+                <div className="mt-3 bg-white p-4 rounded border border-blue-200">
+                  <p className="font-semibold mb-2">Authorized Certifiers in Australia:</p>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    {AUTHORIZED_CERTIFIERS.map(cert => (
+                      <li key={cert.value} className="flex items-start">
+                        <span className="mr-2">•</span>
+                        <div>
+                          <span className="font-medium">{cert.label}</span>
+                          <p className="text-blue-700">{cert.description}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
+                    <p className="font-semibold mb-1">What the certifier must write on the copy:</p>
+                    <pre className="whitespace-pre-wrap font-mono text-xs bg-white p-2 rounded border">
+{CERTIFICATION_STATEMENT_TEMPLATE}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
             <p className="text-sm text-yellow-800">
               📋 Manual verification typically takes 1-2 business days
@@ -306,16 +384,179 @@ export function DocumentUploadFlow({ customerId  }: Props) {
                       </svg>
                     </button>
 
-                    <label className="block font-medium mb-2 pr-8">
+                    <label className="block font-medium mb-3 pr-8">
                       {doc.docType.replace(/_/g, ' ').toUpperCase()}
                     </label>
+
+                    {/* Certification Fields */}
+                    <div className="bg-gray-50 p-4 rounded border border-gray-300 mb-4 space-y-3">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`certified-${doc.docType}`}
+                          checked={certificationData[doc.docType]?.isCertified || false}
+                          onChange={(e) => {
+                            setCertificationData(prev => ({
+                              ...prev,
+                              [doc.docType]: {
+                                ...prev[doc.docType],
+                                isCertified: e.target.checked,
+                                certifierName: prev[doc.docType]?.certifierName || '',
+                                certifierType: prev[doc.docType]?.certifierType || '',
+                                certifierRegistration: prev[doc.docType]?.certifierRegistration || '',
+                                certificationDate: prev[doc.docType]?.certificationDate || '',
+                              }
+                            }));
+                          }}
+                          className="mr-2 h-4 w-4"
+                        />
+                        <label htmlFor={`certified-${doc.docType}`} className="font-semibold text-sm">
+                          ✓ This document has been certified by an authorized certifier
+                        </label>
+                      </div>
+
+                      {certificationData[doc.docType]?.isCertified && (
+                        <div className="space-y-3 pl-6 border-l-2 border-blue-300">
+                          <div>
+                            <label className="block text-xs font-medium mb-1">
+                              Certifier&apos;s Full Name <span className="text-red-600">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g., Dr. Jane Smith"
+                              value={certificationData[doc.docType]?.certifierName || ''}
+                              onChange={(e) => {
+                                setCertificationData(prev => ({
+                                  ...prev,
+                                  [doc.docType]: {
+                                    ...prev[doc.docType],
+                                    isCertified: true,
+                                    certifierName: e.target.value,
+                                    certifierType: prev[doc.docType]?.certifierType || '',
+                                    certifierRegistration: prev[doc.docType]?.certifierRegistration || '',
+                                    certificationDate: prev[doc.docType]?.certificationDate || '',
+                                  }
+                                }));
+                              }}
+                              className="w-full p-2 border rounded text-sm"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium mb-1">
+                              Certifier Type <span className="text-red-600">*</span>
+                            </label>
+                            <select
+                              required
+                              value={certificationData[doc.docType]?.certifierType || ''}
+                              onChange={(e) => {
+                                setCertificationData(prev => ({
+                                  ...prev,
+                                  [doc.docType]: {
+                                    ...prev[doc.docType],
+                                    isCertified: true,
+                                    certifierName: prev[doc.docType]?.certifierName || '',
+                                    certifierType: e.target.value,
+                                    certifierRegistration: prev[doc.docType]?.certifierRegistration || '',
+                                    certificationDate: prev[doc.docType]?.certificationDate || '',
+                                  }
+                                }));
+                              }}
+                              className="w-full p-2 border rounded text-sm"
+                            >
+                              <option value="">Select certifier type...</option>
+                              {AUTHORIZED_CERTIFIERS.map(cert => (
+                                <option key={cert.value} value={cert.value}>
+                                  {cert.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {certificationData[doc.docType]?.certifierType &&
+                            requiresRegistrationNumber(certificationData[doc.docType].certifierType) && (
+                            <div>
+                              <label className="block text-xs font-medium mb-1">
+                                Registration Number <span className="text-red-600">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g., MED12345"
+                                value={certificationData[doc.docType]?.certifierRegistration || ''}
+                                onChange={(e) => {
+                                  setCertificationData(prev => ({
+                                    ...prev,
+                                    [doc.docType]: {
+                                      ...prev[doc.docType],
+                                      isCertified: true,
+                                      certifierName: prev[doc.docType]?.certifierName || '',
+                                      certifierType: prev[doc.docType]?.certifierType || '',
+                                      certifierRegistration: e.target.value,
+                                      certificationDate: prev[doc.docType]?.certificationDate || '',
+                                    }
+                                  }));
+                                }}
+                                className="w-full p-2 border rounded text-sm"
+                              />
+                              <p className="text-xs text-gray-600 mt-1">
+                                Professional registration number (check on the certification stamp)
+                              </p>
+                            </div>
+                          )}
+
+                          <div>
+                            <label className="block text-xs font-medium mb-1">
+                              Certification Date <span className="text-red-600">*</span>
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              max={new Date().toISOString().split('T')[0]}
+                              value={certificationData[doc.docType]?.certificationDate || ''}
+                              onChange={(e) => {
+                                setCertificationData(prev => ({
+                                  ...prev,
+                                  [doc.docType]: {
+                                    ...prev[doc.docType],
+                                    isCertified: true,
+                                    certifierName: prev[doc.docType]?.certifierName || '',
+                                    certifierType: prev[doc.docType]?.certifierType || '',
+                                    certifierRegistration: prev[doc.docType]?.certifierRegistration || '',
+                                    certificationDate: e.target.value,
+                                  }
+                                }));
+                              }}
+                              className="w-full p-2 border rounded text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     <input
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(doc.docType, doc.category, file);
+                        if (file) {
+                          // Validate certification if checked
+                          const certData = certificationData[doc.docType];
+                          if (certData?.isCertified) {
+                            if (!certData.certifierName || !certData.certifierType || !certData.certificationDate) {
+                              alert('Please complete all certification fields before uploading.');
+                              e.target.value = '';
+                              return;
+                            }
+                            if (requiresRegistrationNumber(certData.certifierType) && !certData.certifierRegistration) {
+                              alert('Please provide the certifier\'s registration number.');
+                              e.target.value = '';
+                              return;
+                            }
+                          }
+                          handleFileUpload(doc.docType, doc.category, file);
+                        }
                       }}
                       disabled={uploadingFiles[doc.docType]}
                       className="block w-full bg-gray-800 rounded text-white p-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

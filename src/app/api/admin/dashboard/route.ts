@@ -147,9 +147,20 @@ export async function GET(req: NextRequest) {
     const overdueStaffIds = new Set(overdueTraining?.map(t => t.staff_id) || []);
     const overdueStaffCount = overdueStaffIds.size;
 
+    // Fetch active EDD investigations
+    const { count: activeInvestigations, error: investigationsError } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated']);
+
+    if (investigationsError) {
+      logger.error('Error fetching active investigations:', investigationsError);
+    }
+
     return NextResponse.json({
       pendingDocuments: pendingDocs?.length || 0,
       flaggedTransactions: flaggedTxs?.length || 0,
+      activeInvestigations: activeInvestigations || 0,
       pendingTTRs: ttrTransactions?.length || 0,
       totalCustomers: totalCustomers || 0,
       verifiedCustomers: verifiedCustomers || 0,

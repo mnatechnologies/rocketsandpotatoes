@@ -6,6 +6,7 @@ import { Product } from '@/types/product';
 import { clearPricingTimer } from '@/lib/pricing/pricingTimer';
 import { createLogger } from '@/lib/utils/logger';
 import {useCart} from "@/contexts/CartContext";
+import {useCurrency} from "@/contexts/CurrencyContext";
 
 const logger = createLogger('PAYMENT_FORM');
 
@@ -37,7 +38,7 @@ export function PaymentForm({
   const [success, setSuccess] = useState(false);
   const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
   const { clearCart } = useCart()
-
+  const {formatPrice} = useCurrency();
   const handlePaymentElementReady = () => {
     logger.log('PaymentElement is ready');
     setIsPaymentElementReady(true);

@@ -37,12 +37,24 @@ export async function POST(req: NextRequest) {
 
     logger.log('Processing Enhanced DD for customer:', customerId);
 
+    // Check if there's an active investigation for this customer
+    const { data: activeInvestigation } = await supabase
+      .from('edd_investigations')
+      .select('id, customer_edd_id, source_of_wealth, source_of_funds')
+      .eq('customer_id', customerId)
+      .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
+      .order('opened_at', { ascending: false })
+      .limit(1)
+      .single();
+
     // Check if EDD already exists for this customer
     const { data: existingEdd } = await supabase
       .from('customer_edd')
       .select('id, status')
       .eq('customer_id', customerId)
       .single();
+
+    let eddRecordId: string;
 
     if (existingEdd) {
       // Update existing EDD submission
@@ -66,10 +78,11 @@ export async function POST(req: NextRequest) {
         throw updateError;
       }
 
+      eddRecordId = existingEdd.id;
       logger.log('Updated existing EDD submission');
     } else {
       // Create new EDD submission
-      const { error: insertError } = await supabase
+      const { data: newEdd, error: insertError } = await supabase
         .from('customer_edd')
         .insert({
           customer_id: customerId,
@@ -80,28 +93,82 @@ export async function POST(req: NextRequest) {
           expected_frequency: expectedFrequency,
           expected_annual_volume: expectedAnnualVolume || null,
           status: 'pending',
-        });
+        })
+        .select('id')
+        .single();
 
       if (insertError) {
         logger.error('Database error creating EDD:', insertError);
         throw insertError;
       }
 
+      eddRecordId = newEdd.id;
       logger.log('Created new EDD submission');
     }
 
-    // Update customer record
-    const { error: customerUpdateError } = await supabase
-      .from('customers')
-      .update({
-        edd_completed: true,
-        edd_completed_at: new Date().toISOString(),
-        requires_enhanced_dd: true,
-      })
-      .eq('id', customerId);
+    // If there's an active investigation, link the EDD submission and update investigation
+    if (activeInvestigation) {
+      logger.log('Linking EDD submission to investigation:', activeInvestigation.id);
 
-    if (customerUpdateError) {
-      logger.error('Error updating customer EDD status:', customerUpdateError);
+      // Update investigation with customer-provided info
+      const { error: investigationUpdateError } = await supabase
+        .from('edd_investigations')
+        .update({
+          customer_edd_id: eddRecordId,
+          status: 'under_review',
+          // Update source of wealth section with customer response
+          source_of_wealth: {
+            ...activeInvestigation.source_of_wealth,
+            completed: true,
+            primary_source: sourceOfWealth,
+            verified: false, // Admin still needs to verify
+            notes: sourceOfWealthDetails || null,
+          },
+          // Update source of funds section with transaction purpose
+          source_of_funds: {
+            ...activeInvestigation.source_of_funds,
+            completed: true,
+            funding_source: transactionPurpose,
+            verified: false, // Admin still needs to verify
+            notes: transactionPurposeDetails || null,
+          },
+        })
+        .eq('id', activeInvestigation.id);
+
+      if (investigationUpdateError) {
+        logger.error('Error linking EDD to investigation:', investigationUpdateError);
+      } else {
+        logger.log('Investigation updated with customer EDD response');
+      }
+
+      // Update customer - keep them blocked until investigation completes
+      // DO NOT set edd_completed to true - investigation must be approved first
+      const { error: customerUpdateError } = await supabase
+        .from('customers')
+        .update({
+          // Keep edd_completed: false so customer stays blocked
+          // requires_enhanced_dd should already be true
+        })
+        .eq('id', customerId);
+
+      if (customerUpdateError) {
+        logger.error('Error updating customer:', customerUpdateError);
+      }
+    } else {
+      // No active investigation - this is the old flow for customers who submitted without being triggered
+      // Keep them unblocked but mark as requiring review
+      const { error: customerUpdateError } = await supabase
+        .from('customers')
+        .update({
+          edd_completed: true,
+          edd_completed_at: new Date().toISOString(),
+          requires_enhanced_dd: false,
+        })
+        .eq('id', customerId);
+
+      if (customerUpdateError) {
+        logger.error('Error updating customer EDD status:', customerUpdateError);
+      }
     }
 
     // Log audit event
@@ -184,6 +251,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
 
 
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('ENHANCED_DD_FORM');
@@ -9,6 +9,13 @@ interface EnhancedDDFormProps {
   customerId: string;
   amount: number;
   onComplete: () => void;
+}
+
+interface Investigation {
+  id: string;
+  investigation_number: string;
+  status: string;
+  opened_at: string;
 }
 
 export function EnhancedDueDiligenceForm({
@@ -23,7 +30,30 @@ export function EnhancedDueDiligenceForm({
   const [expectedFrequency, setExpectedFrequency] = useState('');
   const [expectedAnnualVolume, setExpectedAnnualVolume] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingInvestigation, setCheckingInvestigation] = useState(true);
+  const [investigation, setInvestigation] = useState<Investigation | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if there's an active investigation
+  useEffect(() => {
+    const checkInvestigation = async () => {
+      try {
+        const response = await fetch(`/api/customer/edd-investigation-status?customerId=${customerId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.investigation) {
+            setInvestigation(data.investigation);
+          }
+        }
+      } catch (err) {
+        logger.error('Error checking investigation:', err);
+      } finally {
+        setCheckingInvestigation(false);
+      }
+    };
+
+    checkInvestigation();
+  }, [customerId]);
 
   const handleSubmit = async () => {
     // Validate required fields
@@ -80,13 +110,65 @@ export function EnhancedDueDiligenceForm({
     }
   };
 
+  // Show loading while checking for investigation
+  if (checkingInvestigation) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Checking investigation status...</p>
+      </div>
+    );
+  }
+
+  // If investigation exists and customer already submitted (under_review), show status
+  if (investigation && (investigation.status === 'under_review' || investigation.status === 'awaiting_customer_info')) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">EDD Investigation Under Review</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Your Enhanced Due Diligence information has been submitted and is currently under review by our compliance team.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-blue-900">
+              <strong>Investigation Number:</strong> {investigation.investigation_number}
+            </p>
+            <p className="text-sm text-blue-900 mt-1">
+              <strong>Status:</strong> {investigation.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </p>
+            <p className="text-sm text-blue-900 mt-1">
+              <strong>Opened:</strong> {new Date(investigation.opened_at).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p className="text-sm text-amber-800">
+              <strong>Your account is temporarily blocked</strong> until our compliance team completes the review.
+              We&#39;ll notify you by email once the review is complete. This typically takes 1-2 business days.
+            </p>
+            {investigation.status === 'awaiting_customer_info' && (
+              <p className="text-sm text-amber-800 mt-2 font-semibold">
+                ⚠️ Additional information has been requested. Please check your email for details.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Otherwise, show the EDD form
   return (
     <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
       <div className="mb-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Enhanced Due Diligence</h3>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Enhanced Due Diligence Required</h3>
         <p className="text-sm text-gray-600">
-          For transactions of $50,000 or more, Australian anti-money laundering regulations require
-          us to collect additional information about your financial background.
+          Your cumulative transactions have exceeded $50,000 AUD. Australian anti-money laundering regulations require
+          us to collect additional information about your financial background before you can continue transacting.
         </p>
       </div>
 
@@ -243,6 +325,7 @@ export function EnhancedDueDiligenceForm({
     </div>
   );
 }
+
 
 
 

@@ -274,16 +274,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const getCartTotal = useCallback((currentPrices?: Map<string, number>) => {
     return cart.reduce((total, item) => {
-      const lockedPrice = getLockedPrice(item.product.id);
-
-      // Priority: locked price > current market price > database price (last resort)
       let price: number;
-      if (lockedPrice) {
-        price = lockedPrice.price;
-      } else if (currentPrices && currentPrices.has(item.product.id)) {
-        price = currentPrices.get(item.product.id)!;
+
+      // Priority: passed-in current prices > locked price > database price
+      if (currentPrices && currentPrices.has(item.product.id)) {
+        price = currentPrices.get(item.product.id)!;  // Match what's displayed!
       } else {
-        price = item.product.price; // fallback to DB price
+        const lockedPrice = getLockedPrice(item.product.id);
+        price = lockedPrice?.price ?? item.product.price;
       }
 
       return total + price * item.quantity;
@@ -323,9 +321,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       
       // Update local locked prices with server values
       if (data.lockedPrices) {
-        lockPrices(data.lockedPrices.map((lp: { productId: string; price: number }) => ({
+        lockPrices(data.lockedPrices.map((lp: { productId: string; priceUSD: number }) => ({
           productId: lp.productId,
-          price: lp.price,
+          price: lp.priceUSD,
         })));
       }
   

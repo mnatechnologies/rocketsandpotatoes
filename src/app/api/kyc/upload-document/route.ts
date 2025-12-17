@@ -23,8 +23,24 @@ export async function POST(req: NextRequest) {
   const documentType = formData.get('documentType') as string;
   const documentCategory = formData.get('documentCategory') as string;
 
+  // Certification data
+  const isCertified = formData.get('isCertified') === 'true';
+  const certifierName = formData.get('certifierName') as string;
+  const certifierType = formData.get('certifierType') as string;
+  const certifierRegistration = formData.get('certifierRegistration') as string;
+  const certificationDate = formData.get('certificationDate') as string;
+
   if (!file || !customerId || !documentType) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Validate certification if claimed
+  if (isCertified) {
+    if (!certifierName || !certifierType || !certificationDate) {
+      return NextResponse.json({
+        error: 'Certification details incomplete. Please provide certifier name, type, and date.'
+      }, { status: 400 });
+    }
   }
 
   try {
@@ -58,9 +74,16 @@ export async function POST(req: NextRequest) {
         file_name: file.name,
         file_size: file.size,
         mime_type: file.type,
-        storage_path: fileName, // ✅ ADD THIS
+        storage_path: fileName,
         uploaded_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 7 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        // Certification fields
+        is_certified: isCertified,
+        certifier_name: isCertified ? certifierName : null,
+        certifier_type: isCertified ? certifierType : null,
+        certifier_registration_number: isCertified ? certifierRegistration : null,
+        certification_date: isCertified && certificationDate ? certificationDate : null,
+        review_status: 'pending',
       })
       .select()
       .single();

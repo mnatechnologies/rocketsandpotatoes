@@ -48,7 +48,8 @@ next-env.d.ts
 /src/scripts
 /PRICING_TIMER_IMPLEMENTATION.md
 /.junie/guidelines.md
-/CART_CONTEXT_REFACTORING.md
+/docs/CART_CONTEXT_REFACTORING.md
 
 .env.keys
+/docs/
 /docs/

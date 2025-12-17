@@ -123,7 +123,26 @@ function CartContent() {
   // Cart displays current market prices in real-time
   // Prices are only locked when user proceeds to checkout
 
-  // Handle adding product from URL paramete
+  // Handle adding product from URL parameter
+  useEffect(() => {
+    const productId = searchParams.get('add');
+
+    if (productId && !hasAddedProduct.current) {
+      hasAddedProduct.current = true;
+
+      logger.log('[CART] Adding product from URL:', productId);
+
+      addToCartById(productId).then(success => {
+        if (success) {
+          toast.success('Product added to cart');
+          // Remove the 'add' parameter from URL without reloading
+          router.replace('/cart', { scroll: false });
+        } else {
+          toast.error('Failed to add product to cart');
+        }
+      });
+    }
+  }, [searchParams, addToCartById, router]);
 
 
 

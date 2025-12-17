@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { createLogger } from '@/lib/utils/logger';
+import { useCurrency} from "@/contexts/CurrencyContext";
 
 const logger = createLogger('ORDER_CONFIRMATION');
 
@@ -37,7 +38,7 @@ function OrderConfirmationContent() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const hasFetchedOrder = useRef(false); // ✅ Add this
-
+  const {formatPrice} = useCurrency();
   useEffect(() => {
     logger.log('Order confirmation page mounted');
 
@@ -169,8 +170,9 @@ function OrderConfirmationContent() {
             <div className="space-y-3">
               {items.map((item: any, index: number) => {
                 // ✅ Handle both nested and flat structures
-                const itemPrice = item.price || item.product?.price;
+                const itemPrice = item.price
                 const itemQuantity = item.quantity || 1;
+                const totalforEachItem = itemPrice * itemQuantity;
                 const itemName = item.name || item.product?.name;
                 const itemWeight = item.weight || item.product?.weight;
                 const itemPurity = item.purity || item.product?.purity;
@@ -185,9 +187,7 @@ function OrderConfirmationContent() {
                       <p className="text-sm text-gray-600">Qty: {itemQuantity}</p>
                     </div>
                     <p className="font-semibold text-gray-900">
-                      ${(itemPrice * itemQuantity).toLocaleString('en-AU', {
-                      minimumFractionDigits: 2,
-                    })} {order.currency || 'AUD'}
+                      {formatPrice(totalforEachItem)} AUD
                     </p>
                   </div>
                 );
@@ -207,7 +207,7 @@ function OrderConfirmationContent() {
             </div>
             <div className="flex justify-between text-2xl font-bold text-gray-900 mt-4">
               <span>Total Paid:</span>
-              <span>${order.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} {order.currency}</span>
+              <span>{formatPrice(order.amount)} AUD</span>
             </div>
           </div>
         </div>

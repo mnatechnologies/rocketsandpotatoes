@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface FlaggedTransaction {
   id: string;
@@ -97,7 +98,9 @@ function TransactionReviewCard({
     onReview: (id: string, decision: 'approve' | 'reject', notes: string) => void;
   }) {
   const [notes, setNotes] = useState('');
+  const [eddReason, setEddReason] = useState('');
   const [showDetails, setShowDetails] = useState(false);
+  const [showEddInput, setShowEddInput] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   const handleDecision = async (decision: 'approve' | 'reject') => {
@@ -108,6 +111,41 @@ function TransactionReviewCard({
     setProcessing(true);
     await onReview(transaction.id, decision, notes);
     setProcessing(false);
+  };
+
+  const handleTriggerEDD = async () => {
+    if (!eddReason.trim()) {
+      toast.error('Please enter a reason for the EDD investigation');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const response = await fetch('/api/admin/review-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactionId: transaction.id,
+          action: 'trigger_edd',
+          notes: eddReason.trim(),
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      if (result.existingInvestigation) {
+        toast.success(`Transaction linked to existing investigation: ${result.existingInvestigation.investigation_number}`);
+      } else {
+        toast.success(`EDD Investigation created: ${result.investigation.investigation_number}. Customer is now blocked.`);
+      }
+
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (error: any) {
+      toast.error(`Failed: ${error.message}`);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -197,21 +235,53 @@ function TransactionReviewCard({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
-        <button
-          onClick={() => handleDecision('approve')}
-          disabled={processing}
-          className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {processing ? 'Processing...' : '✓ Approve Transaction'}
-        </button>
-        <button
-          onClick={() => handleDecision('reject')}
-          disabled={processing}
-          className="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {processing ? 'Processing...' : '✗ Reject Transaction'}
-        </button>
+      <div className="space-y-3">
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleDecision('approve')}
+            disabled={processing}
+            className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {processing ? 'Processing...' : '✓ Approve Transaction'}
+          </button>
+          <button
+            onClick={() => handleDecision('reject')}
+            disabled={processing}
+            className="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {processing ? 'Processing...' : '✗ Reject Transaction'}
+          </button>
+        </div>
+
+        {/* EDD Investigation Trigger */}
+        <div className="border-t border-border pt-3">
+          <button
+            onClick={() => setShowEddInput(!showEddInput)}
+            className="text-sm text-amber-600 hover:text-amber-700 font-medium mb-2"
+          >
+            {showEddInput ? '▼' : '▶'} Trigger EDD Investigation
+          </button>
+
+          {showEddInput && (
+            <div className="space-y-3 mt-2">
+              <textarea
+                value={eddReason}
+                onChange={(e) => setEddReason(e.target.value)}
+                placeholder="Enter reason for EDD investigation (e.g., unusual transaction pattern, high-risk customer profile...)"
+                className="w-full p-3 border border-border bg-input text-foreground rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                rows={2}
+                disabled={processing}
+              />
+              <button
+                onClick={handleTriggerEDD}
+                disabled={processing || !eddReason.trim()}
+                className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processing ? 'Creating Investigation...' : '🔍 Create EDD Investigation & Block Customer'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

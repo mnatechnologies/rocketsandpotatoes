@@ -138,6 +138,35 @@ export async function processVerificationResult(sessionId: string, customerId: s
 
   if (error) throw error
 
+  // // Validate that verified address is in Australia
+  // if (session.status === 'verified' && vo?.address?.country && vo.address.country !== 'AU') {
+  //   logger.log('⛔ Verification rejected: Non-Australian address detected', {
+  //     country: vo.address.country,
+  //     customerId
+  //   });
+  //
+  //   await logAuditEvent({
+  //     action_type: 'kyc_verification_rejected',
+  //     entity_type: 'customer',
+  //     entity_id: customerId,
+  //     description: 'KYC verification rejected: Document shows non-Australian address',
+  //     metadata: {
+  //       country: vo.address.country,
+  //       session_id: sessionId
+  //     },
+  //   });
+  //
+  //   await supabase
+  //     .from('customers')
+  //     .update({
+  //       verification_status: 'rejected',
+  //       last_verified_at: new Date().toISOString(),
+  //     })
+  //     .eq('id', customerId);
+  //
+  //   throw new Error('Verification rejected: We currently only serve customers with Australian addresses.');
+  // }
+
   if (session.status === 'verified' && vo?.first_name && vo?.last_name) {
     logger.log('🔍 Starting sanctions screening for verified customer...');
 

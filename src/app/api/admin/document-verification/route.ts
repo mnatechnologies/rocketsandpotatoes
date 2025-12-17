@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   if (!adminCheck.authorized) return adminCheck.error;
 
   try {
-    const { documentId, decision, notes, rejectionReason } = await req.json();
+    const { documentId, decision, notes, rejectionReason, certificationValidated } = await req.json();
 
     if (!documentId || !decision || !notes) {
       return NextResponse.json(
@@ -71,15 +71,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get admin user ID from auth
+    const adminUserId = adminCheck.userId;
+
+    // Build update data
+    const updateData: any = {
+      review_status: decision,
+      review_notes: notes,
+      rejection_reason: rejectionReason || null,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: adminUserId,
+    };
+
+    // If certification was validated by admin, record it
+    if (certificationValidated === true) {
+      updateData.certification_validated = true;
+      updateData.certification_validated_by = adminUserId;
+      updateData.certification_validated_at = new Date().toISOString();
+    }
+
     // Update document status
     const { data: docData, error: docError } = await supabase
       .from('customer_documents')
-      .update({
-        review_status: decision,
-        review_notes: notes,
-        rejection_reason: rejectionReason || null,
-        reviewed_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', documentId)
       .select('*, customer:customers(id, verification_status)')
       .single();
@@ -136,7 +150,9 @@ export async function POST(req: NextRequest) {
       metadata: {
         document_id: documentId,
         decision,
-        rejection_reason: rejectionReason
+        rejection_reason: rejectionReason,
+        certification_validated: certificationValidated || false,
+        admin_user_id: adminUserId
       },
     });
 
