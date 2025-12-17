@@ -107,7 +107,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 // POST /api/admin/staff - Create new staff member
 export async function POST(request: NextRequest) {
   try {
@@ -131,6 +130,14 @@ export async function POST(request: NextRequest) {
     if (!full_name || !email) {
       return NextResponse.json(
         { error: 'Full name and email are required' },
+        { status: 400 }
+      );
+    }
+
+    // Require clerk_user_id since all staff should have Clerk accounts
+    if (!clerk_user_id) {
+      return NextResponse.json(
+        { error: 'Clerk user ID is required' },
         { status: 400 }
       );
     }

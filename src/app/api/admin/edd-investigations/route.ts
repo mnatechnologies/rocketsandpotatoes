@@ -522,6 +522,17 @@ async function completeInvestigation(supabase: any, body: any, adminId: any) {
 
   const newMonitoringLevel = monitoringLevelMap[compliance_recommendation];
 
+  // Map compliance recommendation to investigation status
+  const statusMap: Record<string, string> = {
+    approve_relationship: 'completed_approved',
+    ongoing_monitoring: 'completed_ongoing_monitoring',
+    enhanced_monitoring: 'completed_ongoing_monitoring',
+    reject_relationship: 'completed_rejected',
+    escalate_to_smr: 'completed_rejected',
+  };
+
+  const newStatus = statusMap[compliance_recommendation] || 'completed_approved';
+
   // Update investigation
   const { error: investigationError } = await supabase
     .from('edd_investigations')
@@ -529,7 +540,7 @@ async function completeInvestigation(supabase: any, body: any, adminId: any) {
       investigation_findings,
       risk_assessment_summary,
       compliance_recommendation,
-      status: `completed_${compliance_recommendation}`.substring(0, 30),
+      status: newStatus,
       reviewed_by: adminId,
       completed_at: new Date().toISOString(),
     })

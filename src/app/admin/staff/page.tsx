@@ -10,7 +10,7 @@ const logger = createLogger('STAFF_PAGE');
 
 interface Staff {
   id: string;
-  clerk_user_id?: string;
+  clerk_user_id: string;
   full_name: string;
   email: string;
   position?: string;
@@ -198,8 +198,8 @@ export default function AdminStaffPage() {
         </div>
 
         {/* Staff Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+          <table className="min-w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -324,7 +324,11 @@ export default function AdminStaffPage() {
 
 // Add Staff Modal Component
 function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (data: any) => void }) {
+  const [clerkUsers, setClerkUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState('');
   const [formData, setFormData] = useState({
+    clerk_user_id: '',
     full_name: '',
     email: '',
     position: '',
@@ -332,6 +336,40 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
     employment_start_date: new Date().toISOString().split('T')[0],
     requires_aml_training: true,
   });
+
+  useEffect(() => {
+    fetchClerkUsers();
+  }, []);
+
+  const fetchClerkUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/clerk-users');
+      const data = await response.json();
+      if (data.success) {
+        setClerkUsers(data.users);
+      }
+    } catch (error) {
+      logger.error('Error fetching Clerk users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleUserSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const userId = e.target.value;
+    setSelectedUserId(userId);
+
+    const selectedUser = clerkUsers.find(u => u.id === userId);
+    if (selectedUser) {
+      setFormData({
+        ...formData,
+        clerk_user_id: selectedUser.id,
+        full_name: selectedUser.fullName,
+        email: selectedUser.email,
+      });
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -345,6 +383,34 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Select User from Clerk *
+            </label>
+            {loadingUsers ? (
+              <div className="text-sm text-gray-500">Loading users...</div>
+            ) : (
+              <select
+                required
+                value={selectedUserId}
+                onChange={handleUserSelect}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+              >
+                <option value="">-- Select a user --</option>
+                {clerkUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName} ({user.email})
+                  </option>
+                ))}
+              </select>
+            )}
+            {clerkUsers.length === 0 && !loadingUsers && (
+              <p className="text-sm text-gray-500 mt-1">
+                No available users. All Clerk users already have staff records.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Full Name *
             </label>
             <input
@@ -353,6 +419,7 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+              disabled={!selectedUserId}
             />
           </div>
 
@@ -366,6 +433,7 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+              disabled={!selectedUserId}
             />
           </div>
 

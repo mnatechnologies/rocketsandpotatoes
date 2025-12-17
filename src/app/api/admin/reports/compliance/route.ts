@@ -117,6 +117,62 @@ export async function GET(req: NextRequest) {
       trainingRecords?.filter(t => t.completion_status === 'completed').map(t => t.staff_id)
     ).size;
 
+    // EDD Investigations
+    const { count: totalEDDInvestigations } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
+    const { count: completedEDDInvestigations } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .not('completed_at', 'is', null)
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
+    const { count: openEDDInvestigations } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open')
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
+    const { count: awaitingInfoEDD } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'awaiting_customer_info')
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
+    const { count: escalatedEDD } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'escalated')
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
+    const { count: approvedEDD } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'completed_approved')
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
+    const { count: rejectedEDD } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'completed_rejected')
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
+    const { count: ongoingMonitoringEDD } = await supabase
+      .from('edd_investigations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'completed_ongoing_monitoring')
+      .gte('opened_at', startDate)
+      .lte('opened_at', endDate);
+
     const verificationRate = totalCustomers && verifiedCustomers !== null
       ? ((verifiedCustomers / totalCustomers) * 100).toFixed(1)
       : '0';
@@ -145,6 +201,16 @@ export async function GET(req: NextRequest) {
         staffTraining: {
           staffTrained,
           trainingSessionsCompleted: trainingRecords?.filter(t => t.completion_status === 'completed').length || 0,
+        },
+        eddInvestigations: {
+          total: totalEDDInvestigations || 0,
+          completed: completedEDDInvestigations || 0,
+          open: openEDDInvestigations || 0,
+          awaitingInfo: awaitingInfoEDD || 0,
+          escalated: escalatedEDD || 0,
+          approved: approvedEDD || 0,
+          rejected: rejectedEDD || 0,
+          ongoingMonitoring: ongoingMonitoringEDD || 0,
         },
       },
     });

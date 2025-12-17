@@ -129,6 +129,16 @@ function ComplianceReportTab() {
       ['Staff Trained', reportData.staffTraining.staffTrained],
       ['Training Sessions Completed', reportData.staffTraining.trainingSessionsCompleted],
       [],
+      ['EDD INVESTIGATIONS'],
+      ['Total Investigations', reportData.eddInvestigations.total],
+      ['Completed', reportData.eddInvestigations.completed],
+      ['Open', reportData.eddInvestigations.open],
+      ['Awaiting Customer Info', reportData.eddInvestigations.awaitingInfo],
+      ['Escalated', reportData.eddInvestigations.escalated],
+      ['Approved', reportData.eddInvestigations.approved],
+      ['Rejected', reportData.eddInvestigations.rejected],
+      ['Ongoing Monitoring', reportData.eddInvestigations.ongoingMonitoring],
+      [],
       ['MONTHLY BREAKDOWN'],
       ['Month', 'Transactions', 'Value (AUD)'],
       ...reportData.transactions.monthly.map((m: any) => [m.month, m.count, `$${m.value.toFixed(2)}`]),
@@ -260,6 +270,47 @@ function ComplianceReportTab() {
               <div className="border rounded-lg p-4">
                 <div className="text-sm text-gray-600">Training Sessions Completed</div>
                 <div className="text-2xl font-bold text-primary">{reportData.staffTraining.trainingSessionsCompleted}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* EDD Investigations */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">EDD Investigations</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Total Investigations</div>
+                <div className="text-2xl font-bold text-primary">{reportData.eddInvestigations.total}</div>
+              </div>
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Completed</div>
+                <div className="text-2xl font-bold text-green-600">{reportData.eddInvestigations.completed}</div>
+              </div>
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Open</div>
+                <div className="text-2xl font-bold text-blue-600">{reportData.eddInvestigations.open}</div>
+              </div>
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Awaiting Info</div>
+                <div className="text-2xl font-bold text-yellow-600">{reportData.eddInvestigations.awaitingInfo}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Escalated</div>
+                <div className="text-2xl font-bold text-red-600">{reportData.eddInvestigations.escalated}</div>
+              </div>
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Approved</div>
+                <div className="text-2xl font-bold text-green-600">{reportData.eddInvestigations.approved}</div>
+              </div>
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Rejected</div>
+                <div className="text-2xl font-bold text-gray-600">{reportData.eddInvestigations.rejected}</div>
+              </div>
+              <div className="border rounded-lg p-4">
+                <div className="text-sm text-gray-600">Ongoing Monitoring</div>
+                <div className="text-2xl font-bold text-teal-600">{reportData.eddInvestigations.ongoingMonitoring}</div>
               </div>
             </div>
           </div>
