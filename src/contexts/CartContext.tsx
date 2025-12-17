@@ -13,6 +13,7 @@ import {
   isTimerActive,
 } from '@/lib/pricing/pricingTimer';
 import { createLogger } from '@/lib/utils/logger';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const logger = createLogger('CART_CONTEXT');
 
@@ -49,6 +50,7 @@ const SESSION_ID_KEY = 'cart_session_id'
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded: isUserLoaded } = useUser();
+  const { currency } = useCurrency();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timerRemaining, setTimerRemaining] = useState(0);
@@ -293,9 +295,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cart]);
 
   const getLockedPriceForProduct = useCallback((productId: string): number | null => {
-    const lockedPrice = getLockedPrice(productId);
-    return lockedPrice?.price ?? null;
-  }, []);
+    const locked = getLockedPrice(productId);
+    if (!locked) return null;
+    // ✅ Return price in current currency (already locked at same FX rate)
+    return currency === 'AUD' ? locked.priceAUD : locked.priceUSD;
+  }, [currency]);
   
   const lockPricesOnServer = useCallback(async (products: Product[], currency: string) => {
     if (!sessionId || products.length === 0) return null;
@@ -311,19 +315,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
           currency,  // ✅ Pass currency to lock prices in user's selected currency
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to lock prices');
       }
-  
+
       const data = await response.json();
       logger.log('Server price lock created:', data);
       
       // Update local locked prices with server values
       if (data.lockedPrices) {
-        lockPrices(data.lockedPrices.map((lp: { productId: string; priceUSD: number }) => ({
+        lockPrices(data.lockedPrices.map((lp: { productId: any; price: any; priceUSD: any; priceAUD: any; currency: any; }) => ({
           productId: lp.productId,
-          price: lp.priceUSD,
+          price: lp.price,
+          priceUSD: lp.priceUSD,
+          priceAUD: lp.priceAUD,
+          currency: lp.currency,
+
         })));
       }
   

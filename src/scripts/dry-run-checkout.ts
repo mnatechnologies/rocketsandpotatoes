@@ -1,23 +1,25 @@
 
-//@ts-ignore
-import {TEST_SCENARIOS} from "../test/test-config";
 
+import {TEST_SCENARIOS} from "../test/test-config";
+import {createLogger} from "../lib/utils/logger";
+
+const logger = createLogger('TESTING')
 async function runDryTest(scenarioName: keyof typeof TEST_SCENARIOS) {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`Running: ${scenarioName}`);
-  console.log('='.repeat(60));
+  logger.log(`\n${'='.repeat(60)}`);
+  logger.log(`Running: ${scenarioName}`);
+  logger.log('='.repeat(60));
 
   const scenario = TEST_SCENARIOS[scenarioName];
 
-  console.log('\n📋 Scenario Details:');
-  console.log(`  Customer ID: ${scenario.customerId}`);
-  console.log(`  Amount: $${scenario.amount.toLocaleString()}`);
-  console.log(`  Product: ${scenario.productDetails.name}`);
-  console.log(`  Expected Flow: ${scenario.expectedFlow}`);
+  logger.log('\n📋 Scenario Details:');
+  logger.log(`  Customer ID: ${scenario.customerId}`);
+  logger.log(`  Amount: $${scenario.amount.toLocaleString()}`);
+  logger.log(`  Product: ${scenario.productDetails.name}`);
+  logger.log(`  Expected Flow: ${scenario.expectedFlow}`);
 
   try {
     // Step 1: Validation
-    console.log('\n🔍 Step 1: Validating transaction...');
+    logger.log('\n🔍 Step 1: Validating transaction...');
     const validationResponse = await fetch('http://localhost:3000/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -29,22 +31,22 @@ async function runDryTest(scenarioName: keyof typeof TEST_SCENARIOS) {
     });
 
     const validationResult = await validationResponse.json();
-    console.log('\n✅ Validation Result:');
-    console.log(`  Status: ${validationResult.status}`);
-    console.log(`  Risk Level: ${validationResult.riskLevel}`);
-    console.log(`  Risk Score: ${validationResult.riskScore}`);
-    console.log(`  Requires KYC: ${validationResult.requirements?.requiresKYC}`);
+    logger.log('\n✅ Validation Result:');
+    logger.log(`  Status: ${validationResult.status}`);
+    logger.log(`  Risk Level: ${validationResult.riskLevel}`);
+    logger.log(`  Risk Score: ${validationResult.riskScore}`);
+    logger.log(`  Requires KYC: ${validationResult.requirements?.requiresKYC}`);
 
     if (validationResult.flags) {
-      console.log('\n⚠️  Flags:');
+      logger.log('\n⚠️  Flags:');
       Object.entries(validationResult.flags).forEach(([key, value]) => {
-        if (value) console.log(`    - ${key}`);
+        if (value) logger.log(`    - ${key}`);
       });
     }
 
     // Step 2: Payment Intent (if approved)
     if (validationResult.status === 'approved') {
-      console.log('\n💳 Step 2: Creating payment intent...');
+      logger.log('\n💳 Step 2: Creating payment intent...');
       const paymentResponse = await fetch('http://localhost:3000/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,9 +58,9 @@ async function runDryTest(scenarioName: keyof typeof TEST_SCENARIOS) {
       });
 
       const paymentResult = await paymentResponse.json();
-      console.log('✅ Payment Intent Created:');
-      console.log(`  Intent ID: ${paymentResult.paymentIntentId}`);
-      console.log(`  Client Secret: ${paymentResult.clientSecret?.substring(0, 20)}...`);
+      logger.log('✅ Payment Intent Created:');
+      logger.log(`  Intent ID: ${paymentResult.paymentIntentId}`);
+      logger.log(`  Client Secret: ${paymentResult.clientSecret?.substring(0, 20)}...`);
     }
 
     // Verify expected flow
@@ -68,20 +70,20 @@ async function runDryTest(scenarioName: keyof typeof TEST_SCENARIOS) {
           validationResult.status === 'requires_review' ? 'review' :
             'payment';
 
-    console.log('\n🎯 Flow Verification:');
-    console.log(`  Expected: ${scenario.expectedFlow}`);
-    console.log(`  Actual: ${actualFlow}`);
-    console.log(`  Match: ${actualFlow === scenario.expectedFlow ? '✅' : '❌'}`);
+    logger.log('\n🎯 Flow Verification:');
+    logger.log(`  Expected: ${scenario.expectedFlow}`);
+    logger.log(`  Actual: ${actualFlow}`);
+    logger.log(`  Match: ${actualFlow === scenario.expectedFlow ? '✅' : '❌'}`);
 
   } catch (error) {
-     console.error('\n❌ Error:', error);
+     logger.error('\n❌ Error:', error);
   }
 
-  console.log('\n' + '='.repeat(60) + '\n');
+  logger.log('\n' + '='.repeat(60) + '\n');
 }
 
 async function runAllDryTests() {
-  console.log('\n🚀 Starting Checkout Flow Dry Runs\n');
+  logger.log('\n🚀 Starting Checkout Flow Dry Runs\n');
 
   for (const scenarioName of Object.keys(TEST_SCENARIOS) as Array<keyof typeof TEST_SCENARIOS>) {
     await runDryTest(scenarioName);
@@ -89,12 +91,12 @@ async function runAllDryTests() {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
-  console.log('✅ All dry runs complete!\n');
+  logger.log('✅ All dry runs complete!\n');
 }
 
 // Run if called directly
 if (require.main === module) {
-runAllDryTests().catch( console.error);
+runAllDryTests().catch( logger.error);
 }
 
 export { runDryTest, runAllDryTests };

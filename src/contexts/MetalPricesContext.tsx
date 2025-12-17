@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('METALS_PRICING_CONTEXT')
 interface MetalPrice {
   symbol: MetalSymbol;
   price: number;
@@ -101,13 +103,13 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
       if (marketStatus.isOpen) {
         // Markets are open - poll for price updates every 5 minutes
         if (!priceInterval) {
-          console.log('📊 Markets OPEN - Starting price polling (every 5 minutes)');
+          logger.log('📊 Markets OPEN - Starting price polling (every 5 minutes)');
           priceInterval = setInterval(fetchPrices, UPDATE_INTERVAL_OPEN);
         }
       } else {
         // Markets are closed - stop polling to save API quota
         if (priceInterval) {
-          console.log('🔴 Markets CLOSED - Stopping price polling');
+          logger.log('🔴 Markets CLOSED - Stopping price polling');
           clearInterval(priceInterval);
           priceInterval = null;
         }

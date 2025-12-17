@@ -1,6 +1,8 @@
 //import {createServerSupabase} from "@/lib/supabase/server";
 import {createClient} from "@supabase/supabase-js";
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('COMPLIANCE_THRESHOLDS')
 export const complianceThreshold : {readonly enhancedDD: 50000, readonly kycRequired: 5000, readonly ttrRequired: 10000} = {
    enhancedDD: 50000,
    kycRequired: 5000,
@@ -38,7 +40,7 @@ export async function getComplianceRequirements(
     .eq('customer_id', customerId)
     .eq('payment_status', 'succeeded'); // Only count successful transactions
 
-  console.log(transactions)
+  logger.log(transactions)
 
   const lifetimeTotal = transactions?.reduce((sum, tx) => {
     // Use amount_aud if available, otherwise convert

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger} from "@/lib/utils/logger";
+
+const logger = createLogger("TRAINING_COMPLIANCE_API");
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -129,7 +132,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, report });
   } catch (error) {
-    console.error('[TRAINING_COMPLIANCE_REPORT]', error);
+    logger.error('[TRAINING_COMPLIANCE_REPORT]', error);
     return NextResponse.json(
       { error: 'Failed to generate compliance report' },
       { status: 500 }

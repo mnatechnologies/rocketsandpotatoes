@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { createLogger} from "@/lib/utils/logger";
+
+const logger = createLogger('ADMIN_REPORTS_PAGE')
 
 type TabType = 'compliance' | 'austrac';
 
@@ -93,7 +96,7 @@ function ComplianceReportTab() {
         toast.error('Failed to generate report');
       }
     } catch (error) {
-      console.error('Error generating report:', error);
+      logger.error('Error generating report:', error);
       toast.error('Failed to generate report');
     } finally {
       setLoading(false);
@@ -326,7 +329,7 @@ function AustracTrackerTab() {
         toast.error('Failed to load reports');
       }
     } catch (error) {
-      console.error('Error fetching reports:', error);
+      logger.error('Error fetching reports:', error);
       toast.error('Failed to load reports');
     } finally {
       setLoading(false);

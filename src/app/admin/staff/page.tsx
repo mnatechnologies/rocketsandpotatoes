@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import {createLogger} from "@/lib/utils/logger";
+
+const logger = createLogger('STAFF_PAGE');
 
 interface Staff {
   id: string;
@@ -55,7 +58,7 @@ export default function AdminStaffPage() {
         setStaff(data.staff);
       }
     } catch (error) {
-      console.error('Error fetching staff:', error);
+      logger.error('Error fetching staff:', error);
       toast.error('Failed to load staff');
     } finally {
       setLoading(false);
@@ -80,7 +83,7 @@ export default function AdminStaffPage() {
         toast.error(data.error || 'Failed to add staff member');
       }
     } catch (error) {
-      console.error('Error adding staff:', error);
+      logger.error('Error adding staff:', error);
       toast.error('Failed to add staff member');
     }
   };
@@ -104,7 +107,7 @@ export default function AdminStaffPage() {
         toast.error('Failed to deactivate staff member');
       }
     } catch (error) {
-      console.error('Error deactivating staff:', error);
+      logger.error('Error deactivating staff:', error);
       toast.error('Failed to deactivate staff member');
     }
   };

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/auth/admin';
+import { createLogger} from "@/lib/utils/logger";
+const logger = createLogger('AUSTRAC_REPORTING_API')
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -166,7 +168,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('[AUSTRAC_TRACKER_ERROR]', error);
+    logger.error('[AUSTRAC_TRACKER_ERROR]', error);
     return NextResponse.json({ error: 'Failed to fetch AUSTRAC reports' }, { status: 500 });
   }
 }

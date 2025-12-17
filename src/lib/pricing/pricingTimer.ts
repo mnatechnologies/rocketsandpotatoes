@@ -13,6 +13,9 @@ const TIMER_DURATION_MS = 15 * 60 * 1000; // 15 minutes in milliseconds
 
 export interface LockedPrice {
   productId: string;
+  priceUSD: number;
+  priceAUD: number;
+  currency: string;
   price: number;
   spotPricePerGram?: number;
 }

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/admin';
 import { createClient } from '@supabase/supabase-js';
 import { generateSMR } from '@/lib/compliance/smr-generator';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('EDD-Investigations');
 export async function GET(req: NextRequest) {
   const { authorized, userId, error } = await requireAdmin();
   if (!authorized) return error!;
@@ -123,7 +125,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
   } catch (error: any) {
-    console.error('EDD investigation error:', error);
+    logger.error('EDD investigation error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { getCertifierLabel, CERTIFICATION_REQUIREMENTS } from '@/lib/compliance/authorized-certifiers';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('DOCU_VERF_PAGE')
 interface CustomerDocument {
   id: string;
   customer_id: string;
@@ -214,7 +216,7 @@ function DocumentReviewCard({
         setImageUrl(data.url);
       }
     } catch (error) {
-      console.error('Failed to load document image:', error);
+      logger.error('Failed to load document image:', error);
     } finally {
       setLoadingImage(false);
     }

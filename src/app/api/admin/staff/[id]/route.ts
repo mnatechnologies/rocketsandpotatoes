@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('STAFF_DETAIL_API')
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -38,7 +40,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, staff: { ...staff, training_records: training || [] } });
   } catch (error) {
-    console.error('[ADMIN_STAFF_GET_ID]', error);
+    logger.error('[ADMIN_STAFF_GET_ID]', error);
     return NextResponse.json(
       { error: 'Failed to fetch staff member' },
       { status: 500 }
@@ -93,7 +95,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, staff: updatedStaff });
   } catch (error) {
-    console.error('[ADMIN_STAFF_PUT]', error);
+    logger.error('[ADMIN_STAFF_PUT]', error);
     return NextResponse.json(
       { error: 'Failed to update staff member' },
       { status: 500 }
@@ -129,7 +131,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Staff member deactivated' });
   } catch (error) {
-    console.error('[ADMIN_STAFF_DELETE]', error);
+    logger.error('[ADMIN_STAFF_DELETE]', error);
     return NextResponse.json(
       { error: 'Failed to deactivate staff member' },
       { status: 500 }

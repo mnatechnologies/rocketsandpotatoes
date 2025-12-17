@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { createLogger} from "@/lib/utils/logger";
+
+const logger = createLogger('EDD_INVESTIGATIONS_PAGE')
 
 type InvestigationStatus = 'open' | 'awaiting_customer_info' | 'under_review' | 'escalated' | 'completed_approved' | 'completed_rejected' | 'completed_ongoing_monitoring';
 
@@ -57,7 +60,7 @@ export default function EDDInvestigationsPage() {
       const data = await response.json();
       setInvestigations(data.investigations || []);
     } catch (error) {
-      console.error('Failed to fetch investigations:', error);
+      logger.error('Failed to fetch investigations:', error);
     } finally {
       setLoading(false);
     }
@@ -82,7 +85,7 @@ export default function EDDInvestigationsPage() {
       fetchInvestigations();
     } catch (error) {
       alert('Failed to update checklist section');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -111,7 +114,7 @@ export default function EDDInvestigationsPage() {
       fetchInvestigations();
     } catch (error) {
       alert('Failed to send information request');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -145,7 +148,7 @@ export default function EDDInvestigationsPage() {
       setExpandedId(null);
     } catch (error: any) {
       alert(error.message || 'Failed to complete investigation');
-      console.error(error);
+      logger.error(error);
     }
   };
 

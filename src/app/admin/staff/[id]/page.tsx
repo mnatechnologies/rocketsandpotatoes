@@ -5,7 +5,9 @@ import { useUser } from '@clerk/nextjs';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import {createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('STAFF_DETAIL_PAGE')
 interface TrainingRecord {
   id: string;
   training_type: string;
@@ -70,7 +72,7 @@ export default function StaffDetailPage() {
         router.push('/admin/staff');
       }
     } catch (error) {
-      console.error('Error fetching staff:', error);
+      logger.error('Error fetching staff:', error);
       toast.error('Failed to load staff details');
     } finally {
       setLoading(false);
@@ -95,7 +97,7 @@ export default function StaffDetailPage() {
         toast.error(data.error || 'Failed to add training record');
       }
     } catch (error) {
-      console.error('Error adding training:', error);
+      logger.error('Error adding training:', error);
       toast.error('Failed to add training record');
     }
   };

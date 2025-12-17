@@ -67,11 +67,12 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       totalPrice: displayPrice * (item.quantity || 1),
     }
   })
-  // Use currency context for formatting and conversion
+  // Use currency context for formatting (amount is already in selected currency)
   const { formatPrice, currency, convertPrice, exchangeRate, isLoadingRate } = useCurrency();
 
-
-  const thresholdAmountAUD = convertPrice(amount);
+  // ✅ Amount is already in user's selected currency from locked prices
+  // No conversion needed - locked prices store both USD and AUD
+  const finalAmount = amount;
 
   useEffect(() => {
     // Add guard to prevent duplicate validation
@@ -150,7 +151,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   useEffect(() => {
     const checkComplianceStatus = async () => {
       // Check source of funds for $10K+ AUD
-      if (thresholdAmountAUD >= 10000) {
+      if (finalAmount >= 10000) {
         try {
           const response = await fetch(`/api/customer/source-of-funds?customerId=${customerId}`);
           const result = await response.json();
@@ -159,12 +160,12 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
             setSourceOfFundsProvided(true);
           }
         } catch (error) {
-          console.error('Error checking source of funds:', error);
+          logger.error('Error checking source of funds:', error);
         }
       }
 
       // Check EDD status for $50K+ AUD
-      if (thresholdAmountAUD >= EDD_THRESHOLD) {
+      if (finalAmount >= EDD_THRESHOLD) {
         try {
           const response = await fetch(`/api/customer/enhanced-dd?customerId=${customerId}`);
           const result = await response.json();
@@ -173,18 +174,18 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
             setEddCompleted(true);
           }
         } catch (error) {
-          console.error('Error checking EDD status:', error);
+          logger.error('Error checking EDD status:', error);
         }
       }
     };
 
-    if (customerId && thresholdAmountAUD > 0) {
+    if (customerId && finalAmount > 0) {
       checkComplianceStatus();
     }
-  }, [customerId, thresholdAmountAUD]);
+  }, [customerId, finalAmount]);
 
   const createPaymentIntent = async () => {
-    logger.log(thresholdAmountAUD)
+    logger.log(finalAmount)
     const newsNewIntent = !paymentIntentCreated.current || paymentIntentAmount.current !== amount;
 
     if (!newsNewIntent) {
@@ -202,7 +203,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: thresholdAmountAUD,
+          amount: finalAmount,
           currency,
           customerId,
           customerEmail,
@@ -242,7 +243,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     return (
       <SourceOfFundsForm
         customerId={customerId}
-        amount={thresholdAmountAUD}
+        amount={finalAmount}
         onComplete={() => {
           logger.log('SOF completed, re-validating...');
           setSourceOfFundsProvided(true);
@@ -263,7 +264,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     // ✅ Get backend-calculated AUD amount for consistency
     const backendAmountAUD = validationResult?.requirements?.newCumulativeTotal
       ? (validationResult.requirements.newCumulativeTotal - validationResult.requirements.cumulativeTotal)
-      : thresholdAmountAUD;
+      : finalAmount;
 
     // ✅ Show both forms if both are required
     if (needsEDD || needsSOF) {
@@ -412,7 +413,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       return (
         <EnhancedDueDiligenceForm
           customerId={customerId}
-          amount={thresholdAmountAUD}
+          amount={finalAmount}
           onComplete={() => {
             // After EDD submission, the investigation status screen will show
             // Customer stays blocked until admin approves
@@ -476,7 +477,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       return (
         <SourceOfFundsForm
           customerId={customerId}
-          amount={thresholdAmountAUD}
+          amount={finalAmount}
           onComplete={() => {
             setSourceOfFundsProvided(true);
           }}
@@ -489,7 +490,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       return (
         <EnhancedDueDiligenceForm
           customerId={customerId}
-          amount={thresholdAmountAUD}
+          amount={finalAmount}
           onComplete={() => {
             setEddCompleted(true);
           }}
@@ -513,7 +514,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         key={clientSecret}
       >
         <PaymentForm
-          amount={thresholdAmountAUD}
+          amount={finalAmount}
           currency={currency}
           customerId={customerId}
           productDetails={productDetails}

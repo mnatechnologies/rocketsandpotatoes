@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('TRAINING_DETAIL_API')
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -58,7 +60,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, training: updatedTraining });
   } catch (error) {
-    console.error('[ADMIN_TRAINING_PUT]', error);
+    logger.error('[ADMIN_TRAINING_PUT]', error);
     return NextResponse.json(
       { error: 'Failed to update training record' },
       { status: 500 }
@@ -88,7 +90,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Training record deleted' });
   } catch (error) {
-    console.error('[ADMIN_TRAINING_DELETE]', error);
+    logger.error('[ADMIN_TRAINING_DELETE]', error);
     return NextResponse.json(
       { error: 'Failed to delete training record' },
       { status: 500 }

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendComplianceAlert } from '@/lib/email/sendComplianceAlert';
+import { createLogger} from "@/lib/utils/logger";
 
+const logger = createLogger('CRON_CHECK_TRAINING_API')
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -173,7 +175,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[CHECK_TRAINING_DUE]', error);
+    logger.error('[CHECK_TRAINING_DUE]', error);
     return NextResponse.json(
       { error: 'Failed to check training due dates' },
       { status: 500 }

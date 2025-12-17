@@ -42,9 +42,9 @@ export default function CheckoutPage() {
 
   const getTotalAmount = () => {
     const total = cart.reduce((sum, item) => {
-      // Use locked price if available, fallback to stored price
+      // ✅ Use locked price in selected currency (USD or AUD)
       const lockedPrice = getLockedPriceForProduct(item.product.id);
-      const price = lockedPrice ?? item.product.price;
+      const price = lockedPrice ?? item.product.price; // Fallback to database price (USD)
       return sum + (price * item.quantity);
     }, 0);
     logger.log('Total amount calculated with locked prices:', total, currency);
@@ -53,7 +53,7 @@ export default function CheckoutPage() {
 
   // ✅ Locked prices are already in the user's selected currency - no conversion needed!
   const getConvertedTotal = () => {
-    return getTotalAmount(); // Already in correct currency
+    return getTotalAmount(); // ✅ Already in selected currency (locked prices include both USD and AUD)
   };
 
   // Get AUD equivalent for compliance threshold display

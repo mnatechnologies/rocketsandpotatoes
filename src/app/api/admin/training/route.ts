@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger} from "@/lib/utils/logger";
+
+const logger = createLogger('TRAINING_API')
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, training });
   } catch (error) {
-    console.error('[ADMIN_TRAINING_GET]', error);
+    logger.error('[ADMIN_TRAINING_GET]', error);
     return NextResponse.json(
       { error: 'Failed to fetch training records' },
       { status: 500 }
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, training: newTraining }, { status: 201 });
   } catch (error) {
-    console.error('[ADMIN_TRAINING_POST]', error);
+    logger.error('[ADMIN_TRAINING_POST]', error);
     return NextResponse.json(
       { error: 'Failed to create training record' },
       { status: 500 }
