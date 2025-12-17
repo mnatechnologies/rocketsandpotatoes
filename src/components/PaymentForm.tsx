@@ -173,7 +173,7 @@ export function PaymentForm({
       <div className="border-t pt-4">
         <div className="flex justify-between text-lg font-bold mb-4">
           <span>Total Amount:</span>
-          <span>${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} {currency}</span>
+          <span>${amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}</span>
         </div>
 
         <button
@@ -181,7 +181,7 @@ export function PaymentForm({
           disabled={!stripe || isProcessing}
           className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors"
         >
-          {isProcessing ? 'Processing Payment...' : `Pay $${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} ${currency}`}
+          {isProcessing ? 'Processing Payment...' : `Pay $${amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`}
         </button>
       </div>
 
