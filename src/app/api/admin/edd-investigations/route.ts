@@ -5,6 +5,18 @@ import { generateSMR } from '@/lib/compliance/smr-generator';
 import { createLogger} from "@/lib/utils/logger";
 
 const logger = createLogger('EDD-Investigations');
+
+// Helper to get staff UUID from Clerk ID
+async function getStaffId(supabase: any, clerkUserId: string): Promise<string | null> {
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single();
+
+  return staff?.id || null;
+}
+
 export async function GET(req: NextRequest) {
   const { authorized, userId, error } = await requireAdmin();
   if (!authorized) return error!;
@@ -98,28 +110,34 @@ export async function POST(req: NextRequest) {
     }
   );
 
+  // Convert Clerk ID to Staff UUID
+  const staffId = await getStaffId(supabase, userId);
+  if (!staffId) {
+    return NextResponse.json({ error: 'Staff member not found' }, { status: 403 });
+  }
+
   const body = await req.json();
   const { action, investigationId } = body;
 
   try {
     switch (action) {
       case 'create':
-        return await createInvestigation(supabase, body, userId);
+        return await createInvestigation(supabase, body, staffId);
 
       case 'update_checklist':
-        return await updateChecklist(supabase, body, userId);
+        return await updateChecklist(supabase, body, staffId);
 
       case 'request_information':
-        return await requestInformation(supabase, body, userId);
+        return await requestInformation(supabase, body, staffId);
 
       case 'escalate':
-        return await escalateInvestigation(supabase, body, userId);
+        return await escalateInvestigation(supabase, body, staffId);
 
       case 'approve_management':
-        return await approveManagement(supabase, body, userId);
+        return await approveManagement(supabase, body, staffId);
 
       case 'complete':
-        return await completeInvestigation(supabase, body, userId);
+        return await completeInvestigation(supabase, body, staffId);
 
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
