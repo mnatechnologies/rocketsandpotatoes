@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
 // Action handlers
 
-async function createInvestigation(supabase: any, body: any, adminId: string) {
+async function createInvestigation(supabase: any, body: any, adminId: any) {
   const { customer_id, transaction_id, trigger_reason, triggered_by = 'admin' } = body;
 
   if (!customer_id || !trigger_reason) {
@@ -209,7 +209,7 @@ async function createInvestigation(supabase: any, body: any, adminId: string) {
   return NextResponse.json({ success: true, investigation });
 }
 
-async function updateChecklist(supabase: any, body: any, adminId: string) {
+async function updateChecklist(supabase: any, body: any, adminId: any) {
   const { investigationId, section_name, section_data } = body;
 
   if (!investigationId || !section_name || !section_data) {
@@ -277,7 +277,7 @@ async function updateChecklist(supabase: any, body: any, adminId: string) {
   return NextResponse.json({ success: true });
 }
 
-async function requestInformation(supabase: any, body: any, adminId: string) {
+async function requestInformation(supabase: any, body: any, adminId: any) {
   const { investigationId, items, deadline } = body;
 
   if (!investigationId || !items || !Array.isArray(items) || items.length === 0) {
@@ -340,7 +340,7 @@ async function requestInformation(supabase: any, body: any, adminId: string) {
   return NextResponse.json({ success: true, request: newRequest });
 }
 
-async function escalateInvestigation(supabase: any, body: any, adminId: string) {
+async function escalateInvestigation(supabase: any, body: any, adminId: any) {
   const { investigationId, reason, escalated_to } = body;
 
   if (!investigationId || !reason) {
@@ -403,7 +403,7 @@ async function escalateInvestigation(supabase: any, body: any, adminId: string) 
   return NextResponse.json({ success: true, escalation: newEscalation });
 }
 
-async function approveManagement(supabase: any, body: any, managementId: string) {
+async function approveManagement(supabase: any, body: any, managementId: any) {
   const { investigationId } = body;
 
   if (!investigationId) {
@@ -458,7 +458,7 @@ async function approveManagement(supabase: any, body: any, managementId: string)
   return NextResponse.json({ success: true });
 }
 
-async function completeInvestigation(supabase: any, body: any, adminId: string) {
+async function completeInvestigation(supabase: any, body: any, adminId: any) {
   const {
     investigationId,
     investigation_findings,

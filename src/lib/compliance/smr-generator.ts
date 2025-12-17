@@ -9,7 +9,7 @@ const logger = createLogger('SMR-GENERATOR')
 export async function generateSMR(data: {
   customerId: string;
   transactionId?: string;
-  suspicionType: 'structuring' | 'sanctions_match' | 'unusual_pattern' | 'high_risk' | 'other';
+  suspicionType: 'structuring' | 'sanctions_match' | 'unusual_pattern' | 'high_risk' | 'other' | 'enhanced_dd_escalation';
   indicators: string[];
   narrative: string;
   transactionAmount?: number;
