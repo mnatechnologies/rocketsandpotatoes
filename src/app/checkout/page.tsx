@@ -160,13 +160,14 @@ export default function CheckoutPage() {
             {cart.map((item) => {
               const lockedPrice = getLockedPriceForProduct(item.product.id);
               const displayPrice = lockedPrice ?? item.product.price;
+              const itemTotal = displayPrice * item.quantity;
               return (
                 <div key={item.product.id} className="flex justify-between text-gray-700">
                   <span>
                     {item.product.name} x {item.quantity}
                   </span>
                   <span className="font-semibold">
-                    {formatPrice(displayPrice * item.quantity)} {currency}
+                    ${itemTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
                   </span>
                 </div>
               );
@@ -174,7 +175,7 @@ export default function CheckoutPage() {
             <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
               <span>Total</span>
               <span>
-                {formatPrice(getTotalAmount())} {currency}
+                ${getTotalAmount().toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
               </span>
             </div>
           </div>
