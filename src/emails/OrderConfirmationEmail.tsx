@@ -211,9 +211,9 @@ export default function OrderConfirmationEmail({
               </li>
             </ul>
           </Section>
-
+           {/*TODO CHANGE URL IN PRODUCTION*/}
           <Hr style={hr} />
-        // TODO CHANGE URL IN PRODUCTION
+
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
