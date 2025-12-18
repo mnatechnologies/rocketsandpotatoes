@@ -42,7 +42,7 @@ interface TransactionFlaggedAlertData {
   flagReason: string;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
 export async function sendSanctionsMatchAlert(data: SanctionsMatchAlertData) {
   const recipients = getComplianceAlertRecipients();
@@ -67,7 +67,7 @@ export async function sendSanctionsMatchAlert(data: SanctionsMatchAlertData) {
         ...(data.transactionAmount ? [{ label: 'Transaction Amount', value: `$${data.transactionAmount.toLocaleString()} AUD` }] : []),
       ],
       actionRequired: 'Immediately review this sanctions match. Verify if this is a true match or false positive. If confirmed, file an SMR with AUSTRAC and maintain transaction block.',
-      adminUrl: `${baseUrl}/admin/reviews`,
+      adminUrl: `${baseUrl}/admin/audit-logs`,
     })
   );
 
@@ -109,7 +109,7 @@ export async function sendSMRCreatedAlert(data: SMRCreatedAlertData) {
       ],
       actionRequired: 'Review this SMR and submit to AUSTRAC within the deadline. Ensure all required information is complete and accurate.',
       deadline: data.deadline,
-      adminUrl: `${baseUrl}/admin/smr-reports`,
+      adminUrl: `${baseUrl}/admin/suspicious-reports`,
     })
   );
 

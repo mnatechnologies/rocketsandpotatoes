@@ -3,6 +3,8 @@ import { requireAdmin } from '@/lib/auth/admin';
 import { createClient } from '@supabase/supabase-js';
 import { generateSMR } from '@/lib/compliance/smr-generator';
 import { createLogger} from "@/lib/utils/logger";
+import { sendEDDInvestigationOpenedEmail, sendEDDInformationRequestEmail, sendEDDCompletionEmail} from "@/lib/email/sendEDDEmails";
+import { sendComplianceAlert } from '@/lib/email/sendComplianceAlert';
 
 const logger = createLogger('EDD-Investigations');
 
@@ -208,6 +210,19 @@ async function createInvestigation(supabase: any, body: any, adminId: any) {
       .update({ edd_investigation_id: investigation.id })
       .eq('id', transaction_id);
   }
+  const { data: customer } = await supabase
+      .from('customers')
+      .select('email, first_name, last_name')
+      .eq('id', customer_id)
+      .single();
+
+  if (customer?.email) {
+    await sendEDDInvestigationOpenedEmail({
+      customerEmail: customer.email,
+      customerName: `${customer.first_name} ${customer.last_name}`,
+      investigationNumber: investigation.investigation_number,
+    });
+  }
 
   // Audit log
   await supabase.from('audit_logs').insert({
@@ -223,8 +238,6 @@ async function createInvestigation(supabase: any, body: any, adminId: any) {
       admin_id: adminId,
     },
   });
-
-  // TODO: Send investigation opened email to customer
 
   return NextResponse.json({ success: true, investigation });
 }
@@ -342,6 +355,29 @@ async function requestInformation(supabase: any, body: any, adminId: any) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
+  const { data: investigationWithCustomer } = await supabase
+      .from('edd_investigations')
+      .select(`
+      investigation_number,
+      customer:customers!customer_id (
+        email,
+        first_name,
+        last_name
+      )
+    `)
+      .eq('id', investigationId)
+      .single();
+
+  if (investigationWithCustomer?.customer?.email) {
+    await sendEDDInformationRequestEmail({
+      customerEmail: investigationWithCustomer.customer.email,
+      customerName: `${investigationWithCustomer.customer.first_name} ${investigationWithCustomer.customer.last_name}`,
+      investigationNumber: investigationWithCustomer.investigation_number,
+      requestedItems: items,
+      deadline,
+    });
+  }
+
   // Audit log
   await supabase.from('audit_logs').insert({
     action_type: 'edd_information_requested',
@@ -355,7 +391,6 @@ async function requestInformation(supabase: any, body: any, adminId: any) {
     },
   });
 
-  // TODO: Send information request email to customer
 
   return NextResponse.json({ success: true, request: newRequest });
 }
@@ -370,7 +405,14 @@ async function escalateInvestigation(supabase: any, body: any, adminId: any) {
   // Get current investigation
   const { data: investigation } = await supabase
     .from('edd_investigations')
-    .select('escalations')
+    .select(`
+      escalations,
+      investigation_number,
+      customer:customers!customer_id (
+        first_name,
+        last_name
+      )
+    `)
     .eq('id', investigationId)
     .single();
 
@@ -418,7 +460,25 @@ async function escalateInvestigation(supabase: any, body: any, adminId: any) {
     },
   });
 
-  // TODO: Send escalation notification to management
+  // Send escalation notification to management
+  const customerName = investigation.customer
+    ? `${investigation.customer.first_name} ${investigation.customer.last_name}`
+    : 'Unknown';
+
+  await sendComplianceAlert({
+    type: 'edd_escalation',
+    severity: 'high',
+    title: 'EDD Investigation Escalated to Management',
+    description: `Investigation ${investigation.investigation_number} for ${customerName} has been escalated. Reason: ${reason}`,
+    metadata: {
+      investigation_id: investigationId,
+      investigation_number: investigation.investigation_number,
+      customer_name: customerName,
+      escalated_to: escalated_to || 'management',
+      reason,
+    },
+    actionUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/admin/edd-investigations`,
+  });
 
   return NextResponse.json({ success: true, escalation: newEscalation });
 }
@@ -608,7 +668,30 @@ async function completeInvestigation(supabase: any, body: any, adminId: any) {
     },
   });
 
-  // TODO: Send completion email to customer
+  // Send completion email to customer
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('email, first_name, last_name')
+    .eq('id', investigation.customer_id)
+    .single();
+
+  if (customer?.email) {
+    // Map compliance recommendation to email decision type
+    const decisionMap: Record<string, 'approved' | 'ongoing_monitoring' | 'enhanced_monitoring' | 'blocked'> = {
+      approve_relationship: 'approved',
+      ongoing_monitoring: 'ongoing_monitoring',
+      enhanced_monitoring: 'enhanced_monitoring',
+      reject_relationship: 'blocked',
+      escalate_to_smr: 'blocked',
+    };
+
+    await sendEDDCompletionEmail({
+      customerEmail: customer.email,
+      customerName: `${customer.first_name} ${customer.last_name}`,
+      investigationNumber: investigation.investigation_number,
+      decision: decisionMap[compliance_recommendation],
+    });
+  }
 
   return NextResponse.json({
     success: true,

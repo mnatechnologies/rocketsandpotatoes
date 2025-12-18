@@ -70,7 +70,7 @@ export default function OrderConfirmationEmail({
           <Section style={header}>
             <Img
               src='https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/anblogo.png'
-              width="150"
+              width="50"
               height="50"
               alt="Australian National Bullion"
               style={logo}
@@ -213,17 +213,17 @@ export default function OrderConfirmationEmail({
           </Section>
 
           <Hr style={hr} />
-
+        // TODO CHANGE URL IN PRODUCTION
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
               Questions about your order?{' '}
-              <Link href="mailto:support@australiannationalbullion.com.au" style={link}>
+              <Link href="mailto:info@australiannationalbullion.com.au" style={link}>
                 Contact Support
               </Link>
             </Text>
             <Text style={footerText}>
-              <Link href={`https://your-domain.com/order-confirmation?orderId=${orderNumber}`} style={link}>
+              <Link href={`https://https://rocketsandpotatoes-eta.vercel.app//order-confirmation?orderId=${orderNumber}`} style={link}>
                 View Order Details
               </Link>
             </Text>
