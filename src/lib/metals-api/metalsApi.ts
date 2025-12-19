@@ -205,6 +205,17 @@ export const fetchFxRate = async (from: string, to: string): Promise<{ rate: num
     throw new Error('METALPRICEAPI_API_KEY environment variable is not set');
   }
 
+  const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+  );
+
   logger.log('💱 Fetching FX rate:', `${from} → ${to}`);
 
   const params = new URLSearchParams({
@@ -227,16 +238,7 @@ export const fetchFxRate = async (from: string, to: string): Promise<{ rate: num
         : new Date().toISOString();
 
     logger.log(`✓ FX Rate ${from}/${to}: ${rate.toFixed(4)} (${timestamp})`);
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-    );
+
 
     try {
       await supabase.from('fx_rate_cache').upsert({
