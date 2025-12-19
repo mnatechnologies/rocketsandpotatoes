@@ -14,6 +14,7 @@ interface Order {
   customer_id: string;
   transaction_type: string;
   amount: number;
+  amount_aud: number;
   currency: string;
   product_type: string;
   product_details: any;
