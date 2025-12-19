@@ -10,8 +10,22 @@ const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
   apiVersion: '2025-09-30.clover',
 });
 
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+);
+
+const MINIMUM_LOCK_REMAINING_SECONDS = 30;
+
 export async function POST(req: NextRequest) {
   logger.log('Payment intent creation request received');
+
 
   try {
     // Parse body ONCE - include sessionId
@@ -35,17 +49,6 @@ export async function POST(req: NextRequest) {
 
     // ✅ Validate prices against server locks (single source of truth - NO conversion!)
     if (sessionId) {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-      );
-
       const { data: locks, error: lockError } = await supabase
         .from('price_locks')
         .select('product_id, locked_price_usd, locked_price_aud, currency, fx_rate')

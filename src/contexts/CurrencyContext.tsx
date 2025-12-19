@@ -25,7 +25,7 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   // ✅ Default to AUD (Australian business serving Australian customers)
   const [currency, setCurrency] = useState<Currency>('AUD');
-  const [exchangeRate, setExchangeRate] = useState<number>(1.57); // Will be updated on mount
+  const [exchangeRate, setExchangeRate] = useState<number>(1.52); // Will be updated on mount
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [fxTimestamp, setFxTimestamp] = useState<Date | null>(null);
 
@@ -61,9 +61,9 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         setFxTimestamp(new Date(data.timestamp));
       } catch (error) {
         logger.error('Failed to fetch FX rate:', error);
-        // Fallback to approximate rate if API fails
-        const fallbackRate = currency === 'AUD' ? 1.57 : 1;
-        logger.warn(`Using fallback rate: ${fallbackRate}`);
+        // API and database both failed - use last known rate or 1.52 as reasonable default
+        const fallbackRate = currency === 'AUD' ? (exchangeRate !== 1.57 ? exchangeRate : 1.52) : 1;
+        logger.warn(`Using fallback rate: ${fallbackRate} (last known: ${exchangeRate})`);
         setExchangeRate(fallbackRate);
         setFxTimestamp(new Date());
       } finally {

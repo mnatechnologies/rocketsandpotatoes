@@ -81,6 +81,7 @@ export default function ReviewsPage() {
                 key={tx.id}
                 transaction={tx}
                 onReview={handleReview}
+                onRefresh={fetchFlaggedTransactions}
               />
             ))}
           </div>
@@ -92,10 +93,12 @@ export default function ReviewsPage() {
 
 function TransactionReviewCard({
    transaction,
-   onReview
+   onReview,
+    onRefresh,
   }: {
     transaction: FlaggedTransaction;
     onReview: (id: string, decision: 'approve' | 'reject', notes: string) => void;
+    onRefresh: () => void;
   }) {
   const [notes, setNotes] = useState('');
   const [eddReason, setEddReason] = useState('');
@@ -121,26 +124,31 @@ function TransactionReviewCard({
 
     setProcessing(true);
     try {
-      const response = await fetch('/api/admin/review-transaction', {
+      const response = await fetch('/api/admin/edd-investigations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          transactionId: transaction.id,
-          action: 'trigger_edd',
-          notes: eddReason.trim(),
+          action: 'create',
+          customer_id: transaction.customer_id, // Already available!
+          transaction_id: transaction.id,
+          trigger_reason: eddReason.trim(),
+          triggered_by: 'transaction_review',
         }),
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
 
-      if (result.existingInvestigation) {
-        toast.success(`Transaction linked to existing investigation: ${result.existingInvestigation.investigation_number}`);
+      if (!response.ok) {
+        if (result.existing_investigation) {
+          toast.success(`Transaction linked to existing investigation: ${result.existing_investigation.investigation_number}`);
+        } else {
+          throw new Error(result.error);
+        }
       } else {
         toast.success(`EDD Investigation created: ${result.investigation.investigation_number}. Customer is now blocked.`);
       }
 
-      setTimeout(() => window.location.reload(), 1500);
+      onRefresh()
     } catch (error: any) {
       toast.error(`Failed: ${error.message}`);
     } finally {

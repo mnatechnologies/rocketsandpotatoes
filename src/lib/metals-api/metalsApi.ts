@@ -1,6 +1,9 @@
 const API_HOST = "https://api.metalpriceapi.com/v1";
 import { getCachedData, setCachedData } from './cache';
 import { createLogger } from '@/lib/utils/logger';
+import {createClient} from "@supabase/supabase-js";
+
+
 
 const logger = createLogger('METALS_API');
 
@@ -164,6 +167,37 @@ export const fetchMetalsQuotes = async (
   })
 }
 
+// export const fetchFxRate = async (from: string, to: string): Promise<{ rate: number; timestamp: string }> => {
+//   const apiKey = process.env.METALPRICEAPI_API_KEY;
+//
+//   if (!apiKey) {
+//     throw new Error('METALPRICEAPI_API_KEY environment variable is not set');
+//   }
+//
+//   logger.log('💱 Fetching FX rate:', `${from} → ${to}`);
+//
+//   const params = new URLSearchParams({
+//     api_key: apiKey,
+//     base: from,
+//     currencies: to,
+//   });
+//
+//   const data = await fetchJson<FxRateResponse>(`${API_HOST}/latest?${params}`);
+//
+//   const rate = data.rates[to];
+//   if (typeof rate !== 'number') {
+//     throw new Error(`Failed to fetch ${from}/${to} exchange rate`);
+//   }
+//
+//   const timestamp = data.timestamp
+//     ? new Date(data.timestamp * 1000).toISOString()
+//     : new Date().toISOString();
+//
+//   logger.log(`✓ FX Rate ${from}/${to}: ${rate.toFixed(4)} (${timestamp})`);
+//
+//   return { rate, timestamp };
+// };
+
 export const fetchFxRate = async (from: string, to: string): Promise<{ rate: number; timestamp: string }> => {
   const apiKey = process.env.METALPRICEAPI_API_KEY;
 
@@ -179,20 +213,85 @@ export const fetchFxRate = async (from: string, to: string): Promise<{ rate: num
     currencies: to,
   });
 
-  const data = await fetchJson<FxRateResponse>(`${API_HOST}/latest?${params}`);
+  // Try to fetch from API
+  try {
+    const data = await fetchJson<FxRateResponse>(`${API_HOST}/latest?${params}`);
 
-  const rate = data.rates[to];
-  if (typeof rate !== 'number') {
-    throw new Error(`Failed to fetch ${from}/${to} exchange rate`);
+    const rate = data.rates[to];
+    if (typeof rate !== 'number') {
+      throw new Error(`Failed to fetch ${from}/${to} exchange rate`);
+    }
+
+    const timestamp = data.timestamp
+        ? new Date(data.timestamp * 1000).toISOString()
+        : new Date().toISOString();
+
+    logger.log(`✓ FX Rate ${from}/${to}: ${rate.toFixed(4)} (${timestamp})`);
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+    );
+
+    try {
+      await supabase.from('fx_rate_cache').upsert({
+        from_currency: from,
+        to_currency: to,
+        rate,
+        fetched_at: timestamp,
+      }, { onConflict: 'from_currency,to_currency' });
+
+      logger.log('✓ FX rate cached to database');
+    } catch (dbError) {
+      logger.warn('Failed to cache FX rate to database:', dbError);
+      // Don't fail the request if caching fails
+    }
+
+    return { rate, timestamp };
+
+  } catch (apiError) {
+    logger.error('❌ API fetch failed:', apiError);
   }
 
-  const timestamp = data.timestamp
-    ? new Date(data.timestamp * 1000).toISOString()
-    : new Date().toISOString();
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  logger.log(`✓ FX Rate ${from}/${to}: ${rate.toFixed(4)} (${timestamp})`);
+    const { data: cachedRate, error: dbError } = await supabase
+        .from('fx_rate_cache')
+        .select('rate, fetched_at')
+        .eq('from_currency', from)
+        .eq('to_currency', to)
+        .gte('fetched_at', sevenDaysAgo)
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .single();
 
-  return { rate, timestamp };
-};
+    if (dbError || !cachedRate) {
+      logger.error('❌ Database fallback failed:', dbError);
+      throw new Error(`No FX rate available for ${from}/${to} - API down and no cache`);
+    }
+
+    const cacheAge = Date.now() - new Date(cachedRate.fetched_at).getTime();
+    const hoursOld = Math.round(cacheAge / (1000 * 60 * 60));
+
+    logger.warn(`⚠️ Using cached FX rate from ${hoursOld}h ago: ${cachedRate.rate}`);
+
+    return {
+      rate: cachedRate.rate,
+      timestamp: cachedRate.fetched_at,
+    };
+
+  } catch (fallbackError) {
+    logger.error('❌ All fallbacks failed:', fallbackError);
+    throw fallbackError;
+  }
+}
+
+
 
 export const getMetalInfo = (symbol: MetalSymbol): MetalInfo => METAL_LOOKUP[symbol];

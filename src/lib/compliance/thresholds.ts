@@ -47,7 +47,7 @@ export async function getComplianceRequirements(
     let audAmount = tx.amount_aud;
     if (!audAmount) {
       // Legacy transaction without amount_aud - must convert
-      audAmount = tx.currency === 'USD' ? tx.amount * 1.57 : tx.amount;
+      audAmount = tx.currency === 'USD' ? tx.amount * 1.52 : tx.amount;
     }
     return sum + audAmount;
   }, 0) || 0;

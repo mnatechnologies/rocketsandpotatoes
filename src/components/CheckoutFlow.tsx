@@ -258,6 +258,16 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
 
   if (step === 'review') {
+    if (validationResult?.reason === "screening error") {
+      return (
+        <div className="max-w-md mx-auto p-6 bg-red-50 rounded-lg border border-red-200">
+          <h2 className="text-xl font-bold text-red-800 mb-4">Transaction Cannot Proceed</h2>
+          <p className="text-red-700">
+            {`Your transaction requires additional verification for AUSTRAC Compliance purposes. Our compliance team will contact you within 1-2 business days. Please contact support if you need help with something urgent. We apologize for the inconvenience.`}
+          </p>
+        </div>
+      )
+    }
     const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
     const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
 

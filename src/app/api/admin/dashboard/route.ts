@@ -39,9 +39,21 @@ export async function GET(req: NextRequest) {
     // Fetch flagged transactions
     const { data: flaggedTxs, error: txsError } = await supabase
       .from('transactions')
-      .select('id, review_status')
+      .select(`
+        *,
+        customer:customers!inner(
+          first_name,
+          last_name,
+          email,
+          verification_status,
+          risk_level,
+          current_investigation_id
+        )
+      `)
       .eq('flagged_for_review', true)
-      .or('review_status.is.null,review_status.eq.pending');
+      .or('review_status.is.null,review_status.eq.pending')
+      .is('customer.current_investigation_id', null)
+      .order('created_at', { ascending: false });
 
     if (txsError) {
       logger.error('Error fetching flagged transactions:', txsError);

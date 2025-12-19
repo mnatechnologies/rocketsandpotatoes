@@ -10,6 +10,7 @@ import { generateSMR } from "@/lib/compliance/smr-generator";
 import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
 import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 import {sendTransactionFlaggedAlert} from "@/lib/email/sendComplianceAlert";
+import { createEDDInvestigation } from '@/lib/compliance/edd-service';
 
 
 
@@ -220,82 +221,122 @@ export async function POST(req: NextRequest) {
 
   // 3. EDD AUTO-TRIGGER & BLOCKING CHECKS (MUST HAPPEN BEFORE TRANSACTION CREATION)
   // Calculate cumulative transaction total to check $50K AUD threshold
-  const { data: previousSuccessfulTransactions } = await supabase
-    .from('transactions')
-    .select('amount_aud')
-    .eq('customer_id', customerId)
-    .eq('payment_status', 'succeeded');
+  // const { data: previousSuccessfulTransactions } = await supabase
+  //   .from('transactions')
+  //   .select('amount_aud')
+  //   .eq('customer_id', customerId)
+  //   .eq('payment_status', 'succeeded');
+  //
+  // const cumulativeTotal = (previousSuccessfulTransactions || []).reduce(
+  //   (sum, tx) => sum + parseFloat(tx.amount_aud.toString()),
+  //   0
+  // ) + amountInAUD;
+  //
+  // logger.log('Cumulative transaction total (AUD):', cumulativeTotal);
+  //
+  // // Auto-trigger EDD investigation at $50K threshold
+  // if (cumulativeTotal >= 50000 && !customer.requires_enhanced_dd) {
+  //   logger.log('🚨 $50K threshold crossed - auto-triggering EDD investigation');
+  //
+  //   // Check if an active investigation already exists
+  //   const { data: existingInvestigation } = await supabase
+  //     .from('edd_investigations')
+  //     .select('id, investigation_number')
+  //     .eq('customer_id', customerId)
+  //     .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
+  //     .single();
+  //
+  //   if (!existingInvestigation) {
+  //     // Create new investigation
+  //     const { data: newInvestigation, error: investigationError } = await supabase
+  //       .from('edd_investigations')
+  //       .insert({
+  //         customer_id: customerId,
+  //         triggered_by: 'system',
+  //         trigger_reason: `Automatic EDD trigger: Cumulative transactions reached $${cumulativeTotal.toFixed(2)} AUD (threshold: $50,000 AUD)`,
+  //         status: 'open',
+  //       })
+  //       .select()
+  //       .single();
+  //
+  //     if (!investigationError && newInvestigation) {
+  //       // Update customer flags
+  //       await supabase
+  //         .from('customers')
+  //         .update({
+  //           requires_enhanced_dd: true,
+  //           edd_completed: false,
+  //           current_investigation_id: newInvestigation.id,
+  //         })
+  //         .eq('id', customerId);
+  //
+  //       // Log to audit
+  //       await supabase.from('audit_logs').insert({
+  //         action_type: 'edd_investigation_created',
+  //         entity_type: 'edd_investigation',
+  //         entity_id: newInvestigation.id,
+  //         description: 'EDD investigation auto-triggered at $50K threshold',
+  //         metadata: {
+  //           customer_id: customerId,
+  //           cumulative_total_aud: cumulativeTotal,
+  //           investigation_number: newInvestigation.investigation_number,
+  //           triggered_by: 'system',
+  //         },
+  //       });
+  //
+  //       logger.log('✅ EDD investigation created:', newInvestigation.investigation_number);
+  //
+  //       // Note: Email will be sent later when we have email functions created
+  //
+  //     }
+  //   }
+  //
+  //   // Reload customer to get updated EDD flags
+  //   const { data: updatedCustomer } = await supabase
+  //     .from('customers')
+  //     .select('*')
+  //     .eq('id', customerId)
+  //     .single();
+  //
+  //   if (updatedCustomer) {
+  //     Object.assign(customer, updatedCustomer);
+  //   }
+  // }
 
-  const cumulativeTotal = (previousSuccessfulTransactions || []).reduce(
-    (sum, tx) => sum + parseFloat(tx.amount_aud.toString()),
-    0
-  ) + amountInAUD;
-
-  logger.log('Cumulative transaction total (AUD):', cumulativeTotal);
-
-  // Auto-trigger EDD investigation at $50K threshold
   if (cumulativeTotal >= 50000 && !customer.requires_enhanced_dd) {
     logger.log('🚨 $50K threshold crossed - auto-triggering EDD investigation');
 
     // Check if an active investigation already exists
     const { data: existingInvestigation } = await supabase
-      .from('edd_investigations')
-      .select('id, investigation_number')
-      .eq('customer_id', customerId)
-      .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
-      .single();
-
-    if (!existingInvestigation) {
-      // Create new investigation
-      const { data: newInvestigation, error: investigationError } = await supabase
         .from('edd_investigations')
-        .insert({
-          customer_id: customerId,
-          triggered_by: 'system',
-          trigger_reason: `Automatic EDD trigger: Cumulative transactions reached $${cumulativeTotal.toFixed(2)} AUD (threshold: $50,000 AUD)`,
-          status: 'open',
-        })
-        .select()
+        .select('id, investigation_number, status')
+        .eq('customer_id', customerId)
+        .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
         .single();
 
-      if (!investigationError && newInvestigation) {
-        // Update customer flags
-        await supabase
-          .from('customers')
-          .update({
-            requires_enhanced_dd: true,
-            edd_completed: false,
-            current_investigation_id: newInvestigation.id,
-          })
-          .eq('id', customerId);
+    if (!existingInvestigation) {
+      // Create new investigation using shared service
+      const result = await createEDDInvestigation({
+        customerId,
+        triggerReason: `Automatic EDD trigger: Cumulative transactions reached $${cumulativeTotal.toFixed(2)} AUD (threshold: $50,000 AUD)`,
+        triggeredBy: 'system',
+      });
 
-        // Log to audit
-        await supabase.from('audit_logs').insert({
-          action_type: 'edd_investigation_created',
-          entity_type: 'edd_investigation',
-          entity_id: newInvestigation.id,
-          description: 'EDD investigation auto-triggered at $50K threshold',
-          metadata: {
-            customer_id: customerId,
-            cumulative_total_aud: cumulativeTotal,
-            investigation_number: newInvestigation.investigation_number,
-            triggered_by: 'system',
-          },
-        });
-
-        logger.log('✅ EDD investigation created:', newInvestigation.investigation_number);
-
-        // Note: Email will be sent later when we have email functions created
-        // TODO: Send investigation opened email to customer
+      if (result.success) {
+        logger.log('✅ EDD investigation created:', result.investigation.investigation_number);
+        logger.log('✅ EDD investigation created - allowing checkout to proceed to show EDD form');
+      } else {
+        logger.error('Failed to create EDD investigation:', result.error);
+        // Continue anyway - don't block the transaction due to investigation creation failure
       }
     }
 
     // Reload customer to get updated EDD flags
     const { data: updatedCustomer } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('id', customerId)
-      .single();
+        .from('customers')
+        .select('*')
+        .eq('id', customerId)
+        .single();
 
     if (updatedCustomer) {
       Object.assign(customer, updatedCustomer);

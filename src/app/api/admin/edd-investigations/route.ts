@@ -5,6 +5,8 @@ import { generateSMR } from '@/lib/compliance/smr-generator';
 import { createLogger} from "@/lib/utils/logger";
 import { sendEDDInvestigationOpenedEmail, sendEDDInformationRequestEmail, sendEDDCompletionEmail} from "@/lib/email/sendEDDEmails";
 import { sendComplianceAlert } from '@/lib/email/sendComplianceAlert';
+import { createEDDInvestigation } from '@/lib/compliance/edd-service';
+
 
 const logger = createLogger('EDD-Investigations');
 
@@ -152,6 +154,96 @@ export async function POST(req: NextRequest) {
 
 // Action handlers
 
+// async function createInvestigation(supabase: any, body: any, adminId: any) {
+//   const { customer_id, transaction_id, trigger_reason, triggered_by = 'admin' } = body;
+//
+//   if (!customer_id || !trigger_reason) {
+//     return NextResponse.json({ error: 'customer_id and trigger_reason required' }, { status: 400 });
+//   }
+//
+//   // Check for existing open investigation
+//   const { data: existing } = await supabase
+//     .from('edd_investigations')
+//     .select('id, investigation_number')
+//     .eq('customer_id', customer_id)
+//     .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
+//     .single();
+//
+//   if (existing) {
+//     return NextResponse.json({
+//       error: 'Customer already has an active investigation',
+//       existing_investigation: existing,
+//     }, { status: 400 });
+//   }
+//
+//   // Create investigation
+//   const { data: investigation, error: createError } = await supabase
+//     .from('edd_investigations')
+//     .insert({
+//       customer_id,
+//       transaction_id: transaction_id || null,
+//       trigger_reason,
+//       triggered_by,
+//       triggered_by_admin_id: triggered_by === 'admin' || triggered_by === 'transaction_review' ? adminId : null,
+//       assigned_to: adminId,
+//       status: 'open',
+//     })
+//     .select()
+//     .single();
+//
+//   if (createError) {
+//     return NextResponse.json({ error: createError.message }, { status: 500 });
+//   }
+//
+//   // Update customer flags
+//   await supabase
+//     .from('customers')
+//     .update({
+//       requires_enhanced_dd: true,
+//       edd_completed: false,
+//       current_investigation_id: investigation.id,
+//     })
+//     .eq('id', customer_id);
+//
+//   // Link transaction if provided
+//   if (transaction_id) {
+//     await supabase
+//       .from('transactions')
+//       .update({ edd_investigation_id: investigation.id })
+//       .eq('id', transaction_id);
+//   }
+//   const { data: customer } = await supabase
+//       .from('customers')
+//       .select('email, first_name, last_name')
+//       .eq('id', customer_id)
+//       .single();
+//
+//   if (customer?.email) {
+//     await sendEDDInvestigationOpenedEmail({
+//       customerEmail: customer.email,
+//       customerName: `${customer.first_name} ${customer.last_name}`,
+//       investigationNumber: investigation.investigation_number,
+//     });
+//   }
+//
+//   // Audit log
+//   await supabase.from('audit_logs').insert({
+//     action_type: 'edd_investigation_created',
+//     entity_type: 'edd_investigation',
+//     entity_id: investigation.id,
+//     description: `EDD investigation created: ${trigger_reason}`,
+//     metadata: {
+//       investigation_number: investigation.investigation_number,
+//       customer_id,
+//       transaction_id,
+//       triggered_by,
+//       admin_id: adminId,
+//     },
+//   });
+//
+//   return NextResponse.json({ success: true, investigation });
+// }
+
 async function createInvestigation(supabase: any, body: any, adminId: any) {
   const { customer_id, transaction_id, trigger_reason, triggered_by = 'admin' } = body;
 
@@ -159,87 +251,21 @@ async function createInvestigation(supabase: any, body: any, adminId: any) {
     return NextResponse.json({ error: 'customer_id and trigger_reason required' }, { status: 400 });
   }
 
-  // Check for existing open investigation
-  const { data: existing } = await supabase
-    .from('edd_investigations')
-    .select('id, investigation_number')
-    .eq('customer_id', customer_id)
-    .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
-    .single();
+  const result = await createEDDInvestigation({
+    customerId: customer_id,
+    transactionId: transaction_id,
+    triggerReason: trigger_reason,
+    triggeredBy: triggered_by,
+    adminId,
+  });
 
-  if (existing) {
+  if (!result.success) {
     return NextResponse.json({
-      error: 'Customer already has an active investigation',
-      existing_investigation: existing,
+      error: result.error,
     }, { status: 400 });
   }
 
-  // Create investigation
-  const { data: investigation, error: createError } = await supabase
-    .from('edd_investigations')
-    .insert({
-      customer_id,
-      transaction_id: transaction_id || null,
-      trigger_reason,
-      triggered_by,
-      triggered_by_admin_id: triggered_by === 'admin' || triggered_by === 'transaction_review' ? adminId : null,
-      assigned_to: adminId,
-      status: 'open',
-    })
-    .select()
-    .single();
-
-  if (createError) {
-    return NextResponse.json({ error: createError.message }, { status: 500 });
-  }
-
-  // Update customer flags
-  await supabase
-    .from('customers')
-    .update({
-      requires_enhanced_dd: true,
-      edd_completed: false,
-      current_investigation_id: investigation.id,
-    })
-    .eq('id', customer_id);
-
-  // Link transaction if provided
-  if (transaction_id) {
-    await supabase
-      .from('transactions')
-      .update({ edd_investigation_id: investigation.id })
-      .eq('id', transaction_id);
-  }
-  const { data: customer } = await supabase
-      .from('customers')
-      .select('email, first_name, last_name')
-      .eq('id', customer_id)
-      .single();
-
-  if (customer?.email) {
-    await sendEDDInvestigationOpenedEmail({
-      customerEmail: customer.email,
-      customerName: `${customer.first_name} ${customer.last_name}`,
-      investigationNumber: investigation.investigation_number,
-    });
-  }
-
-  // Audit log
-  await supabase.from('audit_logs').insert({
-    action_type: 'edd_investigation_created',
-    entity_type: 'edd_investigation',
-    entity_id: investigation.id,
-    description: `EDD investigation created: ${trigger_reason}`,
-    metadata: {
-      investigation_number: investigation.investigation_number,
-      customer_id,
-      transaction_id,
-      triggered_by,
-      admin_id: adminId,
-    },
-  });
-
-  return NextResponse.json({ success: true, investigation });
+  return NextResponse.json({ success: true, investigation: result?.investigation });
 }
 
 async function updateChecklist(supabase: any, body: any, adminId: any) {
