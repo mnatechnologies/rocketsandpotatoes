@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     // Check for active investigation
     const { data: investigation, error } = await supabase
       .from('edd_investigations')
-      .select('id, investigation_number, status, opened_at, customer_edd_id')
+      .select('id, investigation_number, status, opened_at, customer_edd_id, trigger_reason')
       .eq('customer_id', customerId)
       .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
       .order('opened_at', { ascending: false })

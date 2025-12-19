@@ -382,6 +382,7 @@ export async function POST(req: NextRequest) {
       amountInAUD,
     });
   }
+  let showEDDForm = false;
 
   // 6. Check if EDD investigation is under review (customer already submitted, waiting for admin)
   if (customer.requires_enhanced_dd && !customer.edd_completed) {
@@ -426,7 +427,13 @@ export async function POST(req: NextRequest) {
 
     // If investigation is 'open' or 'awaiting_customer_info', don't block
     // Let them proceed - CheckoutFlow will show EDD form in the payment step
-    logger.log('EDD investigation exists but not yet submitted - allowing checkout to show EDD form');
+    if (activeInvestigation && (activeInvestigation.status === 'open' || activeInvestigation.status === 'awaiting_customer_info')) {
+      logger.log('EDD investigation exists but not yet submitted - requiring EDD form');
+
+      // Override requirements to ensure frontend shows EDD form
+      showEDDForm = true;
+
+    }
   }
 
 
@@ -619,7 +626,10 @@ export async function POST(req: NextRequest) {
 
   const response = {
     status: requiresReview ? 'requires_review' : 'approved',
-    requirements,
+    requirements: {
+      ...requirements,
+      showEDDForm,
+    },
     riskScore,
     riskLevel,
     flags: {

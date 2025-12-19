@@ -187,49 +187,49 @@ export async function POST(req: NextRequest) {
         });
 
         // Fetch full customer data for email
-        const { data: customerForEmail } = await supabase
-            .from('customers')
-            .select('*')
-            .eq('id', existingTransaction.customer_id)
-            .single();
-
-        if (customerForEmail) {
-          // Send order confirmation email
-          try {
-            const emailItems = (existingTransaction.product_details?.items || []).map((item: any) => ({
-              name: item.product?.name || item.name || 'Unknown Product',
-              quantity: item.quantity || 1,
-              price: (item.product?.calculated_price || item.product?.price || item.price || 0) * (item.quantity || 1),
-              weight: item.product?.weight || item.weight,
-              purity: item.product?.purity || item.purity,
-            }));
-
-            await sendOrderConfirmationEmail({
-              orderNumber: existingTransaction.id,
-              customerName: `${customerForEmail.first_name} ${customerForEmail.last_name}`,
-              customerEmail: customerForEmail.email,
-              orderDate: new Date(existingTransaction.created_at).toLocaleDateString('en-AU', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              }),
-              items: emailItems,
-              subtotal: existingTransaction.amount,
-              total: existingTransaction.amount,
-              currency: existingTransaction.currency.toUpperCase(),
-              paymentMethod: paymentIntent.payment_method_types?.[0] || 'card',
-              requiresKYC: existingTransaction.requires_kyc || false,
-              requiresTTR: existingTransaction.requires_ttr || false,
-            });
-
-            logger.log('Order confirmation email sent to:', customerForEmail.email);
-          } catch (emailError) {
-            logger.error('Failed to send order confirmation email:', emailError);
-          }
-        }
-
+      //   const { data: customerForEmail } = await supabase
+      //       .from('customers')
+      //       .select('*')
+      //       .eq('id', existingTransaction.customer_id)
+      //       .single();
+      //
+      //   if (customerForEmail) {
+      //     // Send order confirmation email
+      //     try {
+      //       const emailItems = (existingTransaction.product_details?.items || []).map((item: any) => ({
+      //         name: item.product?.name || item.name || 'Unknown Product',
+      //         quantity: item.quantity || 1,
+      //         price: (item.product?.calculated_price || item.product?.price || item.price || 0) * (item.quantity || 1),
+      //         weight: item.product?.weight || item.weight,
+      //         purity: item.product?.purity || item.purity,
+      //       }));
+      //
+      //       await sendOrderConfirmationEmail({
+      //         orderNumber: existingTransaction.id,
+      //         customerName: `${customerForEmail.first_name} ${customerForEmail.last_name}`,
+      //         customerEmail: customerForEmail.email,
+      //         orderDate: new Date(existingTransaction.created_at).toLocaleDateString('en-AU', {
+      //           year: 'numeric',
+      //           month: 'long',
+      //           day: 'numeric'
+      //         }),
+      //         items: emailItems,
+      //         subtotal: existingTransaction.amount,
+      //         total: existingTransaction.amount,
+      //         currency: existingTransaction.currency.toUpperCase(),
+      //         paymentMethod: paymentIntent.payment_method_types?.[0] || 'card',
+      //         requiresKYC: existingTransaction.requires_kyc || false,
+      //         requiresTTR: existingTransaction.requires_ttr || false,
+      //       });
+      //
+      //       logger.log('Order confirmation email sent to:', customerForEmail.email);
+      //     } catch (emailError) {
+      //       logger.error('Failed to send order confirmation email:', emailError);
+      //     }
+      //   }
+      //
         break;
-      }
+       }
 
 
       case 'payment_intent.payment_failed': {

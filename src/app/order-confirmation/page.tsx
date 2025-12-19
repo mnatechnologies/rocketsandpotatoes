@@ -29,6 +29,12 @@ interface Order {
     last_name: string;
   };
 }
+function formatAmount(amount: number): string {
+  return new Intl.NumberFormat('en-AU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 
 function OrderConfirmationContent() {
   const [order, setOrder] = useState<Order | null>(null);
@@ -129,6 +135,10 @@ function OrderConfirmationContent() {
   }
 
   const items = order.product_details?.items || [order.product_details?.mainProduct];
+  const displayCurrency = order.product_details?.displayCurrency || 'AUD';
+  const displayAmount = displayCurrency === 'AUD'
+      ? (order.amount_aud || order.product_details?.amountInAUD)
+      : (order.amount || order.product_details?.amountInUSD);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -169,10 +179,7 @@ function OrderConfirmationContent() {
             <h3 className="font-semibold text-gray-900 mb-3">Order Items</h3>
             <div className="space-y-3">
               {items.map((item: any, index: number) => {
-                // ✅ Handle both nested and flat structures
-                const itemPrice = item.price
-                const itemQuantity = item.quantity || 1;
-                const totalforEachItem = itemPrice * itemQuantity;
+                const itemTotal = item.totalPrice || item.lockedPrice * (item.quantity || 1);
                 const itemName = item.name || item.product?.name;
                 const itemWeight = item.weight || item.product?.weight;
                 const itemPurity = item.purity || item.product?.purity;
@@ -184,10 +191,10 @@ function OrderConfirmationContent() {
                       <p className="text-sm text-gray-600">
                         {itemWeight} • {itemPurity}
                       </p>
-                      <p className="text-sm text-gray-600">Qty: {itemQuantity}</p>
+                      <p className="text-sm text-gray-600">Qty: {item.quantity || 1}</p>
                     </div>
                     <p className="font-semibold text-gray-900">
-                      {formatPrice(totalforEachItem)} AUD
+                      {formatAmount(itemTotal)} {displayCurrency}
                     </p>
                   </div>
                 );
@@ -207,7 +214,7 @@ function OrderConfirmationContent() {
             </div>
             <div className="flex justify-between text-2xl font-bold text-gray-900 mt-4">
               <span>Total Paid:</span>
-              <span>{formatPrice(order.amount)} AUD</span>
+              <span>{formatAmount(displayAmount)} {displayCurrency}</span>
             </div>
           </div>
         </div>

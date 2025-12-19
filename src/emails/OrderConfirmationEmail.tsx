@@ -53,7 +53,7 @@ export default function OrderConfirmationEmail({
  items = [],
  subtotal = 0,
  total = 0,
- currency = 'USD',
+ currency = 'AUD',
   paymentMethod = 'Card',
  requiresKYC = false,
  requiresTTR = false,

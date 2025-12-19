@@ -181,29 +181,39 @@ export async function POST(req: NextRequest) {
       logger.log('Found existing transaction, updating to succeeded:', existingTx.id);
 
       const { data: updated, error: updateError} = await supabase
-        .from('transactions')
-        .update({
-          payment_status: 'succeeded',
-          payment_method: paymentMethod,
-          amount: amountInUSD,
-          amount_aud: amountInAUD,
-          currency: 'USD',
-          product_details: {
-            ...existingTx.product_details,
-            amountInUSD,
-            amountInAUD,
-            lockedFxRate: fxRate,
-            source_of_funds: customer.source_of_funds,
-            occupation: customer.occupation,
-            employer: customer.employer,
-          },
-          source_of_funds_checked: requirements.requiresTTR,
-          source_of_funds_check_date: amountInAUD >= 10000 ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingTx.id)
-        .select()
-        .single();
+          .from('transactions')
+          .update({
+            payment_status: 'succeeded',
+            payment_method: paymentMethod,
+            amount: amountInUSD,
+            amount_aud: amountInAUD,
+            currency: 'USD',
+            product_details: {
+              items: cartItems || [productDetails],  // ✅ FIX 1: Use NEW cart items
+              mainProduct: productDetails,
+              displayCurrency: currency,
+              lockedFxRate: fxRate,
+              amountInUSD,
+              amountInAUD,
+              source_of_funds: customer.source_of_funds,
+              occupation: customer.occupation,
+              employer: customer.employer,
+            },
+            // ✅ FIX 2: Update compliance flags with CURRENT requirements
+            requires_kyc: requirements.requiresKYC,
+            requires_ttr: requirements.requiresTTR,
+            requires_enhanced_dd: requirements.requiresEnhancedDD,
+            flagged_for_review: false,  // Reset since payment succeeded
+            review_status: null,  // Clear review status
+            review_notes: null,  // Clear old review notes
+            metadata: null,  // Clear old metadata (or create new if needed)
+            source_of_funds_checked: requirements.requiresTTR,
+            source_of_funds_check_date: amountInAUD >= 10000 ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingTx.id)
+          .select()
+          .single();
 
       transaction = updated;
       transactionError = updateError;
@@ -381,7 +391,7 @@ export async function POST(req: NextRequest) {
           }),
           items: emailItems,
           subtotal: displaySubtotal,
-          total: displayTotal,
+          total: amountInAUD,
           currency: currency,
           paymentMethod: paymentMethod === 'card' ? 'Credit/Debit Card' : paymentMethod,
           requiresKYC: requirements.requiresKYC,

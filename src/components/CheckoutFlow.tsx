@@ -45,6 +45,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const paymentIntentCreated = useRef(false);
   const paymentIntentAmount = useRef<number>(0)
   const hasValidated = useRef(false);
+  const [eddInvestigation, setEddInvestigation] = useState<any>(null);
+
 
   const cartItemsWithLockedPrices = cartItems?.map(item => {
     const productId = item.product?.id || item.id;
@@ -147,6 +149,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       }, 1000);
     }
   }, []);
+
+
 
   useEffect(() => {
     const checkComplianceStatus = async () => {
@@ -268,8 +272,26 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         </div>
       )
     }
-    const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
+    const needsEDD = validationResult?.requirements?.showEDDForm || (validationResult?.requirements?.requiresEnhancedDD && !eddCompleted);
     const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
+
+    useEffect(() => {
+      const fetchInvestigation = async () => {
+        if (needsEDD && customerId) {
+          try {
+            const response = await fetch(`/api/customer/edd-investigation-status?customerId=${customerId}`);
+            if (response.ok) {
+              const data = await response.json();
+              setEddInvestigation(data.investigation);
+            }
+          } catch (error) {
+            console.error('Error fetching investigation:', error);
+          }
+        }
+      };
+      fetchInvestigation();
+    }, [needsEDD, customerId]);
+
 
     // ✅ Get backend-calculated AUD amount for consistency
     const backendAmountAUD = validationResult?.requirements?.newCumulativeTotal
@@ -294,9 +316,15 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
                 Your cumulative total {needsEDD ? 'has reached' : 'will be'}: <strong>${validationResult.requirements?.newCumulativeTotal?.toFixed(2)} AUD</strong>
               </p>
               {needsEDD && (
-                <p className="text-gray-700">
-                  ✓ Enhanced due diligence is required for cumulative totals over <strong>$50,000 AUD</strong>
-                </p>
+                  <p className="text-gray-700">
+                    {eddInvestigation?.trigger_reason ? (
+                        <>✓ {eddInvestigation.trigger_reason}</>
+                    ) : validationResult.requirements?.newCumulativeTotal >= 50000 ? (
+                        <>✓ Enhanced due diligence is required for cumulative totals over <strong>$50,000 AUD</strong></>
+                    ) : (
+                        <>✓ Enhanced due diligence is required to complete this transaction</>
+                    )}
+                  </p>
               )}
               {needsSOF && (
                 <p className="text-gray-700">
