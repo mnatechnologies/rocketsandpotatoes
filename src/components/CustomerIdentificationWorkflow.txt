@@ -1,0 +1,53 @@
+1. Product Selection
+   ↓
+2. Cart Total Calculation
+   ↓
+3. THRESHOLD CHECK:
+   - If ≥ A$5,000 → Customer identification REQUIRED
+   - If ≥ A$10,000 → TTR will be generated
+   - If < A$5,000 → Simplified process (Chapter 33 rules)
+   ↓
+4. Customer Type Selection (Individual/Business)
+   ↓
+5. Customer Identification Form
+   - Full name, DOB, address
+   - Document verification
+   ↓
+6. Automated Risk Assessment
+   - Flag suspicious patterns
+   - Check for structuring
+   ↓
+7. Manual Review (if flagged)
+   ↓
+8. Payment Processing
+   ↓
+9. Automated TTR Generation (if ≥ $10,000)
+   ↓
+10. Secure Record Storage (7 years)
+
+
+┌─────────────────────────────────────────────────────────────┐
+│                     CUSTOMER FRONTEND                        │
+│                    (Next.js / React)                         │
+│  • Product Catalog  • Cart  • Checkout  • KYC Forms         │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ↓
+┌─────────────────────────────────────────────────────────────┐
+│                  NEXT.JS API ROUTES                          │
+│  /api/checkout/validate  • /api/kyc/initiate                │
+│  /api/transactions/create • /api/compliance/review           │
+└──────┬──────────────┬────────────────┬──────────────────────┘
+       │              │                │
+       ↓              ↓                ↓
+                                       for
+┌─────────────┐ ┌──────────────┐ ┌─────────────────┐
+│   STRIPE    │ │   SUPABASE   │ │   ABR API       │
+│             │ │              │ │   (Free)        │
+│ • Identity  │ │ • Database   │ │ • Business      │
+│ • Payments  │ │ • Storage    │ │   Verification  │
+│ • Webhooks  │ │ • RLS        │ │                 │
+└─────────────┘ └──────────────┘ └─────────────────┘
+
+
+

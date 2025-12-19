@@ -1,0 +1,333 @@
+
+'use client';
+
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
+import { createLogger } from '@/lib/utils/logger';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { PaymentForm } from '@/components/PaymentForm';
+import { SourceOfFundsForm } from '@/components/SourceOfFunds';
+import { EnhancedDueDiligenceForm } from '@/components/EnhancedDueDiligence';
+
+
+const logger = createLogger('RESUME_CHECKOUT');
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const EDD_THRESHOLD = 50000;
+
+
+function ResumeCheckoutContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, isLoaded } = useUser();
+  const transactionId = searchParams.get('transactionId');
+
+  const [transaction, setTransaction] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [sourceOfFundsProvided, setSourceOfFundsProvided] = useState(false);
+  const [eddCompleted, setEddCompleted] = useState(false);
+  const [checkingCompliance, setCheckingCompliance] = useState(true);
+
+
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!user) {
+      router.push('/sign-in?redirect_url=/checkout/resume?transactionId=' + transactionId);
+      return;
+    }
+
+    if (!transactionId) {
+      setError('No transaction ID provided');
+      setLoading(false);
+      return;
+    }
+
+    loadTransaction();
+  }, [user, isLoaded, transactionId]);
+
+  const loadTransaction = async () => {
+    try {
+      logger.log('Loading transaction:', transactionId);
+
+      const response = await fetch(`/api/orders/${transactionId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load transaction');
+      }
+
+      logger.log('Transaction loaded:', data);
+
+      // Verify transaction is approved and pending payment
+      if (data.review_status !== 'approved') {
+        setError('This transaction has not been approved yet');
+        setLoading(false);
+        return;
+      }
+
+      if (data.payment_status === 'succeeded') {
+        setError('This transaction has already been paid');
+        setLoading(false);
+        return;
+      }
+
+      // Check if approval has expired (24 hours)
+      if (data.approved_at) {
+        const approvedDate = new Date(data.approved_at);
+        const expiryDate = new Date(approvedDate.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+        const now = new Date();
+
+        if (now > expiryDate) {
+          setError('This transaction approval has expired. Please contact support to request a new approval.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      setTransaction(data);
+
+      // Get the existing payment intent ID from the transaction
+      if (data.stripe_payment_intent_id) {
+        // Retrieve the client secret for the existing payment intent
+        const paymentResponse = await fetch('/api/retrieve-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentIntentId: data.stripe_payment_intent_id,
+          }),
+        });
+
+        const paymentData = await paymentResponse.json();
+
+        if (!paymentResponse.ok) {
+          throw new Error(paymentData.error || 'Failed to retrieve payment intent');
+        }
+
+        setClientSecret(paymentData.clientSecret);
+      } else {
+        setError('No payment intent found for this transaction');
+      }
+
+      await checkComplianceRequirements(data);
+
+      setLoading(false);
+
+    } catch (err: any) {
+      logger.error('Error loading transaction:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  const checkComplianceRequirements = async (txn: any) => {
+    try {
+      setCheckingCompliance(true);
+
+      const amountAUD = txn.amount_aud || txn.amount;
+
+      // Check SOF for $10K+ AUD
+      if (amountAUD >= 10000) {
+        const sofResponse = await fetch(`/api/customer/source-of-funds?customerId=${txn.customer_id}`);
+        const sofResult = await sofResponse.json();
+
+        if (sofResult.success && sofResult.data?.source_of_funds) {
+          setSourceOfFundsProvided(true);
+        }
+      } else {
+        setSourceOfFundsProvided(true); // Not required
+      }
+
+      // Check EDD for $50K+ AUD
+      if (txn.requiresEnhancedDD) {  // Uses cumulative from GET /api/orders/[id]
+        const eddResponse = await fetch(`/api/customer/enhanced-dd?customerId=${txn.customer_id}`);
+        const eddResult = await eddResponse.json();
+
+        if (eddResult.success && eddResult.data?.eddCompleted) {
+          setEddCompleted(true);
+        }
+        logger.log('EDD required (cumulative >= $50K AUD), completed:', eddResult.data?.eddCompleted);
+      } else {
+        setEddCompleted(true); // Not required
+        logger.log('EDD not required (cumulative < $50K AUD)');
+      }
+
+
+    } catch (error) {
+      logger.error('Error checking compliance:', error);
+      // Default to not completed to be safe
+    } finally {
+      setCheckingCompliance(false);
+    }
+  };
+
+
+  if (loading || checkingCompliance) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl mb-4">Loading transaction...</div>
+          <div className="text-gray-600">Please wait</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-2xl font-bold text-red-600 mb-4">⚠️ Error</div>
+          <p className="text-gray-700 mb-6">{error}</p>
+          <button
+            onClick={() => router.push('/account/orders')}
+            className="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg"
+          >
+            View My Orders
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!clientSecret) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl mb-4">Setting up payment...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sourceOfFundsProvided && transaction.amount_aud >= 10000) {
+    return (
+      <div className="min-h-screen bg-background/50 py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <h1 className="text-2xl font-bold text-green-900 mb-2">
+              ✅ Transaction Approved
+            </h1>
+            <p className="text-green-800">
+              Before completing payment, please provide source of funds information.
+            </p>
+          </div>
+
+          <SourceOfFundsForm
+            customerId={transaction.customer_id}
+            amount={transaction.amount_aud || transaction.amount}
+            onComplete={() => setSourceOfFundsProvided(true)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (!eddCompleted && transaction.requiresEnhancedDD) {
+    return (
+      <div className="min-h-screen bg-background/50 py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <h1 className="text-2xl font-bold text-green-900 mb-2">
+              ✅ Transaction Approved
+            </h1>
+            <p className="text-green-800">
+              Before completing payment, enhanced due diligence is required for this high-value transaction.
+            </p>
+          </div>
+
+          <EnhancedDueDiligenceForm
+            customerId={transaction.customer_id}
+            amount={transaction.amount_aud || transaction.amount}
+            onComplete={() => setEddCompleted(true)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+
+  return (
+    <div className="min-h-screen bg-background/50 py-12">
+      <div className="max-w-2xl mx-auto px-4">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+          <h1 className="text-2xl font-bold text-green-900 mb-2">
+            ✅ Transaction Approved
+          </h1>
+          <p className="text-green-800">
+            Your transaction has been approved by our compliance team. Please complete your payment below.
+          </p>
+        </div>
+
+        {/* Transaction Details */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Transaction Details</h2>
+          <div className="space-y-2 text-gray-700">
+            <div className="flex justify-between">
+              <span>Transaction ID:</span>
+              <span className="font-mono text-sm">{transaction.id.slice(0, 13)}...</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Product:</span>
+              <span className="font-semibold">{transaction.product_type}</span>
+            </div>
+            <div className="flex justify-between text-xl font-bold border-t pt-2 mt-2">
+              <span>Total Amount:</span>
+              <span>
+                AUD ${(transaction.amount_aud || transaction.amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            {transaction.currency !== 'AUD' && transaction.amount_aud && (
+              <div className="flex justify-between text-sm text-gray-600 mt-1">
+                <span>Original:</span>
+                <span>{transaction.currency} ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Payment Form */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Complete Payment</h2>
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: 'stripe',
+              },
+            }}
+          >
+            <PaymentForm
+              amount={transaction.amount_aud || transaction.amount}
+              currency="AUD"
+              customerId={transaction.customer_id}
+              productDetails={transaction.product_details || { name: transaction.product_type }}
+              cartItems={transaction.cart_items || []}
+              paymentIntentId={transaction.stripe_payment_intent_id}
+              onSuccess={(orderId) => {
+                logger.log('Payment successful, redirecting...');
+                router.push(`/order-confirmation?orderId=${orderId || transaction.id}`);
+              }}
+            />
+          </Elements>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ResumeCheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    }>
+      <ResumeCheckoutContent />
+    </Suspense>
+  );
+}
