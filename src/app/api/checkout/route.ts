@@ -221,19 +221,19 @@ export async function POST(req: NextRequest) {
 
   // 3. EDD AUTO-TRIGGER & BLOCKING CHECKS (MUST HAPPEN BEFORE TRANSACTION CREATION)
   // Calculate cumulative transaction total to check $50K AUD threshold
-  // const { data: previousSuccessfulTransactions } = await supabase
-  //   .from('transactions')
-  //   .select('amount_aud')
-  //   .eq('customer_id', customerId)
-  //   .eq('payment_status', 'succeeded');
-  //
-  // const cumulativeTotal = (previousSuccessfulTransactions || []).reduce(
-  //   (sum, tx) => sum + parseFloat(tx.amount_aud.toString()),
-  //   0
-  // ) + amountInAUD;
-  //
-  // logger.log('Cumulative transaction total (AUD):', cumulativeTotal);
-  //
+  const { data: previousSuccessfulTransactions } = await supabase
+    .from('transactions')
+    .select('amount_aud')
+    .eq('customer_id', customerId)
+    .eq('payment_status', 'succeeded');
+
+  const cumulativeTotal = (previousSuccessfulTransactions || []).reduce(
+    (sum, tx) => sum + parseFloat(tx.amount_aud.toString()),
+    0
+  ) + amountInAUD;
+
+  logger.log('Cumulative transaction total (AUD):', cumulativeTotal);
+
   // // Auto-trigger EDD investigation at $50K threshold
   // if (cumulativeTotal >= 50000 && !customer.requires_enhanced_dd) {
   //   logger.log('🚨 $50K threshold crossed - auto-triggering EDD investigation');
