@@ -18,6 +18,9 @@ interface AdminAuthResult {
  *   publicMetadata: { role: 'admin' }
  * });
  */
+export type UserRole = 'admin' | 'manager' | 'staff';
+
+
 export async function requireAdmin(): Promise<AdminAuthResult> {
   const { userId, sessionClaims } = await auth();
 
@@ -52,6 +55,34 @@ export async function requireAdmin(): Promise<AdminAuthResult> {
   };
 }
 
+export async function requireManagement(): Promise<AdminAuthResult> {
+  const { userId, sessionClaims } = await auth();
+
+  if (!userId) {
+    return {
+      authorized: false,
+      userId: null,
+      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+    };
+  }
+
+  const role = (sessionClaims as { metadata?: { role?: string } })?.metadata?.role;
+  
+  // Admin (superuser) OR Manager can approve management decisions
+  if (role !== 'admin' && role !== 'manager') {
+    return {
+      authorized: false,
+      userId,
+      error: NextResponse.json(
+        { error: 'Forbidden: Management approval access required' },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { authorized: true, userId };
+}
+
 /**
  * Helper to quickly check admin and return early if not authorized.
  * Use at the start of admin route handlers:
@@ -59,9 +90,11 @@ export async function requireAdmin(): Promise<AdminAuthResult> {
  * const adminCheck = await requireAdmin();
  * if (!adminCheck.authorized) return adminCheck.error;
  */
-export type { AdminAuthResult };
-
-
+export async function getUserRole(): Promise<UserRole | null> {
+  const { sessionClaims } = await auth();
+  const role = (sessionClaims as { metadata?: { role?: string } })?.metadata?.role;
+  return role as UserRole || null;
+}
 
 
 

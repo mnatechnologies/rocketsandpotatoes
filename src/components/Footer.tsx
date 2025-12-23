@@ -130,6 +130,9 @@ export default function Footer() {
               <p className="text-xs text-gray-400 mt-1">
                 Australian Regulated Dealer
               </p>
+              <p className="text-xs text-gray-400 mt-1">
+              AUSTRAC Registration Number: 100888166
+            </p>
             </div>
           </div>
 

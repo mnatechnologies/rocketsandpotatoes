@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/admin';
+import { requireAdmin, requireManagement } from '@/lib/auth/admin';
 import { createClient } from '@supabase/supabase-js';
 import { generateSMR } from '@/lib/compliance/smr-generator';
 import { createLogger} from "@/lib/utils/logger";
@@ -138,11 +138,19 @@ export async function POST(req: NextRequest) {
         return await escalateInvestigation(supabase, body, staffId);
 
       case 'approve_management':
+        const managementCheck = await requireManagement();
+        if (!managementCheck.authorized) return managementCheck.error!;
         return await approveManagement(supabase, body, staffId);
 
       case 'complete':
-        return await completeInvestigation(supabase, body, staffId);
-
+        const completeManagementCheck = await requireManagement();
+        if (completeManagementCheck.authorized) {
+          // Management users can complete any investigation
+          return await completeInvestigation(supabase, body, staffId, true); // bypass approval
+        } else {
+          // Regular users need approval for high-risk decisions
+          return await completeInvestigation(supabase, body, staffId, false); // require approval
+        }
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
@@ -503,7 +511,7 @@ async function escalateInvestigation(supabase: any, body: any, adminId: any) {
       escalated_to: escalated_to || 'management',
       reason,
     },
-    actionUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/admin/edd-investigations`,
+    actionUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/edd-investigations`,
   });
 
   return NextResponse.json({ success: true, escalation: newEscalation });
@@ -564,7 +572,7 @@ async function approveManagement(supabase: any, body: any, managementId: any) {
   return NextResponse.json({ success: true });
 }
 
-async function completeInvestigation(supabase: any, body: any, adminId: any) {
+async function completeInvestigation(supabase: any, body: any, staffId: any, bypassApproval: boolean = false) {
   const {
     investigationId,
     investigation_findings,
@@ -591,7 +599,7 @@ async function completeInvestigation(supabase: any, body: any, adminId: any) {
 
   // Check management approval for high-risk decisions
   const highRiskDecisions = ['reject_relationship', 'escalate_to_smr'];
-  if (highRiskDecisions.includes(compliance_recommendation) && !investigation.approved_by_management) {
+  if (!bypassApproval && highRiskDecisions.includes(compliance_recommendation) && !investigation.approved_by_management) {
     return NextResponse.json({
       error: 'Management approval required for this decision. Please request management approval first.',
     }, { status: 403 });
@@ -627,7 +635,7 @@ async function completeInvestigation(supabase: any, body: any, adminId: any) {
       risk_assessment_summary,
       compliance_recommendation,
       status: newStatus,
-      reviewed_by: adminId,
+      reviewed_by: staffId,
       completed_at: new Date().toISOString(),
     })
     .eq('id', investigationId);
@@ -690,7 +698,7 @@ async function completeInvestigation(supabase: any, body: any, adminId: any) {
     metadata: {
       decision: compliance_recommendation,
       monitoring_level: newMonitoringLevel,
-      admin_id: adminId,
+      admin_id: staffId,
     },
   });
 

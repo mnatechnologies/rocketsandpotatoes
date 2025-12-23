@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     // Verify customer belongs to authenticated user and get source_of_funds
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, clerk_user_id, source_of_funds, occupation, source_of_funds_declared_at, employer')
+      .select('id, clerk_user_id, source_of_funds, occupation, source_of_funds_declared_at, employer, first_name, last_name')
       .eq('id', customerId)
       .single();
 
@@ -311,6 +311,7 @@ export async function POST(req: NextRequest) {
           customerId: customerId,
           amount_aud: amountInAUD,
           transactionDate: transaction.created_at,
+          customerName: `${customer.first_name} ${customer.last_name}`, 
         });
 
         logger.log('✅ TTR generated successfully');

@@ -11,7 +11,7 @@ import {
   Link,
 } from '@react-email/components';
 
-export type AlertType = 'sanctions_match' | 'smr_created' | 'ttr_deadline' | 'smr_deadline' | 'transaction_flagged';
+export type AlertType = 'sanctions_match' | 'smr_created' | 'ttr_deadline' | 'smr_deadline' | 'transaction_flagged' | 'ttr_created';
 
 interface ComplianceAlertEmailProps {
   alertType: AlertType;

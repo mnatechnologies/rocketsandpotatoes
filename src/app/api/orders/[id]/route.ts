@@ -60,6 +60,7 @@ export async function GET(
       order.amount_aud || order.amount
     );
 
+    
 
     if (orderError) {
       logger.error('Error fetching order:', orderError);

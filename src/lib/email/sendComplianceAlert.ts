@@ -42,7 +42,59 @@ interface TransactionFlaggedAlertData {
   flagReason: string;
 }
 
+interface TTRCreatedAlertData {
+  transactionId: string;
+  customerId: string;
+  customerName: string;
+  transactionAmount: number;
+  currency?: string;
+  deadline: string;
+  ttrReference: string;
+}
+
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+export async function sendTTRCreatedAlert(data: TTRCreatedAlertData) {
+  const recipients = getComplianceAlertRecipients();
+  
+  if (recipients.length === 0) {
+    logger.warn('No compliance alert recipients configured');
+    return;
+  }
+
+    const emailHtml = await render(
+      ComplianceAlertEmail({
+      alertType: 'ttr_created',
+      title: 'TTR Created',
+      severity: 'high',
+      summary: `A new TTR has been generated and requires review before submission to AUSTRAC.`,
+      details: [
+        { label: 'Transaction ID', value: data.transactionId },
+        { label: 'Customer Name', value: data.customerName },
+        { label: 'Amount', value: `${data.currency} $${data.transactionAmount.toLocaleString()}` },
+        { label: 'TTR Reference', value: data.ttrReference || 'Pending' },
+      ],
+      actionRequired: 'Review this TTR and submit to AUSTRAC within the deadline. Ensure all required information is complete and accurate.',
+      deadline: data.deadline,
+      adminUrl: `${baseUrl}/admin/ttr-reports`,
+    })
+  );
+
+    const result = await sendEmail({
+      to: recipients,
+      subject: `🚨 TTR Generated: ${data.customerName} - $${data.transactionAmount.toLocaleString()}`,
+      html: emailHtml,
+    });
+
+    if (result.success) {
+      logger.log(`✅ TTR generation alert sent to ${recipients.length} recipients`);
+    } else {
+      logger.error(`❌ Failed to send TTR generation alert to ${recipients.length} recipients: ${result.error}`);
+  }
+
+  
+  return result;
+}
 
 export async function sendSanctionsMatchAlert(data: SanctionsMatchAlertData) {
   const recipients = getComplianceAlertRecipients();

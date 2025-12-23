@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser, clerkClient } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger} from "@/lib/utils/logger";
+
 
 const logger = createLogger('STAFF_API')
 
@@ -81,6 +82,30 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
+    const staffWithRoles = await Promise.all(
+      staff.map(async (member) => {
+        let clerkRole = null;
+        let clerkUser = null;
+        
+        if (member.clerk_user_id) {
+          try {
+            const clerkClientInstance = await clerkClient();
+            const clerkUser = await clerkClientInstance.users.getUser(member.clerk_user_id);
+            clerkRole = clerkUser.publicMetadata?.role || null;
+          } catch (error) {
+            logger.warn(`Could not fetch Clerk data for user ${member.clerk_user_id}`);
+          }
+        }
+        
+        return {
+          ...member,
+          clerkRole,
+          hasManagementAuthority: clerkRole === 'admin' || clerkRole === 'manager',
+          canApproveHighRisk: clerkRole === 'admin' || clerkRole === 'manager',
+        };
+      })
+    );
+
     // Fetch training records for all staff
     const { data: allTraining } = await supabase
       .from('staff_training')
@@ -88,15 +113,14 @@ export async function GET(request: NextRequest) {
       .order('training_date', { ascending: false });
 
     // Calculate training status for each staff member
-    const staffWithStatus = staff?.map(member => {
+    const staffWithStatus = staffWithRoles?.map(member => { // ✅ Use staffWithRoles instead
       const memberTraining = allTraining?.filter(t => t.staff_id === member.id) || [];
       const trainingStatus = calculateTrainingStatus(member, memberTraining);
-
       return {
         ...member,
         training_status: trainingStatus,
       };
-    }) || [];
+    });
 
     return NextResponse.json({ success: true, staff: staffWithStatus });
   } catch (error) {
@@ -124,6 +148,7 @@ export async function POST(request: NextRequest) {
       department,
       employment_start_date,
       requires_aml_training = true,
+      role
     } = body;
 
     // Validation
@@ -140,6 +165,18 @@ export async function POST(request: NextRequest) {
         { error: 'Clerk user ID is required' },
         { status: 400 }
       );
+    }
+
+    if (role) {
+      try {
+        const clerkClientInstance = await clerkClient();
+        await clerkClientInstance.users.updateUser(clerk_user_id, {
+          publicMetadata: { role },
+        });
+      } catch (error) {
+        logger.error('Failed to update user role:', error);
+        // Continue with staff creation but log error
+      }
     }
 
     // Check for duplicate email
@@ -168,6 +205,7 @@ export async function POST(request: NextRequest) {
         employment_start_date: employment_start_date || new Date().toISOString().split('T')[0],
         requires_aml_training,
         is_active: true,
+        role
       })
       .select()
       .single();

@@ -25,6 +25,9 @@ interface Staff {
     label: string;
     color: string;
   };
+  clerkRole?: string | null;
+  hasManagementAuthority?: boolean;
+  canApproveHighRisk?: boolean;
 }
 
 export default function AdminStaffPage() {
@@ -209,6 +212,9 @@ export default function AdminStaffPage() {
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role & Authority
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Position
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -245,6 +251,22 @@ export default function AdminStaffPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{member.email}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          member.clerkRole === 'admin' ? 'bg-purple-100 text-purple-800' :
+                          member.clerkRole === 'manager' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {member.clerkRole || 'No Role'}
+                        </div>
+                        {member.canApproveHighRisk && (
+                          <div className="text-xs text-green-600 font-medium">
+                            ✓ Can approve high-risk decisions
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{member.position || '-'}</div>
@@ -335,6 +357,7 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
     department: '',
     employment_start_date: new Date().toISOString().split('T')[0],
     requires_aml_training: true,
+    role: '',
   });
 
   useEffect(() => {
@@ -484,6 +507,22 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
             <label htmlFor="requires_training" className="text-sm text-gray-700">
               Requires AML/CTF Training
             </label>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role *
+            </label>
+            <select
+              required
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              className="w-full p-2 border border-gray-300 rounded-md text-primary"
+            >
+              <option value="">Select role...</option>
+              <option value="admin">Admin (Full Access)</option>
+              <option value="manager">Manager (Management Approvals)</option>
+              <option value="staff">Staff (Limited Access)</option>
+            </select>
           </div>
 
           <div className="flex gap-3 mt-6">

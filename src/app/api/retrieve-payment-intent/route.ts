@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       status: paymentIntent.status,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
     });
 
   } catch (error: any) {

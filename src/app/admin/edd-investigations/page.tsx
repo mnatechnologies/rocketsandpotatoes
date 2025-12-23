@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { createLogger} from "@/lib/utils/logger";
+import { useUser } from '@clerk/nextjs';
 
 const logger = createLogger('EDD_INVESTIGATIONS_PAGE')
 
@@ -41,6 +42,9 @@ interface Investigation {
 
 export default function EDDInvestigationsPage() {
   const { isLoaded } = useAuth();
+  const { user } = useUser();
+  const isManagementUser = user?.publicMetadata?.role === 'admin' || 
+                        user?.publicMetadata?.role === 'manager';
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('active');
@@ -151,6 +155,26 @@ export default function EDDInvestigationsPage() {
       logger.error(error);
     }
   };
+  const approveManagement = async (investigationId: string) => {
+    try {
+      const response = await fetch('/api/admin/edd-investigations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'approve_management',
+          investigationId,
+        }),
+      });
+  
+      if (!response.ok) throw new Error('Failed to approve');
+  
+      alert('Management approval granted successfully');
+      fetchInvestigations();
+    } catch (error) {
+      alert('Failed to grant management approval');
+      logger.error(error);
+    }
+  };
 
   const getStatusBadge = (status: InvestigationStatus) => {
     const badges: Record<InvestigationStatus, string> = {
@@ -216,6 +240,8 @@ export default function EDDInvestigationsPage() {
                 onUpdateChecklist={updateChecklistSection}
                 onRequestInformation={requestInformation}
                 onComplete={completeInvestigation}
+                onApproveManagement={approveManagement}
+                isManagementUser={isManagementUser}
               />
             ))
           )}
@@ -234,6 +260,8 @@ interface InvestigationCardProps {
   onUpdateChecklist: (id: string, section: string, data: any) => void;
   onRequestInformation: (id: string) => void;
   onComplete: (id: string, findings: string, assessment: string, recommendation: string) => void;
+  onApproveManagement: (id: string) => void;
+  isManagementUser: boolean;
 }
 
 function InvestigationCard({
@@ -245,6 +273,8 @@ function InvestigationCard({
   onUpdateChecklist,
   onRequestInformation,
   onComplete,
+  onApproveManagement,
+  isManagementUser,
 }: InvestigationCardProps) {
   const [findings, setFindings] = useState(investigation.investigation_findings || '');
   const [assessment, setAssessment] = useState(investigation.risk_assessment_summary || '');
@@ -384,7 +414,7 @@ function InvestigationCard({
             )}
 
             {activeTab === 'timeline' && (
-              <TimelineTab investigation={investigation} onRequestInformation={onRequestInformation} />
+              <TimelineTab investigation={investigation} onRequestInformation={onRequestInformation} onApproveManagement={onApproveManagement} isManagementUser={isManagementUser} />
             )}
 
             {activeTab === 'complete' && !isCompleted && (
@@ -468,7 +498,7 @@ function ChecklistTab({ investigation, onUpdate }: { investigation: Investigatio
   );
 }
 
-function TimelineTab({ investigation, onRequestInformation }: { investigation: Investigation; onRequestInformation: (id: string) => void }) {
+function TimelineTab({ investigation, onRequestInformation, onApproveManagement, isManagementUser }: { investigation: Investigation; onRequestInformation: (id: string) => void; onApproveManagement: (id: string) => void; isManagementUser: boolean }) {
   return (
     <div className="space-y-6">
       <div>
@@ -481,6 +511,15 @@ function TimelineTab({ investigation, onRequestInformation }: { investigation: I
             Request Information
           </button>
         </div>
+
+        {isManagementUser && investigation.status === 'escalated' && (
+          <button
+            onClick={() => onApproveManagement(investigation.id)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition ml-2"
+          >
+            Management Approve
+          </button>
+        )}
 
         {investigation.information_requests && investigation.information_requests.length > 0 ? (
           <div className="space-y-3">
@@ -560,11 +599,13 @@ function CompleteTab({
   setRecommendation: (v: string) => void;
   onComplete: (id: string, findings: string, assessment: string, recommendation: string) => void;
 }) {
+  const { user } = useUser();
+  const isAdminUser = user?.publicMetadata?.role === 'admin';
   const highRiskDecisions = ['reject_relationship', 'escalate_to_smr'];
   const requiresApproval = recommendation && highRiskDecisions.includes(recommendation);
   const hasApproval = investigation.approved_by_management;
 
-  const canComplete = findings && assessment && recommendation && (!requiresApproval || hasApproval);
+  const canComplete = findings && assessment && recommendation && (!requiresApproval || hasApproval || isAdminUser);
 
   const decisions = [
     { value: 'approve_relationship', label: 'Approve Relationship (Standard Monitoring)', level: 'standard' },
@@ -634,7 +675,7 @@ function CompleteTab({
         )}
       </div>
 
-      {requiresApproval && !hasApproval && (
+      {requiresApproval && !hasApproval && !isAdminUser && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <p className="text-amber-900 font-medium">Management approval required</p>
           <p className="text-sm text-amber-700 mt-1">
@@ -652,7 +693,7 @@ function CompleteTab({
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
         }`}
       >
-        {requiresApproval && !hasApproval
+        {requiresApproval && !hasApproval && !isAdminUser
           ? 'Awaiting Management Approval'
           : 'Complete Investigation'}
       </button>

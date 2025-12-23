@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { calculateTTRDeadline } from "./deadline-utils";
 import { createLogger } from "@/lib/utils/logger";
+import { sendTTRCreatedAlert } from "@/lib/email/sendComplianceAlert";
 
 const logger = createLogger('TTR Generator')
 interface TTRData {
@@ -9,6 +10,7 @@ interface TTRData {
   amount_aud: number;
   currency?: string;
   transactionDate: string;
+  customerName: string;
 }
 
 export interface TTRRecord {
@@ -303,6 +305,23 @@ export async function generateTTR(data: TTRData) {
     logger.log('✅ TTR record formatted');
 
     logger.log('=== generateTTR SUCCESS ===');
+
+    try {
+      await sendTTRCreatedAlert({
+        transactionId: data.transactionId,
+        customerId: data.customerId,
+        customerName: data.customerName || 'Unknown Customer',
+        transactionAmount: data.amount_aud,
+        currency: 'AUD',
+        transactionDate: data.transactionDate,
+        ttrReference: transaction.ttr_reference,
+        deadline: deadline.toISOString(),
+      });
+      logger.log('✅ TTR generation alert sent');
+    } catch (alertError) {
+      logger.error('❌ Failed to send TTR alert, but TTR was generated:', alertError);
+    }
+
     return formattedRecord;
 
   } catch (err: any) {

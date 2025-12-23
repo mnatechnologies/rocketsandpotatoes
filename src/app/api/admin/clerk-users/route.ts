@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
         fullName: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Unnamed User',
         email: clerkUser.emailAddresses[0]?.emailAddress || 'No email',
         imageUrl: clerkUser.imageUrl,
+        role: clerkUser.publicMetadata?.role || null,
+        hasManagementAuthority: ['admin', 'manager'].includes(clerkUser.publicMetadata?.role as string)
       }));
 
     return NextResponse.json({ success: true, users: availableUsers });
