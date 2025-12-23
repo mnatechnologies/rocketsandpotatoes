@@ -22,11 +22,16 @@ const isPublicRoute = createRouteMatcher([
 const allowedCountries = ['AU'];
 
 export default clerkMiddleware( async (auth, request) => {
-  // Skip geo-blocking for webhook endpoints and the blocked page
   const isWebhook = request.nextUrl.pathname.startsWith('/api/webhooks');
   const isBlockedPage = request.nextUrl.pathname.startsWith('/blocked');
+  const isClerkService = request.nextUrl.pathname.startsWith('/api/clerk') ||
+      request.headers.get('user-agent')?.includes('Clerk') ||
+      request.headers.get('referer')?.includes('clerk.com');
+  const isStripeService = request.nextUrl.pathname.startsWith('/api/stripe') ||
+      request.headers.get('user-agent')?.includes('Stripe') ||
+      request.headers.get('authorization')?.startsWith('Bearer sk_');
 
-  if (!isWebhook && !isBlockedPage) {
+  if (!isWebhook && !isBlockedPage && !isClerkService && !isStripeService ) {
     // Get country from Vercel's geolocation
     const { country } = geolocation(request);
 
