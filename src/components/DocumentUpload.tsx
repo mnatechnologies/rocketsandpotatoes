@@ -27,9 +27,11 @@ const DOCUMENT_OPTIONS = {
 
 interface Props {
   customerId: string;
+  onStripeVerify?: () => void;
+  onBackToSelection?: () => void;
 }
 
-export function DocumentUploadFlow({ customerId  }: Props) {
+export function DocumentUploadFlow({ customerId, onStripeVerify, onBackToSelection }: Props) {
   const [verificationMethod, setVerificationMethod] = useState<'auto' | 'manual'>('auto');
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
@@ -204,7 +206,7 @@ export function DocumentUploadFlow({ customerId  }: Props) {
             We&#39;ll use Stripe Identity to verify your passport or driver&#39;s license automatically.
           </p>
           <button
-            onClick={() => {/* Stripe Identity flow */}}
+            onClick={onStripeVerify}
             className="w-full bg-blue-600 text-white py-3 rounded-lg"
           >
             Start Quick Verification

@@ -1,7 +1,6 @@
 
 'use client';
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 import { createLogger } from '@/lib/utils/logger';
 import { DocumentUploadFlow } from './DocumentUpload';
 
@@ -66,7 +65,13 @@ export function KYCVerification({ customerId }: { customerId: string }) {
 
   // If manual upload is selected, show the DocumentUploadFlow
   if (showManualUpload) {
-    return <DocumentUploadFlow customerId={customerId} />;
+    return (
+      <DocumentUploadFlow
+        customerId={customerId}
+        onStripeVerify={handleVerify}
+        onBackToSelection={() => setShowManualUpload(false)}
+      />
+    );
   }
 
   return (
