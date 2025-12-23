@@ -131,8 +131,7 @@ export default function AdminStaffPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background/50 py-12 mt-20">
-      <div className="max-w-7xl mx-auto px-4">
+    <div>
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -339,7 +338,6 @@ export default function AdminStaffPage() {
             onSubmit={handleAddStaff}
           />
         )}
-      </div>
     </div>
   );
 }

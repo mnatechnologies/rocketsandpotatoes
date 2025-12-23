@@ -113,9 +113,9 @@ export function EnhancedDueDiligenceForm({
   // Show loading while checking for investigation
   if (checkingInvestigation) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Checking investigation status...</p>
+      <div className="bg-card p-6 rounded-lg shadow-md max-w-2xl mx-auto text-center border border-border">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Checking investigation status...</p>
       </div>
     );
   }
@@ -123,15 +123,15 @@ export function EnhancedDueDiligenceForm({
   // If investigation exists and customer already submitted (under_review), show status
   if (investigation && (investigation.status === 'under_review' || investigation.status === 'awaiting_customer_info')) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+      <div className="bg-card p-6 rounded-lg shadow-md max-w-2xl mx-auto border border-border">
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">EDD Investigation Under Review</h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <h3 className="text-xl font-bold text-card-foreground mb-2">EDD Investigation Under Review</h3>
+          <p className="text-sm text-muted-foreground mb-4">
             Your Enhanced Due Diligence information has been submitted and is currently under review by our compliance team.
           </p>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -163,10 +163,10 @@ export function EnhancedDueDiligenceForm({
 
   // Otherwise, show the EDD form
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+    <div className="bg-card p-6 rounded-lg shadow-md max-w-2xl mx-auto border border-border">
       <div className="mb-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Enhanced Due Diligence Required</h3>
-        <p className="text-sm text-gray-600">
+        <h3 className="text-xl font-bold text-card-foreground mb-2">Enhanced Due Diligence Required</h3>
+        <p className="text-sm text-muted-foreground">
           Your cumulative transactions have exceeded $50,000 AUD. Australian anti-money laundering regulations require
           us to collect additional information about your financial background before you can continue transacting.
         </p>
@@ -182,7 +182,7 @@ export function EnhancedDueDiligenceForm({
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive-foreground text-sm">
           {error}
         </div>
       )}
@@ -190,17 +190,17 @@ export function EnhancedDueDiligenceForm({
       <div className="space-y-6">
         {/* Source of Wealth */}
         <div>
-          <label className="block font-medium mb-2 text-gray-700">
-            Source of Wealth <span className="text-red-500">*</span>
+          <label className="block font-medium mb-2 text-foreground">
+            Source of Wealth <span className="text-destructive">*</span>
           </label>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             How did you accumulate the wealth being used for this purchase? This is different from the
             immediate source of funds.
           </p>
           <select
             value={sourceOfWealth}
             onChange={(e) => setSourceOfWealth(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-border bg-input text-foreground rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent"
             disabled={loading}
           >
             <option value="">Select source of wealth...</option>
@@ -219,7 +219,7 @@ export function EnhancedDueDiligenceForm({
               value={sourceOfWealthDetails}
               onChange={(e) => setSourceOfWealthDetails(e.target.value)}
               placeholder="Please describe your source of wealth..."
-              className="w-full border border-gray-300 rounded-lg p-3 mt-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-border bg-input text-foreground rounded-lg p-3 mt-2 focus:ring-2 focus:ring-primary focus:border-transparent"
               rows={3}
               disabled={loading}
             />
@@ -228,16 +228,16 @@ export function EnhancedDueDiligenceForm({
 
         {/* Transaction Purpose */}
         <div>
-          <label className="block font-medium mb-2 text-gray-700">
-            Purpose of Transaction <span className="text-red-500">*</span>
+          <label className="block font-medium mb-2 text-foreground">
+            Purpose of Transaction <span className="text-destructive">*</span>
           </label>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             What is the primary reason for purchasing precious metals?
           </p>
           <select
             value={transactionPurpose}
             onChange={(e) => setTransactionPurpose(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-border bg-input text-foreground rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent"
             disabled={loading}
           >
             <option value="">Select purpose...</option>
@@ -254,7 +254,7 @@ export function EnhancedDueDiligenceForm({
               value={transactionPurposeDetails}
               onChange={(e) => setTransactionPurposeDetails(e.target.value)}
               placeholder="Please describe the purpose of your transaction..."
-              className="w-full border border-gray-300 rounded-lg p-3 mt-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-border bg-input text-foreground rounded-lg p-3 mt-2 focus:ring-2 focus:ring-primary focus:border-transparent"
               rows={3}
               disabled={loading}
             />
@@ -263,16 +263,16 @@ export function EnhancedDueDiligenceForm({
 
         {/* Expected Frequency */}
         <div>
-          <label className="block font-medium mb-2 text-gray-700">
-            Expected Transaction Frequency <span className="text-red-500">*</span>
+          <label className="block font-medium mb-2 text-foreground">
+            Expected Transaction Frequency <span className="text-destructive">*</span>
           </label>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             How often do you expect to make purchases of this size?
           </p>
           <select
             value={expectedFrequency}
             onChange={(e) => setExpectedFrequency(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-border bg-input text-foreground rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent"
             disabled={loading}
           >
             <option value="">Select frequency...</option>
@@ -286,16 +286,16 @@ export function EnhancedDueDiligenceForm({
 
         {/* Expected Annual Volume */}
         <div>
-          <label className="block font-medium mb-2 text-gray-700">
+          <label className="block font-medium mb-2 text-foreground">
             Expected Annual Purchase Volume
           </label>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             Approximate total value of purchases you expect to make per year.
           </p>
           <select
             value={expectedAnnualVolume}
             onChange={(e) => setExpectedAnnualVolume(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-border bg-input text-foreground rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent"
             disabled={loading}
           >
             <option value="">Select volume (optional)...</option>
@@ -307,16 +307,16 @@ export function EnhancedDueDiligenceForm({
           </select>
         </div>
 
-        <div className="border-t border-gray-200 pt-4 mt-6">
+        <div className="border-t border-border pt-4 mt-6">
           <button
             onClick={handleSubmit}
             disabled={loading || !sourceOfWealth || !transactionPurpose || !expectedFrequency}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
+            className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-opacity"
           >
             {loading ? 'Submitting...' : 'Continue to Payment'}
           </button>
 
-          <p className="text-xs text-gray-500 text-center mt-3">
+          <p className="text-xs text-muted-foreground text-center mt-3">
             By submitting, you confirm that the information provided is accurate and complete.
             False declarations may result in your account being suspended.
           </p>

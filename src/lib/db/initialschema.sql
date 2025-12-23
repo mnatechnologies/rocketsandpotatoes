@@ -518,7 +518,7 @@ CREATE TABLE IF NOT EXISTS customer_edd (
     
     -- Review status
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'under_review', 'approved', 'rejected')),
-    reviewed_by UUID,
+    reviewed_by VARCHAR(255),
     reviewed_at TIMESTAMPTZ,
     review_notes TEXT,
     

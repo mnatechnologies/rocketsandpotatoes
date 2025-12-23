@@ -56,7 +56,7 @@ export async function sendTransactionApprovedEmail({
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
       
       <p style="color: #666; font-size: 12px;">
-        Rockets & Potatoes<br>
+        Australian National Bullion<br>
         Precious Metals Trading
       </p>
     </div>

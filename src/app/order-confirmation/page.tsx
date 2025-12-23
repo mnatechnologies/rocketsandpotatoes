@@ -98,10 +98,10 @@ function OrderConfirmationContent() {
 
   if (loading || !isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-xl mb-4">Loading order details...</div>
-          <div className="text-gray-600">Please wait</div>
+          <div className="text-xl text-foreground mb-4">Loading order details...</div>
+          <div className="text-muted-foreground">Please wait</div>
         </div>
       </div>
     );
@@ -109,14 +109,14 @@ function OrderConfirmationContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Order</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Error Loading Order</h1>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <Link
             href="/products"
-            className="inline-block px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg"
+            className="inline-block px-6 py-3 bg-primary text-primary-foreground hover:opacity-90 font-semibold rounded-lg transition-opacity"
           >
             Return to Products
           </Link>
@@ -127,9 +127,9 @@ function OrderConfirmationContent() {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-xl">Order not found</div>
+          <div className="text-xl text-foreground">Order not found</div>
         </div>
       </div>
     );
@@ -142,25 +142,25 @@ function OrderConfirmationContent() {
       : (order.amount || order.product_details?.amountInUSD);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-background py-12">
       <div className="max-w-4xl mx-auto px-4">
         {/* Success Header */}
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">✓</div>
-          <h1 className="text-4xl font-bold text-green-600 mb-2">Order Confirmed!</h1>
-          <p className="text-xl text-gray-600">
+          <h1 className="text-4xl font-bold text-primary mb-2">Order Confirmed!</h1>
+          <p className="text-xl text-muted-foreground">
             Thank you for your purchase
           </p>
         </div>
 
         {/* Order Details Card */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-6">
-          <div className="border-b pb-4 mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Details</h2>
-            <p className="text-gray-600">
+        <div className="bg-card border border-border rounded-lg shadow-md p-8 mb-6">
+          <div className="border-b border-border pb-4 mb-6">
+            <h2 className="text-2xl font-bold text-card-foreground mb-2">Order Details</h2>
+            <p className="text-muted-foreground">
               Order ID: <span className="font-mono text-sm">{order.id}</span>
             </p>
-            <p className="text-gray-600 text-sm">
+            <p className="text-muted-foreground text-sm">
               Placed on {new Date(order.created_at).toLocaleString('en-AU', {
               dateStyle: 'long',
               timeStyle: 'short',
@@ -170,14 +170,14 @@ function OrderConfirmationContent() {
 
           {/* Customer Info */}
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">Customer Information</h3>
-            <p className="text-gray-700">{order.customer.first_name} {order.customer.last_name}</p>
-            <p className="text-gray-700">{order.customer.email}</p>
+            <h3 className="font-semibold text-card-foreground mb-2">Customer Information</h3>
+            <p className="text-card-foreground">{order.customer.first_name} {order.customer.last_name}</p>
+            <p className="text-card-foreground">{order.customer.email}</p>
           </div>
 
           {/* Order Items */}
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Order Items</h3>
+            <h3 className="font-semibold text-card-foreground mb-3">Order Items</h3>
             <div className="space-y-3">
               {items.map((item: any, index: number) => {
                 const itemTotal = item.totalPrice || item.lockedPrice * (item.quantity || 1);
@@ -186,15 +186,15 @@ function OrderConfirmationContent() {
                 const itemPurity = item.purity || item.product?.purity;
 
                 return (
-                  <div key={index} className="flex justify-between items-start py-2 border-b">
+                  <div key={index} className="flex justify-between items-start py-2 border-b border-border">
                     <div>
-                      <p className="font-medium text-gray-900">{itemName}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-medium text-card-foreground">{itemName}</p>
+                      <p className="text-sm text-muted-foreground">
                         {itemWeight} • {itemPurity}
                       </p>
-                      <p className="text-sm text-gray-600">Qty: {item.quantity || 1}</p>
+                      <p className="text-sm text-muted-foreground">Qty: {item.quantity || 1}</p>
                     </div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-card-foreground">
                       {formatAmount(itemTotal)} {displayCurrency}
                     </p>
                   </div>
@@ -204,16 +204,16 @@ function OrderConfirmationContent() {
           </div>
 
           {/* Payment Summary */}
-          <div className="border-t pt-4">
+          <div className="border-t border-border pt-4">
             <div className="flex justify-between text-lg mb-2">
-              <span className="text-gray-700">Payment Method:</span>
-              <span className="font-medium capitalize">{order.payment_method}</span>
+              <span className="text-card-foreground">Payment Method:</span>
+              <span className="font-medium text-card-foreground capitalize">{order.payment_method}</span>
             </div>
             <div className="flex justify-between text-lg mb-2">
-              <span className="text-gray-700">Payment Status:</span>
-              <span className="font-medium text-green-600 capitalize">{order.payment_status}</span>
+              <span className="text-card-foreground">Payment Status:</span>
+              <span className="font-medium text-primary capitalize">{order.payment_status}</span>
             </div>
-            <div className="flex justify-between text-2xl font-bold text-gray-900 mt-4">
+            <div className="flex justify-between text-2xl font-bold text-card-foreground mt-4">
               <span>Total Paid:</span>
               <span>{formatAmount(displayAmount)} {displayCurrency}</span>
             </div>
@@ -236,9 +236,9 @@ function OrderConfirmationContent() {
         )}
 
         {/* Next Steps */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">What Happens Next?</h3>
-          <div className="space-y-3 text-gray-700">
+        <div className="bg-card border border-border rounded-lg shadow-md p-6 mb-6">
+          <h3 className="text-xl font-bold text-card-foreground mb-4">What Happens Next?</h3>
+          <div className="space-y-3 text-card-foreground">
             <div className="flex items-start">
               <span className="mr-3">1.</span>
               <span>You will receive an order confirmation email shortly</span>
@@ -262,23 +262,23 @@ function OrderConfirmationContent() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/products"
-            className="px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg text-center transition-colors"
+            className="px-8 py-3 bg-primary text-primary-foreground hover:opacity-90 font-semibold rounded-lg text-center transition-opacity"
           >
             Continue Shopping
           </Link>
           <Link
             href="/"
-            className="px-8 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg text-center transition-colors"
+            className="px-8 py-3 bg-muted text-muted-foreground hover:bg-muted/80 font-semibold rounded-lg text-center transition-colors"
           >
             Return to Home
           </Link>
         </div>
 
         {/* Support */}
-        <div className="text-center mt-8 text-sm text-gray-600">
+        <div className="text-center mt-8 text-sm text-muted-foreground">
           <p>
             Need help? Contact our support team at{' '}
-            <a href="mailto:support@australiannationalbullion.com.au" className="text-blue-600 hover:underline">
+            <a href="mailto:support@australiannationalbullion.com.au" className="text-primary hover:underline">
               support@australiannationalbullion.com.au
             </a>
           </p>
@@ -291,10 +291,10 @@ function OrderConfirmationContent() {
 export default function OrderConfirmationPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-xl mb-4">Loading order details...</div>
-          <div className="text-gray-600">Please wait</div>
+          <div className="text-xl text-foreground mb-4">Loading order details...</div>
+          <div className="text-muted-foreground">Please wait</div>
         </div>
       </div>
     }>

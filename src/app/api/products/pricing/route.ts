@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {createClient} from "@supabase/supabase-js";
 import { calculateBulkPricing} from "@/lib/pricing/priceCalculations";
 import { createLogger } from "@/lib/utils/logger";
+import { fetchFxRate } from '@/lib/metals-api/metalsApi';
+
 
 const logger = createLogger('PRODUCT_PRICING_API');
 
@@ -53,10 +55,13 @@ export async function GET(request: NextRequest) {
     }
 
     let fxRate = 1;
-    if (currency === 'AUD') {
-      const fxResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/fx-rate?from=USD&to=AUD`);
-      const fxData = await fxResponse.json();
-      fxRate = fxData.rate;
+    try {
+      const result = await fetchFxRate('USD', 'AUD');
+      fxRate = result.rate;
+      logger.log('✅ FX rate fetched:', fxRate);
+    } catch (error) {
+      logger.error('Failed to fetch FX rate:', error);
+      fxRate = 1.57; // Fallback only if API fails
     }
 
 
@@ -122,18 +127,12 @@ export async function POST(request: NextRequest) {
     // ✅ Always fetch FX rate for dual currency storage
     let fxRate = 1;
     try {
-      const fxResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/fx-rate?from=USD&to=AUD`);
-      const fxData = await fxResponse.json();
-      if (fxData.success && fxData.rate > 0) {
-        fxRate = fxData.rate;
-        logger.log('✅ FX rate fetched:', fxRate);
-      } else {
-        logger.warn('FX rate API returned invalid data, using fallback');
-        fxRate = 1.57; // Fallback only if API fails
-      }
+      const result = await fetchFxRate('USD', 'AUD');
+      fxRate = result.rate;
+      logger.log('✅ FX rate fetched:', fxRate);
     } catch (error) {
       logger.error('Failed to fetch FX rate:', error);
-      fxRate = 1.57; // Fallback if fetch fails
+      fxRate = 1.57; // Fallback only if API fails
     }
 
     if (!sessionId) {

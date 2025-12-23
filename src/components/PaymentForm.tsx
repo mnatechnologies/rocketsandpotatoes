@@ -141,13 +141,13 @@ export function PaymentForm({
 
   if (success) {
     return (
-      <div className="text-center p-6 bg-green-50 rounded-lg">
+      <div className="text-center p-6 bg-card border border-border rounded-lg">
         <div className="text-6xl mb-4">✓</div>
-        <h2 className="text-2xl font-bold text-green-800 mb-2">Payment Successful!</h2>
-        <p className="text-green-700 mb-4">
+        <h2 className="text-2xl font-bold text-card-foreground mb-2">Payment Successful!</h2>
+        <p className="text-muted-foreground mb-4">
           Your order has been placed successfully.
         </p>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Redirecting to order confirmation...
         </p>
       </div>
@@ -159,14 +159,14 @@ export function PaymentForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Payment Details</h3>
+        <h3 className="text-lg font-semibold text-card-foreground mb-4">Payment Details</h3>
         <PaymentElement onReady={handlePaymentElementReady} />
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-700 font-medium">Payment Error</p>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <p className="text-destructive-foreground font-medium">Payment Error</p>
+          <p className="text-destructive-foreground text-sm mt-1">{error}</p>
         </div>
       )}
 
@@ -179,13 +179,13 @@ export function PaymentForm({
         <button
           type="submit"
           disabled={!stripe || isProcessing}
-          className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors"
+          className="w-full py-3 bg-primary text-primary-foreground hover:opacity-90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed font-bold rounded-lg transition-opacity"
         >
           {isProcessing ? 'Processing Payment...' : `Pay $${amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`}
         </button>
       </div>
 
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-muted-foreground text-center">
         Your payment is secured by Stripe. We do not store your card details.
       </p>
     </form>

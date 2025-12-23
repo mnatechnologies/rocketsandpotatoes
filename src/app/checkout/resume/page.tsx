@@ -131,14 +131,10 @@ function ResumeCheckoutContent() {
 
       // Check SOF for $10K+ AUD
       if (amountAUD >= 10000) {
-        const sofResponse = await fetch(`/api/customer/source-of-funds?customerId=${txn.customer_id}`);
-        const sofResult = await sofResponse.json();
-
-        if (sofResult.success && sofResult.data?.source_of_funds) {
-          setSourceOfFundsProvided(true);
-        }
+        // Always show SOF form for high-value transactions
+        setSourceOfFundsProvided(false);
       } else {
-        setSourceOfFundsProvided(true); // Not required
+        setSourceOfFundsProvided(true); // Not required for smaller amounts
       }
 
       // Check EDD for $50K+ AUD
@@ -167,10 +163,10 @@ function ResumeCheckoutContent() {
 
   if (loading || checkingCompliance) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-xl mb-4">Loading transaction...</div>
-          <div className="text-gray-600">Please wait</div>
+          <div className="text-xl text-foreground mb-4">Loading transaction...</div>
+          <div className="text-muted-foreground">Please wait</div>
         </div>
       </div>
     );
@@ -178,13 +174,13 @@ function ResumeCheckoutContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md">
-          <div className="text-2xl font-bold text-red-600 mb-4">⚠️ Error</div>
-          <p className="text-gray-700 mb-6">{error}</p>
+          <div className="text-2xl font-bold text-destructive-foreground mb-4">⚠️ Error</div>
+          <p className="text-foreground mb-6">{error}</p>
           <button
             onClick={() => router.push('/account/orders')}
-            className="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg"
+            className="px-6 py-3 bg-primary text-primary-foreground hover:opacity-90 font-semibold rounded-lg transition-opacity"
           >
             View My Orders
           </button>
@@ -195,9 +191,9 @@ function ResumeCheckoutContent() {
 
   if (!clientSecret) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-xl mb-4">Setting up payment...</div>
+          <div className="text-xl text-foreground mb-4">Setting up payment...</div>
         </div>
       </div>
     );
@@ -263,9 +259,9 @@ function ResumeCheckoutContent() {
         </div>
 
         {/* Transaction Details */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Transaction Details</h2>
-          <div className="space-y-2 text-gray-700">
+        <div className="bg-card border border-border rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-bold text-card-foreground mb-4">Transaction Details</h2>
+          <div className="space-y-2 text-card-foreground">
             <div className="flex justify-between">
               <span>Transaction ID:</span>
               <span className="font-mono text-sm">{transaction.id.slice(0, 13)}...</span>
@@ -281,7 +277,7 @@ function ResumeCheckoutContent() {
               </span>
             </div>
             {transaction.currency !== 'AUD' && transaction.amount_aud && (
-              <div className="flex justify-between text-sm text-gray-600 mt-1">
+              <div className="flex justify-between text-sm text-muted-foreground mt-1">
                 <span>Original:</span>
                 <span>{transaction.currency} ${transaction.amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
               </div>
@@ -290,8 +286,8 @@ function ResumeCheckoutContent() {
         </div>
 
         {/* Payment Form */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Complete Payment</h2>
+        <div className="bg-card border border-border rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-card-foreground mb-6">Complete Payment</h2>
           <Elements
             stripe={stripePromise}
             options={{
@@ -323,8 +319,8 @@ function ResumeCheckoutContent() {
 export default function ResumeCheckoutPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-xl text-foreground">Loading...</div>
       </div>
     }>
       <ResumeCheckoutContent />

@@ -7,11 +7,12 @@ export interface BreadcrumbItem {
 
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
+  className?: string;
 }
 
-export default function Breadcrumb({ items }: BreadcrumbProps) {
+export default function Breadcrumb({ items, className = "mb-8" }: BreadcrumbProps) {
   return (
-    <nav className="mb-8" aria-label="Breadcrumb">
+    <nav className={className} aria-label="Breadcrumb">
       <ol className="flex items-center text-sm flex-wrap">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;

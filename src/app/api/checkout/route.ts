@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Check Source of Funds for $10K+ transactions (after KYC, before EDD)
-  if (requirements.requiresTTR && !customer.source_of_funds) {
+  if (requirements.requiresTTR) {
     logger.log('Source of Funds required but not provided');
     return NextResponse.json({
       status: 'sof_required',

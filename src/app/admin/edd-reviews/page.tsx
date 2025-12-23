@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { CheckCircle, XCircle, Clock, AlertTriangle, FileText } from 'lucide-react';
+import {useUser} from "@clerk/nextjs";
 
 interface EDDRecord {
   id: string;
@@ -14,7 +15,7 @@ interface EDDRecord {
   transaction_purpose_details: string | null;
   expected_frequency: string;
   expected_annual_volume: string | null;
-  status: 'pending' | 'under_review' | 'approved' | 'rejected';
+  status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'escalated'
   reviewed_at: string | null;
   review_notes: string | null;
   submitted_at: string;
@@ -22,7 +23,7 @@ interface EDDRecord {
   pep_relationship: string | null;
 }
 
-type EDDStatusFilter = 'pending' | 'under_review' | 'approved' | 'rejected' | 'all';
+type EDDStatusFilter = 'pending' | 'under_review '| 'escalated' | 'approved' | 'rejected' | 'all';
 
 const formatLabel = (value: string): string => {
   return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -36,6 +37,13 @@ export default function EDDReviewsPage() {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const { user } = useUser();
+  const isManagementUser = user?.publicMetadata?.role === 'admin' ||
+      user?.publicMetadata?.role === 'manager';
+
+  // Debug logging
+  console.log('User role:', user?.publicMetadata?.role);
+  console.log('Is management user:', isManagementUser);
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
@@ -58,8 +66,14 @@ export default function EDDReviewsPage() {
     fetchRecords();
   }, [fetchRecords]);
 
-  const handleAction = async (eddId: string, action: 'approve' | 'reject' | 'request_info') => {
-    if (action === 'reject' && !reviewNotes.trim()) {
+  // Debug: Log records and their statuses
+  useEffect(() => {
+    if (eddRecords.length > 0) {
+      console.log('EDD Records:', eddRecords.map(r => ({ id: r.id, status: r.status })));
+    }
+  }, [eddRecords]);
+
+  const handleAction = async (eddId: string, action: 'approve' | 'reject' | 'request_info' | 'escalated' | 'management_approve' | 'management_reject') => {    if ((action === 'reject' || action === 'management_reject') && !reviewNotes.trim()) {
       alert('Please provide notes when rejecting an EDD submission.');
       return;
     }
@@ -99,6 +113,8 @@ export default function EDDReviewsPage() {
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'under_review':
         return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'escalated':
+        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
       case 'approved':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'rejected':
@@ -131,7 +147,7 @@ export default function EDDReviewsPage() {
           </p>
 
           <div className="flex space-x-2 mt-4">
-            {['pending', 'under_review', 'approved', 'rejected', 'all'].map((s) => (
+            {['pending', 'under_review', 'approved', 'rejected', 'all', 'escalated'].map((s) => (
               <button
                 key={s}
                 onClick={() => setFilter(s as EDDStatusFilter)}
@@ -299,7 +315,8 @@ export default function EDDReviewsPage() {
                                 </div>
                               )}
 
-                              {(record.status === 'pending' || record.status === 'under_review') && (
+                              {((record.status === 'pending' || record.status === 'under_review') ||
+                                  (record.status === 'escalated' && isManagementUser)) && (
                                 <div className="border-t border-border pt-4">
                                   <label className="block text-sm font-medium text-card-foreground mb-2">
                                     Review Notes
@@ -329,6 +346,32 @@ export default function EDDReviewsPage() {
                                       <FileText className="inline-block h-4 w-4 mr-2" />
                                       Request Info
                                     </button>
+                                    {(record.status === 'pending' && isManagementUser) && (
+                                        <button
+                                            onClick={() => handleAction(record.id, 'escalated')}
+                                            disabled={processingId === record.id}
+                                        title={!reviewNotes.trim() ? "Please add review notes before rejecting" : ""}
+                                        >
+                                          <AlertTriangle className="inline-block h-4 w-4 mr-2" />
+                                          Escalate to Mgmt
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => handleAction(record.id, 'management_approve')}
+                                        disabled={processingId === record.id}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                                    >
+                                      <CheckCircle className="inline-block h-4 w-4 mr-2" />
+                                      Management Approve
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction(record.id, 'management_reject')}
+                                        disabled={processingId === record.id || !reviewNotes.trim()}
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                      <XCircle className="inline-block h-4 w-4 mr-2" />
+                                      Management Reject
+                                    </button>
                                     <button
                                       onClick={() => handleAction(record.id, 'reject')}
                                       disabled={processingId === record.id || !reviewNotes.trim()}
@@ -354,7 +397,7 @@ export default function EDDReviewsPage() {
 
         <div className="mt-6 bg-card border border-border rounded-lg p-4">
           <h3 className="font-semibold text-card-foreground mb-2">📋 EDD Review Guidelines</h3>
-          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ">
             <li>Verify that the source of wealth is consistent with the customer&apos;s profile</li>
             <li>Check if the transaction purpose aligns with normal bullion purchasing patterns</li>
             <li>PEP customers require extra scrutiny - ensure all information is documented</li>
