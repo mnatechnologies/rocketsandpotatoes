@@ -50,6 +50,7 @@ interface TTRCreatedAlertData {
   currency?: string;
   deadline: string;
   ttrReference: string;
+  transactionDate: string;
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
@@ -73,6 +74,7 @@ export async function sendTTRCreatedAlert(data: TTRCreatedAlertData) {
         { label: 'Customer Name', value: data.customerName },
         { label: 'Amount', value: `${data.currency} $${data.transactionAmount.toLocaleString()}` },
         { label: 'TTR Reference', value: data.ttrReference || 'Pending' },
+        { label: 'Transaction Date', value: data.transactionDate },
       ],
       actionRequired: 'Review this TTR and submit to AUSTRAC within the deadline. Ensure all required information is complete and accurate.',
       deadline: data.deadline,
