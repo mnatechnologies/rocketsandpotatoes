@@ -90,7 +90,7 @@ export async function sendEDDInformationRequestEmail({
         ${itemsList}
       </ul>
 
-      <p>You can submit this information by replying to this email or contacting our compliance team at compliance@rocketsandpotatoes.com.</p>
+      <p>You can submit this information by replying to this email or contacting our compliance team at compliance@australiannationalbullion.com.au.</p>
 
       <p>Your prompt response will help us complete this review as quickly as possible.</p>
 
@@ -173,7 +173,7 @@ export async function sendEDDCompletionEmail({
         <p style="margin: 8px 0 0 0;"><strong>Decision:</strong> ${decision.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
       </div>
 
-      <p>If you have any questions regarding this decision, please contact our compliance team at compliance@rocketsandpotatoes.com.</p>
+      <p>If you have any questions regarding this decision, please contact our compliance team at compliance@australiannationalbullion.com.au.</p>
 
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
 

@@ -168,6 +168,17 @@ export async function GET(req: NextRequest) {
     if (investigationsError) {
       logger.error('Error fetching active investigations:', investigationsError);
     }
+    //fetch pending & escalated EDD reviews
+
+    const { count: pendingEddReviews } = await supabase
+        .from('customer_edd')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+    const { count: escalatedEddReviews } = await supabase
+        .from('customer_edd')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'escalated');
 
     return NextResponse.json({
       pendingDocuments: pendingDocs?.length || 0,
@@ -181,6 +192,8 @@ export async function GET(req: NextRequest) {
       suspiciousReports: suspiciousReports || 0,
       staffRequiringTraining: staffRequiringTraining.length,
       overdueTraining: overdueStaffCount,
+      eddReviewsPending: pendingEddReviews || 0,
+      eddReviewsEscalated: escalatedEddReviews || 0,
     });
   } catch (error: any) {
     logger.error('Unexpected error:', error);

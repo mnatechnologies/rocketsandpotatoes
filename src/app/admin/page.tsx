@@ -17,6 +17,7 @@ interface DashboardStats {
   suspiciousReports: number;
   staffRequiringTraining: number;
   overdueTraining: number;
+  eddReviewsPending: number;
 }
 
 export default function AdminDashboard() {
@@ -147,6 +148,13 @@ export default function AdminDashboard() {
               link="/admin/suspicious-reports"
               color="orange"
               icon="⚠️"
+            />
+            <ActionCard
+              title="EDD Reviews"
+              count={stats?.eddReviewsPending || 0}
+              link="/admin/edd-reviews"
+              color="blue"
+              icon="📋"
             />
           </div>
         </div>

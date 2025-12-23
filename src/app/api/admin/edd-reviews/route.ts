@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
-import { requireAdmin } from '@/lib/auth/admin';
+import { requireManagement } from '@/lib/auth/admin';
+import {sendComplianceAlert} from "@/lib/email/sendComplianceAlert";
 
 const logger = createLogger('ADMIN_EDD_REVIEWS');
 
@@ -17,7 +18,7 @@ const supabase = createClient(
 );
 
 export async function GET(req: NextRequest) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireManagement();
   if (!adminCheck.authorized) return adminCheck.error;
 
   try {
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireManagement();
   if (!adminCheck.authorized) return adminCheck.error;
 
   try {
@@ -96,17 +97,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!['approve', 'reject', 'request_info'].includes(action)) {
+    if (!['approve', 'reject', 'request_info', 'escalated', 'management_approve', 'management_reject'].includes(action)) {
       return NextResponse.json(
-        { error: 'Invalid action. Must be: approve, reject, or request_info' },
-        { status: 400 }
+          { error: 'Invalid action. Must be: approve, reject, request_info, escalated, management_approve, management_reject' },
+          { status: 400 }
       );
     }
 
-    if (action === 'reject' && !notes) {
+    if ((action === 'reject' || action === 'management_reject') && !notes) {
       return NextResponse.json(
-        { error: 'Notes are required when rejecting an EDD submission' },
-        { status: 400 }
+          { error: 'Notes are required when rejecting an EDD submission' },
+          { status: 400 }
       );
     }
 
@@ -141,6 +142,54 @@ export async function POST(req: NextRequest) {
         auditAction = 'edd_info_requested';
         auditDescription = `Additional information requested: ${notes}`;
         break;
+      case 'escalated':
+
+        newStatus = 'escalated';
+        auditAction = 'edd_escalated';
+        auditDescription = 'EDD submission escalated to management';
+
+        // Update database with escalation timestamp
+        const { error: escalateError } = await supabase
+            .from('customer_edd')
+            .update({
+              status: 'escalated',
+              escalated_to_management_at: new Date().toISOString()
+            })
+            .eq('id', eddId);
+
+        if (escalateError) return NextResponse.json({ error: escalateError.message }, { status: 500 });
+
+        await sendComplianceAlert({
+          type: 'edd_escalation',
+          severity: 'medium',
+          title: 'EDD Review Escalated to Management',
+          description: `EDD submission requires management approval.`,
+          metadata: { edd_id: eddId },
+          actionUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/admin/edd-reviews`,
+        });
+        break;
+
+      case 'management_approve':
+
+        const mgmtCheck = await requireManagement();
+        if (!mgmtCheck.authorized) return mgmtCheck.error;
+
+        newStatus = 'approved';
+        auditAction = 'edd_management_approved';
+        auditDescription = 'EDD submission approved by management';
+        break;
+
+      case 'management_reject':
+
+        const rejectMgmtCheck = await requireManagement();
+        if (!rejectMgmtCheck.authorized) return rejectMgmtCheck.error;
+
+        newStatus = 'rejected';
+        auditAction = 'edd_management_rejected';
+        auditDescription = `EDD submission rejected by management: ${notes}`;
+        break;
+
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
@@ -150,7 +199,7 @@ export async function POST(req: NextRequest) {
       .from('customer_edd')
       .update({
         status: newStatus,
-        reviewed_by: adminCheck.userId,
+        reviewed_by: action.startsWith('management_') ? (await requireManagement()).userId : adminCheck.userId,
         reviewed_at: new Date().toISOString(),
         review_notes: notes || null,
         updated_at: new Date().toISOString(),

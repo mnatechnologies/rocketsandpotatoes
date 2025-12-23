@@ -223,7 +223,7 @@ export default function OrderConfirmationEmail({
               </Link>
             </Text>
             <Text style={footerText}>
-              <Link href={`https://https://rocketsandpotatoes-eta.vercel.app//order-confirmation?orderId=${orderNumber}`} style={link}>
+              <Link href={`${process.env.NEXT_PUBLIC_BASE_URL}/order-confirmation?orderId=${orderNumber}`} style={link}>
                 View Order Details
               </Link>
             </Text>
