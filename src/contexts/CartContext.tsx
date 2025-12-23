@@ -282,8 +282,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (currentPrices && currentPrices.has(item.product.id)) {
         price = currentPrices.get(item.product.id)!;  // Match what's displayed!
       } else {
-        const lockedPrice = getLockedPrice(item.product.id);
-        price = lockedPrice?.price ?? item.product.price;
+        const locked = getLockedPrice(item.product.id);
+        if (locked) {
+          price = currency === 'AUD' ? locked.priceAUD : locked.priceUSD;
+        } else {
+          price = item.product.price;
+        }
       }
 
       return total + price * item.quantity;

@@ -102,8 +102,7 @@ export default function AdminDashboard() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Admin Dashboard</h1>
@@ -240,6 +239,12 @@ export default function AdminDashboard() {
               icon="🔬"
             />
             <QuickLink
+                title="EDD Reviews"
+                description="Review EDD Form Submissions"
+                link="/admin/edd-reviews"
+                icon="⚙️"
+            />
+            <QuickLink
               title="TTR Reports"
               description="Generate and submit TTR reports"
               link="/admin/ttr-reports"
@@ -269,15 +274,9 @@ export default function AdminDashboard() {
               link="/admin/audit-logs"
               icon="📝"
             />
-            <QuickLink
-              title="Settings"
-              description="Configure system settings"
-              link="/admin/settings"
-              icon="⚙️"
-            />
+
           </div>
         </div>
-      </div>
     </div>
   );
 }

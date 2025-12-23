@@ -76,17 +76,17 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#" className="hover:text-yellow-500 transition-colors">
+                <Link href="/faq" className="hover:text-yellow-500 transition-colors">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/#" className="hover:text-yellow-500 transition-colors">
+                <Link href="/pickup-information" className="hover:text-yellow-500 transition-colors">
                   Pickup Information
                 </Link>
               </li>
               <li>
-                <Link href="/#" className="hover:text-yellow-500 transition-colors">
+                <Link href="/returns-refunds" className="hover:text-yellow-500 transition-colors">
                   Returns & Refunds
                 </Link>
               </li>
@@ -98,7 +98,7 @@ export default function Footer() {
             <h4 className="text-white font-bold mb-4">Legal & Compliance</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/#" className="hover:text-yellow-500 transition-colors">
+                <Link href="/privacy-policy" className="hover:text-yellow-500 transition-colors">
                   Privacy Policy
                 </Link>
               </li>
@@ -150,7 +150,7 @@ export default function Footer() {
                 <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <span>info@anb.com.au</span>
+                <span>info@australiannationalbullion.com.au</span>
               </li>
               <li className="flex items-start">
                 <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

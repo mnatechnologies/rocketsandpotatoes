@@ -88,6 +88,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     validateTransaction();
   }, []);
 
+
   const validateTransaction = async () => {
     if (isValidating) {
       logger.log('Validation already in progress, skipping...');
@@ -139,6 +140,26 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     }
   };
 
+  const needsEDD = validationResult?.requirements?.showEDDForm || (validationResult?.requirements?.requiresEnhancedDD && !eddCompleted);
+  const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
+
+  useEffect(() => {
+    const fetchInvestigation = async () => {
+      if (needsEDD && customerId) {
+        try {
+          const response = await fetch(`/api/customer/edd-investigation-status?customerId=${customerId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setEddInvestigation(data.investigation);
+          }
+        } catch (error) {
+          console.error('Error fetching investigation:', error);
+        }
+      }
+    };
+    fetchInvestigation();
+  }, [needsEDD, customerId]);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('kyc_status') === 'complete') {
@@ -154,20 +175,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
   useEffect(() => {
     const checkComplianceStatus = async () => {
-      // Check source of funds for $10K+ AUD
-      if (finalAmount >= 10000) {
-        try {
-          const response = await fetch(`/api/customer/source-of-funds?customerId=${customerId}`);
-          const result = await response.json();
-
-          if (result.success && result.data?.source_of_funds) {
-            setSourceOfFundsProvided(true);
-          }
-        } catch (error) {
-          logger.error('Error checking source of funds:', error);
-        }
-      }
-
+    
       // Check EDD status for $50K+ AUD
       if (finalAmount >= EDD_THRESHOLD) {
         try {
@@ -272,25 +280,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         </div>
       )
     }
-    const needsEDD = validationResult?.requirements?.showEDDForm || (validationResult?.requirements?.requiresEnhancedDD && !eddCompleted);
-    const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
 
-    useEffect(() => {
-      const fetchInvestigation = async () => {
-        if (needsEDD && customerId) {
-          try {
-            const response = await fetch(`/api/customer/edd-investigation-status?customerId=${customerId}`);
-            if (response.ok) {
-              const data = await response.json();
-              setEddInvestigation(data.investigation);
-            }
-          } catch (error) {
-            console.error('Error fetching investigation:', error);
-          }
-        }
-      };
-      fetchInvestigation();
-    }, [needsEDD, customerId]);
 
 
     // ✅ Get backend-calculated AUD amount for consistency

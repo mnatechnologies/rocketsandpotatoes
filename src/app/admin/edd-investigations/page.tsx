@@ -198,8 +198,7 @@ export default function EDDInvestigationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">EDD Investigations</h1>
           <p className="text-secondary">Enhanced Due Diligence compliance investigations</p>
@@ -245,8 +244,7 @@ export default function EDDInvestigationsPage() {
               />
             ))
           )}
-        </div>
-      </div>
+    </div>
     </div>
   );
 }

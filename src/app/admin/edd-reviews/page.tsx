@@ -41,6 +41,10 @@ export default function EDDReviewsPage() {
   const isManagementUser = user?.publicMetadata?.role === 'admin' ||
       user?.publicMetadata?.role === 'manager';
 
+  // Debug logging
+  console.log('User role:', user?.publicMetadata?.role);
+  console.log('Is management user:', isManagementUser);
+
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -61,6 +65,13 @@ export default function EDDReviewsPage() {
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
+
+  // Debug: Log records and their statuses
+  useEffect(() => {
+    if (eddRecords.length > 0) {
+      console.log('EDD Records:', eddRecords.map(r => ({ id: r.id, status: r.status })));
+    }
+  }, [eddRecords]);
 
   const handleAction = async (eddId: string, action: 'approve' | 'reject' | 'request_info' | 'escalated' | 'management_approve' | 'management_reject') => {    if ((action === 'reject' || action === 'management_reject') && !reviewNotes.trim()) {
       alert('Please provide notes when rejecting an EDD submission.');
@@ -335,11 +346,11 @@ export default function EDDReviewsPage() {
                                       <FileText className="inline-block h-4 w-4 mr-2" />
                                       Request Info
                                     </button>
-                                    {record.status === 'pending' && (
+                                    {(record.status === 'pending' && isManagementUser) && (
                                         <button
                                             onClick={() => handleAction(record.id, 'escalated')}
                                             disabled={processingId === record.id}
-                                            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                                        title={!reviewNotes.trim() ? "Please add review notes before rejecting" : ""}
                                         >
                                           <AlertTriangle className="inline-block h-4 w-4 mr-2" />
                                           Escalate to Mgmt
@@ -386,7 +397,7 @@ export default function EDDReviewsPage() {
 
         <div className="mt-6 bg-card border border-border rounded-lg p-4">
           <h3 className="font-semibold text-card-foreground mb-2">📋 EDD Review Guidelines</h3>
-          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ">
             <li>Verify that the source of wealth is consistent with the customer&apos;s profile</li>
             <li>Check if the transaction purpose aligns with normal bullion purchasing patterns</li>
             <li>PEP customers require extra scrutiny - ensure all information is documented</li>

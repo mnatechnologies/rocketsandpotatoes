@@ -5,7 +5,8 @@
       "Bash(find:*)",
       "Bash(wc:*)",
       "Bash(npm run build:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(xargs ls:*)"
     ]
   },
   "outputStyle": "default"

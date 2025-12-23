@@ -107,8 +107,7 @@ export default function DocumentVerificationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Document Verification</h1>
           <p className="text-muted-foreground">
@@ -161,7 +160,6 @@ export default function DocumentVerificationPage() {
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 }
