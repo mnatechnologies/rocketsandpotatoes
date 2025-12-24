@@ -18,4 +18,5 @@ export interface Product {
     form_type?: 'cast' | 'minted' | null;
     created_at?: string;
     updated_at?: string;
+    slug?: string; // Computed slug for URL generation
   }

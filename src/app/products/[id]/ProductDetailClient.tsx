@@ -301,7 +301,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <div className="text-4xl font-bold text-foreground mb-2">
                   {formatPrice(livePrice)} {currency}
                 </div>
-                <div className="text-sm text-muted-foreground">USD</div>
+
                 {hasLivePrice && (
                   <>
                     <div className="text-xs text-green-600 font-medium mt-1">

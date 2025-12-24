@@ -15,7 +15,17 @@ const isPublicRoute = createRouteMatcher([
   '/kyc-return',
   '/api/kyc/webhook',
   '/api/fx-rate',
-  '/blocked(.*)'  // Allow access to the blocked page
+  '/blocked(.*)',
+  '/about',
+  '/contact',
+  '/faq',
+  '/pickup-information',
+  '/returns-refunds',
+  'privacy-policy',
+  'terms-conditions',
+  'aml-policy',
+  'kyc-requirements',
+  'security'
 ]);
 
 // Only allow Australia
