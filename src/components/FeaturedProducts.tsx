@@ -8,6 +8,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
+import { generateSlug } from '@/lib/utils/slug';
 
 interface FeaturedProductsProps {
   products: Product[];
@@ -110,7 +111,7 @@ export default function FeaturedProducts({ products }: FeaturedProductsProps) {
                     Add to Cart
                   </Link>
                   <Link
-                    href={`/products/${product.id}`}
+                    href={`/products/${generateSlug(product.name)}`}
                     className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-gold"
                   >
                     View Details

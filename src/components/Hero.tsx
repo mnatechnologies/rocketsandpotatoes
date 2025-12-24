@@ -73,7 +73,7 @@ export default function Hero() {
   logger.log('Hero prices:', { goldPrice, silverPrice, currency, isLoading });
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 lg:pt-40">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image

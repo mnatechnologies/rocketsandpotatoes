@@ -13,6 +13,7 @@ import { createLogger } from '@/lib/utils/logger'
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { generateSlug } from '@/lib/utils/slug';
 
 const logger = createLogger('PRODUCT_CLIENT')
 
@@ -187,7 +188,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="cursor-pointer px-4 py-2 border border-gray-300 text-primary rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className=" bg-background px-4 py-2 border border-gray-300 text-primary rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   >
                       <option value="price-asc">Price: Low to High</option>
                       <option value="price-desc">Price: High to Low</option>
@@ -427,10 +428,10 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
               </p>
 
               <Link
-                href={`/products/${product.id}`}
+                href={`/products/${generateSlug(product.name)}`}
                 className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-gold"
               >
-                  View Details
+                View Details
               </Link>
 
               <div className="flex items-center justify-between mt-4 pt-4 border-t">

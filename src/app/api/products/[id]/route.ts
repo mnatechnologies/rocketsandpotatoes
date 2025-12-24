@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 //import { createServerSupabase } from '@/lib/supabase/server';
 import {createClient} from "@supabase/supabase-js";
 import { createLogger } from '@/lib/utils/logger';
+import { isUUID, generateSlug } from '@/lib/utils/slug';
 
 const logger = createLogger('PRODUCT_API');
 
@@ -10,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const {id: productId} = await params;
-  logger.log('Fetching product with ID:', productId);
+  logger.log('Fetching product with ID/slug:', productId);
 
   //const supabase = await createServerSupabase();
 
@@ -26,11 +27,33 @@ export async function GET(
   );
 
   try {
-    const { data: product, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('id', productId)
-      .single();
+    let product = null;
+    let error = null;
+
+    // Check if param is UUID or slug
+    if (isUUID(productId)) {
+      // Query by ID for backward compatibility
+      const result = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+      
+      product = result.data;
+      error = result.error;
+    } else {
+      // Query by slug - fetch all products and match by slugified name
+      const { data: products, error: fetchError } = await supabase
+        .from('products')
+        .select('*');
+      
+      if (fetchError) {
+        error = fetchError;
+      } else if (products) {
+        // Find product where slugified name matches the slug param
+        product = products.find(p => generateSlug(p.name) === productId) || null;
+      }
+    }
 
     if (error) {
       logger.error('Error fetching product:', error);

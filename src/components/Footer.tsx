@@ -125,7 +125,7 @@ export default function Footer() {
             </ul>
             <div className="mt-4 pt-4 border-t border-gray-800">
               <p className="text-xs text-gray-400">
-                ABN: XX XXX XXX XXX
+                ABN: 14 683 863 443
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 Australian Regulated Dealer
