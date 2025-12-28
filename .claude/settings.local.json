@@ -5,8 +5,10 @@
       "Bash(find:*)",
       "Bash(wc:*)",
       "Bash(npm run build:*)",
-      "WebSearch",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git rev-list:*)",
+      "WebSearch"
     ]
   },
   "outputStyle": "default"
