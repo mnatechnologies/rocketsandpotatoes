@@ -1,4 +1,4 @@
--- Migration: Selective table truncation
+-- Migration: Selecti1e table truncation
 -- Use this if you only want to clear SOME tables, not all
 
 -- ============================================================================
