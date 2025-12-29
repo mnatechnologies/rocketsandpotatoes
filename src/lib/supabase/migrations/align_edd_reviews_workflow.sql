@@ -18,5 +18,6 @@ DROP INDEX IF EXISTS idx_customer_edd_status;
 CREATE INDEX idx_customer_edd_status
     ON customer_edd(status)
     WHERE status IN ('pending', 'under_review', 'escalated');
-
+--
 COMMIT;
+

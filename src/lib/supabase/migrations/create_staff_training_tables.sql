@@ -65,3 +65,5 @@ COMMENT ON TABLE staff IS 'Staff registry for AML/CTF training compliance tracki
 COMMENT ON TABLE staff_training IS 'Training records for AUSTRAC compliance - 7 year retention required';
 COMMENT ON COLUMN staff.requires_aml_training IS 'Whether this staff member requires AML/CTF training based on their role';
 COMMENT ON COLUMN staff_training.next_training_due IS 'Calculated date for next required training (typically annual refresher)';
+
+ALTER TABLE staff ADD COLUMN role VARCHAR CHECK (role IN ('admin', 'manager', 'staff'));
