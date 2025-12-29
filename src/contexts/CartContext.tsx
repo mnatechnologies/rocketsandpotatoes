@@ -185,12 +185,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         };
         newCart = [...prevCart, newItem];
         logger.log(` Added new item to cart:`, product.name);
-
-        // Start timer when first item is added
-        if (prevCart.length === 0) {
-          startPricingTimer();
-          logger.log(' Pricing timer started');
-        }
       }
 
       return newCart;
