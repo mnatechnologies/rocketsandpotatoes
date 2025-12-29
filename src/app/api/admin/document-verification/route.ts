@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
-import { requireAdmin } from '@/lib/auth/admin';
+import {requireAdmin, requireManagement} from '@/lib/auth/admin';
 
 const logger = createLogger('DOCUMENT_VERIFICATION_API');
 
@@ -18,7 +18,7 @@ const supabase = createClient(
 
 // GET - Fetch documents for review
 export async function GET(req: NextRequest) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireManagement();
   if (!adminCheck.authorized) return adminCheck.error;
 
   try {
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
 // POST - Update document review status
 export async function POST(req: NextRequest) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireManagement();
   if (!adminCheck.authorized) return adminCheck.error;
 
   try {
@@ -71,8 +71,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get admin user ID from auth
-    const adminUserId = adminCheck.userId;
+    const { data: adminStaff, error: adminError } = await supabase
+      .from('staff')
+      .select('id')
+      .eq('clerk_user_id', adminCheck.userId)
+      .single();
+
+    if (adminError || !adminStaff) {
+      logger.error('Failed to find admin staff record:', adminError);
+      return NextResponse.json(
+        { error: 'Admin staff record not found. Please add yourself to staff table.' },
+        { status: 500 }
+      );
+    }
 
     // Build update data
     const updateData: any = {
@@ -80,13 +91,13 @@ export async function POST(req: NextRequest) {
       review_notes: notes,
       rejection_reason: rejectionReason || null,
       reviewed_at: new Date().toISOString(),
-      reviewed_by: adminUserId,
+      reviewed_by: adminStaff.id,
     };
 
     // If certification was validated by admin, record it
     if (certificationValidated === true) {
       updateData.certification_validated = true;
-      updateData.certification_validated_by = adminUserId;
+      updateData.certification_validated_by = adminStaff.id;
       updateData.certification_validated_at = new Date().toISOString();
     }
 
@@ -120,15 +131,17 @@ export async function POST(req: NextRequest) {
 
         // Update customer verification status
         let newStatus = 'pending';
+        let verificationLevel = 'none';
         if (allApproved && allDocs.length > 0) {
           newStatus = 'verified';
+          verificationLevel = 'manual';
         } else if (hasRejected) {
           newStatus = 'rejected';
         }
 
         await supabase
           .from('customers')
-          .update({ verification_status: newStatus })
+          .update({ verification_status: newStatus, verification_level: verificationLevel} )
           .eq('id', customerId);
       }
     }
@@ -152,7 +165,7 @@ export async function POST(req: NextRequest) {
         decision,
         rejection_reason: rejectionReason,
         certification_validated: certificationValidated || false,
-        admin_user_id: adminUserId
+        admin_user_id: adminStaff.id
       },
     });
 
