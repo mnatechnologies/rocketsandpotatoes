@@ -20,3 +20,5 @@ CREATE INDEX idx_customer_edd_status
     WHERE status IN ('pending', 'under_review', 'escalated');
 
 COMMIT;
+
+--testing
