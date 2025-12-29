@@ -71,8 +71,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { data: adminCustomer, error: adminError } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('clerk_user_id', adminCheck.userId)
+      .single();
+
+    if (adminError || !adminCustomer) {
+      logger.error('Failed to find admin customer record:', adminError);
+      return NextResponse.json(
+        { error: 'Admin customer record not found' },
+        { status: 500 }
+      );
+    }
+
+
+
     // Get admin user ID from auth
     const adminUserId = adminCheck.userId;
+
+
 
     // Build update data
     const updateData: any = {
@@ -80,13 +98,13 @@ export async function POST(req: NextRequest) {
       review_notes: notes,
       rejection_reason: rejectionReason || null,
       reviewed_at: new Date().toISOString(),
-      reviewed_by: adminUserId,
+      reviewed_by: adminCustomer.id,
     };
 
     // If certification was validated by admin, record it
     if (certificationValidated === true) {
       updateData.certification_validated = true;
-      updateData.certification_validated_by = adminUserId;
+      updateData.certification_validated_by = adminCustomer.id;
       updateData.certification_validated_at = new Date().toISOString();
     }
 
