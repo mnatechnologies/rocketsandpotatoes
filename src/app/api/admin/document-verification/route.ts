@@ -131,15 +131,17 @@ export async function POST(req: NextRequest) {
 
         // Update customer verification status
         let newStatus = 'pending';
+        let verificationLevel = 'none';
         if (allApproved && allDocs.length > 0) {
           newStatus = 'verified';
+          verificationLevel = 'manual';
         } else if (hasRejected) {
           newStatus = 'rejected';
         }
 
         await supabase
           .from('customers')
-          .update({ verification_status: newStatus })
+          .update({ verification_status: newStatus, verification_level: verificationLevel} )
           .eq('id', customerId);
       }
     }
