@@ -42,13 +42,15 @@ function CartContent() {
     lockPricesOnServer,
     isTimerExpired,
     timerRemaining,
+    startTimer,
+    getLockedPriceForProduct,
   } = useCart();
 
   // Check if prices are currently locked
   const arePricesLocked = !isTimerExpired && timerRemaining > 0;
 
   // Use shared metal prices from context
-  const { prices: metalPrices, isLoading: loadingPrices } = useMetalPrices();
+  const { prices: metalPrices, isLoading: loadingPrices, refetch } = useMetalPrices();
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -150,14 +152,23 @@ function CartContent() {
     }
 
     try {
+      logger.log('[CART] Refreshing metal prices before checkout');
+      await refetch();
       // Start 15-minute timer and lock prices at current market rates
-      logger.log('[CART] Starting checkout - locking prices and starting timer');
-      startPricingTimer();
-      await lockPricesForCheckout();
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      toast.success('Prices locked for 15 minutes', {
-        description: 'Complete your purchase within this time',
-      });
+      if (!arePricesLocked) {
+        logger.log('[CART] Starting checkout - locking prices and starting timer');
+        startTimer();
+        await lockPricesForCheckout();
+
+        toast.success('Prices locked for 15 minutes', {
+          description: 'Complete your purchase within this time',
+        });
+      } else {
+        logger.log('[CART] Prices already locked, proceeding to checkout');
+      }
+
 
       router.push('/checkout');
     } catch (error) {
@@ -220,6 +231,11 @@ function CartContent() {
               </div>
             </div>
         )}
+        {cart.length > 0 && (
+          <p className="text-xs text-white mb-4 text-center">
+            Note: Minor price variations may occur due to real-time market data synchronization. Final prices are confirmed at checkout.
+          </p>
+        )}
 
         {loadingPrices && (
           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
@@ -262,7 +278,8 @@ function CartContent() {
               {cart.map((item) => {
                 // Get pre-calculated current market price (from memoized map)
                 const currentPrice = currentCartPrices.get(item.product.id) ?? item.product.price;
-                const displayPrice = currentPrice;
+                const lockedPrice = getLockedPriceForProduct(item.product.id);
+                const displayPrice = arePricesLocked && lockedPrice ? lockedPrice : currentPrice;
 
                 return (
                   <div
@@ -288,10 +305,10 @@ function CartContent() {
                         <span>Purity: {item.product.purity}</span>
                       </div>
                       <div className="text-xl font-bold text-gray-900">
-                        {formatPrice(displayPrice)} {currency}
-                        <div className="text-xs text-blue-600 font-medium mt-1">
-                          ⟳ {marketStatus.isOpen ? 'Live' : 'Current'} Market Price
-                        </div>
+                        {arePricesLocked && lockedPrice
+                          ? `$${displayPrice.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : formatPrice(displayPrice)
+                        } {currency}
                       </div>
                     </div>
 
@@ -321,7 +338,10 @@ function CartContent() {
                       </button>
 
                       <div className="text-lg font-bold text-gray-900 md:mt-auto">
-                        {formatPrice(displayPrice * item.quantity)} {currency}
+                        {arePricesLocked && lockedPrice
+                          ? `$${(displayPrice * item.quantity).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : formatPrice(displayPrice * item.quantity)
+                        } {currency}
                       </div>
                     </div>
                   </div>
@@ -344,11 +364,17 @@ function CartContent() {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
                     <span>Items ({getCartCount()})</span>
-                    {formatPrice(getCartTotal(currentCartPrices))} {currency}
+                    {arePricesLocked
+                      ? `$${getCartTotal().toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : formatPrice(getCartTotal(currentCartPrices))
+                    } {currency}
                   </div>
                   <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-900">
                     <span>Total</span>
-                    {formatPrice(getCartTotal(currentCartPrices))} {currency}
+                    {arePricesLocked
+                      ? `$${getCartTotal().toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : formatPrice(getCartTotal(currentCartPrices))
+                    } {currency}
                   </div>
                 </div>
 

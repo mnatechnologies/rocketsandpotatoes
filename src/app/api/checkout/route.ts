@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!locks || locks.length === 0) {
-    logger.log('No active price locks found for session:', sessionId);
+    logger.log(' active price locks found for session:', sessionId);
     return NextResponse.json(
       { success: false, error: 'Price locks expired. Please refresh and try again.' },
       { status: 400 }

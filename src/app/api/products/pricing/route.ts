@@ -169,16 +169,31 @@ export async function POST(request: NextRequest) {
     // ✅ Calculate live prices in USD (no fallback!)
     const priceMap = await calculateBulkPricing(dbProducts);
 
+    const { data: existingLocks } = await supabase
+      .from('price_locks')
+      .select('expires_at')
+      .eq('session_id', sessionId)
+      .eq('status', 'active')
+      .limit(1);
+
+    const existingExpiry = existingLocks?.[0]?.expires_at
+      ? new Date(existingLocks[0].expires_at)
+      : null;
+
+    const expiresAt = existingExpiry && existingExpiry > new Date()
+      ? existingExpiry
+      : new Date(Date.now() + LOCK_DURATION_MS);
 
     // Clear any existing active locks for this session
     await supabase
       .from('price_locks')
       .update({ status: 'expired' })
       .eq('session_id', sessionId)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .in('product_id', productIds);
 
     // ✅ Create new locks with BOTH currencies (single source of truth)
-    const expiresAt = new Date(Date.now() + LOCK_DURATION_MS);
     const locksToInsert = dbProducts.map((product) => {
       const priceUSD = priceMap.get(product.id);
 
