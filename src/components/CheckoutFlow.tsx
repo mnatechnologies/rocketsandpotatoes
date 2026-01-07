@@ -35,7 +35,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const { getLockedPriceForProduct } = useCart();
 
 
-  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked'| 'payment'>('validate');
+  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked' | 'business_verification' | 'payment'>('validate');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -118,6 +118,10 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
           setStep('blocked');
           return;
         }
+        if (result.status === 'business_verification_required') {
+          setStep('business_verification');
+          return;
+        }
         setStep('review');
         return;
       }
@@ -128,6 +132,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         setStep('sof');
       } else if (result.status === 'requires_review' || result.status === 'screening_error') {
         setStep('review');
+      } else if (result.status === 'business_verification_required') {
+        setStep('business_verification');
       } else if (result.status === 'approved') {
         await createPaymentIntent();
         setStep('payment');
@@ -432,6 +438,56 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }
 
 
+
+  if (step === 'business_verification') {
+    return (
+      <div className="max-w-md mx-auto p-6 bg-yellow-50 rounded-lg border border-yellow-200">
+        <div className="text-center mb-4">
+          <div className="text-5xl mb-2">🏢</div>
+          <h2 className="text-xl font-bold text-yellow-800 mb-2">Business Verification Required</h2>
+        </div>
+
+        <div className="space-y-4 text-yellow-800">
+          <p className="font-semibold">
+            Your business account needs to be verified before you can make purchases.
+          </p>
+
+          <div className="bg-white rounded-lg p-4 text-sm text-gray-700">
+            <p className="font-semibold mb-2">What's needed:</p>
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-yellow-600">•</span>
+                <span>ABN verification</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-yellow-600">•</span>
+                <span>Beneficial owner identification (25%+ ownership)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-yellow-600">•</span>
+                <span>Identity verification for all beneficial owners</span>
+              </li>
+            </ul>
+          </div>
+
+          <p className="text-sm">
+            This is a one-time process required for AUSTRAC compliance. Once completed, you'll be able to make purchases immediately.
+          </p>
+
+          <button
+            onClick={() => window.location.href = '/onboarding/business'}
+            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            Complete Business Verification
+          </button>
+
+          <p className="text-xs text-center text-gray-600">
+            Estimated time: 5-10 minutes
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'blocked') {
     const blockReason = validationResult?.reason;
