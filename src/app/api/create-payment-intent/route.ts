@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 const logger = createLogger('CREATE_PAYMENT_INTENT_API');
 
 const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
+  apiVersion: '2025-10-29.clover',
 });
 
 const supabase = createClient(

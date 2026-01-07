@@ -8,7 +8,7 @@ const logger = createLogger('BUSINESS_OWNERS_API');
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const { userId } = await auth();
@@ -58,7 +58,7 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
   const { id }  = await params;

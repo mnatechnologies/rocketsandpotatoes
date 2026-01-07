@@ -113,7 +113,7 @@ export default function UBODocumentUploadPage() {
         formData.append('certifier_type', certifierType);
       }
 
-      const primaryRes = await fetch('/api/business/owners/documents', {
+      const primaryRes = await fetch(`/api/business/owners/${ownerId}/documents/verify`, {
         method: 'POST',
         body: formData,
       });
@@ -135,7 +135,7 @@ export default function UBODocumentUploadPage() {
           secondaryFormData.append('certifier_type', certifierType);
         }
 
-        await fetch('/api/business/owners/documents', {
+        await fetch(`/api/business/owners/${ownerId}/documents/verify`, {
           method: 'POST',
           body: secondaryFormData,
         });

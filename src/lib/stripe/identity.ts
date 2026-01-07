@@ -9,7 +9,7 @@ const logger = createLogger('STRIPE_IDENTITY');
 
 // Use a stable API version string
 export const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
+  apiVersion: '2025-10-29.clover',
 })
 
 const supabase = createClient(
@@ -364,18 +364,27 @@ export async function processUBOVerificationResult(
     address_country: vo?.address?.country ?? null,
 
     // ID number summary
+    // @ts-ignore
     id_number_type: vo?.id_number?.type ?? null,
+    // @ts-ignore
     id_number_country: vo?.id_number?.country ?? vo?.id_number?.issuing_country ?? null,
+    // @ts-ignore
     id_number_last4: vo?.id_number?.last4 ?? null,
 
     // Verification checks
+    // @ts-ignore
     document_check_status: report?.document?.status ?? null,
+    // @ts-ignore
     selfie_check_status: report?.selfie?.status ?? null,
+    // @ts-ignore
     id_number_check_status: report?.id_number?.status ?? null,
 
     // Convenience booleans
+    // @ts-ignore
     liveness_check_passed: report?.selfie?.status === 'verified',
+    // @ts-ignore
     document_check_passed: report?.document?.status === 'verified',
+    // @ts-ignore
     id_number_check_passed: report?.id_number?.status === 'verified',
 
     stripe_response: session,

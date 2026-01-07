@@ -6,8 +6,8 @@ import { auth } from '@clerk/nextjs/server';
 
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string; ownerId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; ownerId: string }> }
 ) {
   const { verification_method } = await req.json();
   const { id } =  await params;
