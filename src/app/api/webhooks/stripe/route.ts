@@ -9,7 +9,7 @@ import { comparePaymentMethodName } from '@/lib/compliance/name-matching';
 const logger = createLogger('STRIPE_PAYMENT_WEBHOOK');
 
 const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
+  apiVersion: '2025-10-29.clover',
 });
 
 export async function POST(req: NextRequest) {

@@ -5,7 +5,7 @@ import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('RETRIEVE_PAYMENT_INTENT');
 const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
+  apiVersion: '2025-10-29.clover',
 });
 
 export async function POST(req: NextRequest) {

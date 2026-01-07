@@ -76,6 +76,8 @@ export async function POST(req: NextRequest) {
         verification_status: 'unverified',
         risk_level: 'low',
         risk_score: 0,
+        customer_type: 'individual',
+        onboarding_completed: false,
       };
 
       logger.log('Customer data prepared:', customerData);

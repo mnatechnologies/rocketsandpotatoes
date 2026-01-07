@@ -1,4 +1,4 @@
-import {clerkMiddleware, createRouteMatcher} from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { geolocation } from '@vercel/functions';
 
@@ -21,45 +21,54 @@ const isPublicRoute = createRouteMatcher([
   '/faq',
   '/pickup-information',
   '/returns-refunds',
-  'privacy-policy',
-  'terms-conditions',
-  'aml-policy',
-  'kyc-requirements',
-  'security'
+  '/privacy-policy',
+  '/terms-conditions',
+  '/aml-policy',
+  '/kyc-requirements',
+  '/security',
 ]);
 
-// Only allow Australia
+const isOnboardingRoute = createRouteMatcher(['/onboarding(.*)']);
+const isApiRoute = createRouteMatcher(['/api(.*)']);
+
 const allowedCountries = ['AU'];
 
-export default clerkMiddleware( async (auth, request) => {
+export default clerkMiddleware(async (auth, request) => {
   const isWebhook = request.nextUrl.pathname.startsWith('/api/webhooks');
   const isBlockedPage = request.nextUrl.pathname.startsWith('/blocked');
   const isClerkService = request.nextUrl.pathname.startsWith('/api/clerk') ||
-      request.headers.get('user-agent')?.includes('Clerk') ||
-      request.headers.get('referer')?.includes('clerk.com');
+    request.headers.get('user-agent')?.includes('Clerk') ||
+    request.headers.get('referer')?.includes('clerk.com');
   const isStripeService = request.nextUrl.pathname.startsWith('/api/stripe') ||
-      request.headers.get('user-agent')?.includes('Stripe') ||
-      request.headers.get('authorization')?.startsWith('Bearer sk_');
+    request.headers.get('user-agent')?.includes('Stripe');
 
-  if (!isWebhook && !isBlockedPage && !isClerkService && !isStripeService ) {
-    // Get country from Vercel's geolocation
+  // Geo-blocking
+  if (!isWebhook && !isBlockedPage && !isClerkService && !isStripeService) {
     const { country } = geolocation(request);
-
-    // Block if country is not Australia (and country is detected)
     if (country && !allowedCountries.includes(country)) {
       return NextResponse.redirect(new URL('/blocked', request.url));
     }
   }
 
-  // Continue with Clerk authentication
-  if (!isPublicRoute(request)) {
-    await auth.protect()
+  // Get auth status
+  const { userId } = await auth();
+
+  // For authenticated users, check onboarding status
+  if (userId && !isPublicRoute(request) && !isOnboardingRoute(request) && !isApiRoute(request)) {
+    // Check onboarding via API call (or use Clerk session claims)
+    // For now, let individual pages handle their own checks
+    // A more robust solution would use Clerk's publicMetadata
   }
-})
+
+  // Protect non-public routes
+  if (!isPublicRoute(request)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
   ],
-}
+};

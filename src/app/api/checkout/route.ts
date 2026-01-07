@@ -197,10 +197,10 @@ export async function POST(req: NextRequest) {
   const requirements = await getComplianceRequirements(customerId, amountInAUD);
   logger.log('Compliance requirements:', requirements);
 
-  // 2. Get customer data
+  // 2. Get customer data (including business_customer_id)
   const { data: customer, error: customerError } = await supabase
     .from('customers')
-    .select('*')
+    .select('*, business_customer_id')
     .eq('id', customerId)
     .single();
 
@@ -216,8 +216,52 @@ export async function POST(req: NextRequest) {
   logger.log('Customer data:', {
     id: customer.id,
     verification_status: customer.verification_status,
-    risk_level: customer.risk_level
+    risk_level: customer.risk_level,
+    customer_type: customer.customer_type,
+    business_customer_id: customer.business_customer_id
   });
+
+  // 3. If business customer, check verification status
+  if (customer.business_customer_id) {
+    logger.log('Business customer detected, checking verification status...');
+
+    const { data: business, error: businessError } = await supabase
+      .from('business_customers')
+      .select('verification_status, ubo_verification_complete, business_name')
+      .eq('id', customer.business_customer_id)
+      .single();
+
+    if (businessError) {
+      logger.error('Failed to fetch business customer:', businessError);
+      return NextResponse.json({
+        status: 'requires_review',
+        reason: 'business_verification_error',
+        message: 'Unable to verify business status. Please contact support.',
+      }, { status: 500 });
+    }
+
+    logger.log('Business verification status:', {
+      business_name: business.business_name,
+      verification_status: business.verification_status,
+      ubo_verification_complete: business.ubo_verification_complete
+    });
+
+    if (business.verification_status !== 'verified' || !business.ubo_verification_complete) {
+      logger.log('⛔ Business verification incomplete - blocking checkout');
+      return NextResponse.json({
+        status: 'business_verification_required',
+        reason: 'incomplete_business_verification',
+        message: 'Please complete business verification before purchasing',
+        redirect: '/onboarding/business',
+        requirements: {
+          verification_status: business.verification_status,
+          ubo_verification_complete: business.ubo_verification_complete,
+        }
+      }, { status: 403 });
+    }
+
+    logger.log('✅ Business verification complete - proceeding with checkout');
+  }
 
   // 3. EDD AUTO-TRIGGER & BLOCKING CHECKS (MUST HAPPEN BEFORE TRANSACTION CREATION)
   // Calculate cumulative transaction total to check $50K AUD threshold
@@ -363,13 +407,20 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. COMPLIANCE HIERARCHY: Check KYC first (must complete before SOF and EDD)
+  // For business customers, skip individual KYC as verification is handled at business level
   if (requirements.requiresKYC && customer.verification_status !== 'verified') {
-    logger.log('KYC required but not completed');
-    return NextResponse.json({
-      status: 'kyc_required',
-      message: 'Identity verification required for transactions over $5,000',
-      requirements,
-    });
+    // Skip individual KYC for business customers (they have business + UBO verification)
+    if (customer.business_customer_id) {
+      logger.log('✅ Business customer - skipping individual KYC (verified at business level)');
+    } else {
+      // Individual customer needs KYC
+      logger.log('KYC required but not completed');
+      return NextResponse.json({
+        status: 'kyc_required',
+        message: 'Identity verification required for transactions over $5,000',
+        requirements,
+      });
+    }
   }
 
   // 5. Check Source of Funds for $10K+ transactions (after KYC, before EDD)
