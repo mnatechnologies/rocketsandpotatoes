@@ -8,6 +8,7 @@ import {MetalPricesProvider} from "@/contexts/MetalPricesContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider} from "@/contexts/CurrencyContext";
 import { Toaster } from 'sonner';
+import { ThemeProvider } from "@/contexts/Themecontext";
 //  MIGRATION SUPABASE ALTER CUSTOMERS DOCUMENT ADD CERT FIELDS DONE
 // ORDER CONFIRMATION TOTAL AMOUNT NOT MATCHING DONE
 //ADDRESS OPTIONAL NAME ON SIGN UP DONE
@@ -48,17 +49,19 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <MetalPricesProvider>
-            <CurrencyProvider>
-              <CartProvider>
-                <Toaster position="top-center" richColors closeButton />
-                <PriceTicker />
-                <Header />
-                {children}
-                <Footer />
-              </CartProvider>
-            </CurrencyProvider>
-          </MetalPricesProvider>
+          <ThemeProvider>
+            <MetalPricesProvider>
+              <CurrencyProvider>
+                <CartProvider>
+                  <Toaster position="top-center" richColors closeButton />
+                  <PriceTicker />
+                  <Header />
+                  {children}
+                  <Footer />
+                </CartProvider>
+              </CurrencyProvider>
+            </MetalPricesProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

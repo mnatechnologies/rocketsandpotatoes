@@ -1,7 +1,7 @@
 import Hero from "@/components/Hero";
-import MetalsPricing from "@/components/PriceDisplay";
 import { createServerSupabase } from '@/lib/supabase/server';
 import FeaturedProductsWrapper from "@/components/FeaturedProductsWrapper";
+import TextSection from "@/components/TextSection";
 
 export default async function Home() {
   const supabase = await createServerSupabase();
@@ -69,7 +69,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen">
       <Hero />
-      <MetalsPricing />
+      <TextSection />
       <FeaturedProductsWrapper products={featuredProducts}/>
     </div>
   );
