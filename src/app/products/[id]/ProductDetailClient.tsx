@@ -136,11 +136,11 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">
                 {product.name}
               </h1>
-              <div className="flex items-center gap-3 text-sm">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  product.stock 
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              <div className="flex items-center gap-3 text-sm ">
+                <span className={`inline-flex items-center rounded-full border px-3 py-1 text-base font-semibold tracking-tight ${
+                  product.stock
+                    ? 'border-success/30 bg-success/10 text-success-foreground dark:border-success/40 dark:bg-success/20 dark:text-success-foreground'
+                    : 'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20 dark:text-destructive-foreground'
                 }`}>
                   {product.stock ? 'In Stock' : 'Out of Stock'}
                 </span>
@@ -153,10 +153,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <div className="h-10 w-40 bg-muted animate-pulse rounded" />
               ) : (
                 <>
-                  <div className="text-4xl font-bold text-foreground">
+                  <div className="text-4xl font-bold text-foreground tracking-tight">
                     {formatPrice(livePrice)}
                   </div>
-                  <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 mt-2 text-sm font-medium text-muted-foreground">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     Live Market Price
                     {lastUpdated && (
@@ -256,7 +256,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <div className="mt-16 max-w-4xl bg-card rounded-2xl p-8 border border-border shadow-sm">
             <h2 className="text-2xl font-bold text-foreground mb-4">About This Product</h2>
             <div className="prose prose-zinc dark:prose-invert max-w-none">
-              <p className="text-foreground/80 leading-relaxed">
+              <p className="text-base text-foreground/80 leading-relaxed">
                 {product.description}
               </p>
             </div>

@@ -76,6 +76,8 @@
   --input: 45 15% 90%;
   --muted: 45 15% 92%;
   --muted-foreground: 220 15% 45%;
+  --success-foreground: 220 15% 15%;
+  --destructive-foreground: 220 15% 15%;
 }
 
 /* Tailwind v4 theme mappings */

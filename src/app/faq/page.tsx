@@ -173,10 +173,10 @@ export default function FAQPage() {
             </p>
             <div className="space-y-2">
               <p className="text-muted-foreground">
-                <strong className="text-card-foreground">Email:</strong> support@australiannationalbullion.com.au
+                <strong className="text-card-foreground">Email:</strong> info@australiannationalbullion.com.au
               </p>
               <p className="text-muted-foreground">
-                <strong className="text-card-foreground">Phone:</strong> 1300 XXX XXX
+                <strong className="text-card-foreground">Phone:</strong> 1300 783 190
               </p>
             </div>
           </div>

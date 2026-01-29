@@ -26,6 +26,8 @@ const isPublicRoute = createRouteMatcher([
   '/aml-policy',
   '/kyc-requirements',
   '/security',
+  '/charts',
+  '/api/charts(.*)'
 ]);
 
 const isOnboardingRoute = createRouteMatcher(['/onboarding(.*)']);

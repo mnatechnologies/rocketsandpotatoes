@@ -102,8 +102,16 @@ export default function Header() {
         name: "Buy Palladium", 
         href: "/products?category=Palladium" 
       },
-      { name: "About", href: "/about" },
-      { name: "Contact", href: "/contact" },
+      {
+        name: "Resources",
+        href: "#",
+        dropdown: [
+          { name: "Charts", href: "/charts", description: "Live & historical metal prices" },
+          { name: "About", href: "/about", description: "Learn about our company" },
+          { name: "Contact", href: "/contact", description: "Get in touch with us" },
+          { name: "FAQ", href: "/faq", description: "Frequently asked questions" },
+        ]
+      },
     ];
 
     if (isAdmin) {

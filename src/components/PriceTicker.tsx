@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -94,22 +95,26 @@ export default function PriceTicker() {
       <div className="container mx-auto px-4">
         {/* 5-Column Grid: 4 metals + timer */}
         <div className="grid grid-cols-2 md:grid-cols-5">
-          {prices.map((price, index) => (
-            <div 
-              key={price.metal} 
-              className={`bg-zinc-900 p-4 md:p-4 border-zinc-800 border-r ${
+          {prices.map((price, index) => {
+            const category = price.metal.charAt(0).toUpperCase() + price.metal.slice(1);
+            return (
+            <Link
+              key={price.metal}
+              href={`/products?category=${encodeURIComponent(category)}`}
+              className={`bg-zinc-900 p-4 md:p-4 border-zinc-800 border-r transition-colors hover:bg-zinc-800 ${
                 index < 2 ? 'border-b md:border-b-0' : ''
               }`}
+              aria-label={`View ${category} products`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+                <span className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
                   {price.metal}
                 </span>
                 <div className={`flex items-center ${
                   price.change >= 0 ? 'text-green-500' : 'text-red-500'
                 }`}>
                   <svg 
-                    className="h-2 w-4" 
+                    className="h-3.5 w-5" 
                     viewBox="0 0 24 24" 
                     fill="currentColor"
                   >
@@ -124,8 +129,8 @@ export default function PriceTicker() {
               <div className="text-xl md:text-2xl font-bold text-white tracking-tight">
                 {formatPrice(price.price)}
               </div>
-            </div>
-          ))}
+            </Link>
+          )})}
           
           {/* 5th Column: Timer */}
           <div className="bg-zinc-900 p-4 md:p-5 col-span-2 md:col-span-1 border-t md:border-t-0 border-zinc-800">
