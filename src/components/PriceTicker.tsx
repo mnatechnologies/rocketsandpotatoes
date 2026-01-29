@@ -1,13 +1,14 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface TickerPrice {
   metal: string;
+  symbol: MetalSymbol;
   price: number;
   change: number;
   changePercent: number;
@@ -15,101 +16,28 @@ interface TickerPrice {
 
 function getMarketStatus() {
   const now = new Date();
-  const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
-  const utcHour = now.getUTCHours();
-
-  // Precious metals markets: Open Sunday 6pm ET (23:00 UTC), Close Friday 5pm ET (22:00 UTC)
-
-  // Saturday - closed all day
-  if (utcDay === 6) {
-    return { isOpen: false, reason: 'Weekend', nextOpen: getNextMarketOpen(now) };
-  }
-
-  // Friday after 10pm UTC (5pm ET) - closed
-  if (utcDay === 5 && utcHour >= 22) {
-    return { isOpen: false, reason: 'Weekend', nextOpen: getNextMarketOpen(now) };
-  }
-
-  // Sunday before 11pm UTC (6pm ET) - closed
-  if (utcDay === 0 && utcHour < 23) {
-    return { isOpen: false, reason: 'Weekend', nextOpen: getNextMarketOpen(now) };
-  }
-
-  // Otherwise markets are open (Sunday 11pm UTC - Friday 10pm UTC)
-  return { isOpen: true, reason: 'Live', nextOpen: null };
-}
-function getNextMarketOpen(now: Date): string {
   const utcDay = now.getUTCDay();
   const utcHour = now.getUTCHours();
 
-  // If it's Friday evening or Saturday, market opens Sunday 6pm ET (23:00 UTC Sunday)
-  if (utcDay === 5 && utcHour >= 22) {
-    // Friday evening - market opens Sunday 23:00 UTC
-    const nextOpen = new Date(now);
-    nextOpen.setUTCDate(now.getUTCDate() + 2);
-    nextOpen.setUTCHours(23, 0, 0, 0);
-    return nextOpen.toLocaleString('en-AU', {
-      timeZone: 'Australia/Sydney',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short'
-    });
-  }
+  if (utcDay === 6) return { isOpen: false };
+  if (utcDay === 5 && utcHour >= 22) return { isOpen: false };
+  if (utcDay === 0 && utcHour < 23) return { isOpen: false };
 
-  if (utcDay === 6) {
-    // Saturday - market opens Sunday 23:00 UTC
-    const nextOpen = new Date(now);
-    nextOpen.setUTCDate(now.getUTCDate() + 1);
-    nextOpen.setUTCHours(23, 0, 0, 0);
-
-    return nextOpen.toLocaleString('en-AU', {
-      timeZone: 'Australia/Sydney',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short'
-    });
-  }
-
-  // If it's Sunday before market open (before 23:00 UTC)
-  if (utcDay === 0 && utcHour < 23) {
-    const nextOpen = new Date(now);
-    nextOpen.setUTCHours(23, 0, 0, 0);
-
-    return nextOpen.toLocaleString('en-AU', {
-      timeZone: 'Australia/Sydney',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short'
-    });
-  }
-
-  return '';
+  return { isOpen: true };
 }
 
 export default function PriceTicker() {
-  // Use shared prices from context - no more individual fetching!
-  const { prices: contextPrices, isLoading, error, lastUpdated } = useMetalPrices();
+  const { prices: contextPrices, isLoading, lastUpdated } = useMetalPrices();
   const { currency, exchangeRate } = useCurrency();
   const [marketStatus, setMarketStatus] = useState(getMarketStatus());
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [nextRefreshCountdown, setNextRefreshCountdown] = useState('');
 
-
-  // Transform context prices to match the component's expected format
-  // Apply currency conversion if needed
   const prices: TickerPrice[] = contextPrices.map((quote) => {
     const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
     const priceInCurrency = currency === 'AUD' ? quote.price * exchangeRate : quote.price;
     return {
-      metal: metalInfo.ticker,
+      metal: metalInfo.label,
+      symbol: quote.symbol as MetalSymbol,
       price: priceInCurrency,
       change: quote.change,
       changePercent: quote.changePercent
@@ -117,111 +45,130 @@ export default function PriceTicker() {
   });
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
     const interval = setInterval(() => {
-      setMarketStatus(getMarketStatus)
-    }, 60000);
-    return () => clearInterval(interval)
-  }, []);
+      setMarketStatus(getMarketStatus());
+      
+      // Update refresh countdown
+      if (lastUpdated) {
+        const nextRefresh = new Date(lastUpdated.getTime() + 5 * 60 * 1000);
+        const now = new Date();
+        const diff = nextRefresh.getTime() - now.getTime();
+        if (diff > 0) {
+          const mins = Math.floor(diff / 60000);
+          const secs = Math.floor((diff % 60000) / 1000);
+          setNextRefreshCountdown(`${mins}:${secs.toString().padStart(2, '0')}`);
+        } else {
+          setNextRefreshCountdown('0:00');
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
 
   const formatPrice = (value: number) =>
-      new Intl.NumberFormat("en-AU", {
-        style: "currency",
-        currency: currency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(value);
-
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleString("en-AU", {
-      timeZone: 'Australia/Sydney',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short'
-    });
-  };
-
-
+    new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
 
   if (isLoading) {
     return (
-        <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-r from-primary/12 via-primary/6 to-primary/12 backdrop-blur-sm" data-ticker>
-          <div className="py-3">
-            <div className="container mx-auto px-4 text-center">
-              <span className="text-sm text-muted-foreground">Loading prices...</span>
-            </div>
+      <div className="fixed top-0 left-0 right-0 z-40 bg-zinc-950" data-ticker>
+        <div className="container mx-auto px-4 py-4">
+          <div className="grid grid-cols-5 gap-0">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="bg-zinc-900 p-4 border-r border-zinc-800 last:border-r-0 animate-pulse">
+                <div className="h-4 w-16 bg-zinc-800 rounded mb-2" />
+                <div className="h-6 w-24 bg-zinc-800 rounded" />
+              </div>
+            ))}
           </div>
         </div>
+      </div>
     );
   }
 
   return (
-      <div
-          className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-              isScrolled
-                  ? 'bg-gradient-to-r from-primary/25 via-primary/15 to-primary/25 backdrop-blur-sm shadow-sm'
-                  : 'bg-gradient-to-r from-primary/12 via-primary/6 to-primary/12 backdrop-blur-sm'
-          }`}
-          data-ticker
-      >
-        <div className="py-3">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-start overflow-x-auto">
-              <div className="flex items-center space-x-3 md:space-x-6 text-sm">
-                <div className="flex items-center space-x-2">
-                  <span className="text-primary font-semibold text-xs uppercase tracking-wide whitespace-nowrap">
-                    {marketStatus.isOpen ? 'Live Prices' : 'Last Prices'}
-                  </span>
-                  {!marketStatus.isOpen && (
-                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-600 rounded text-xs font-medium">
-                      {marketStatus.reason}
-                    </span>
-                  )}
-                </div>
-
-                {prices.map((price) => (
-                    <div key={price.metal} className="flex items-center space-x-2 whitespace-nowrap">
-                      <span className="font-bold text-foreground">{price.metal}</span>
-                      <span className="text-foreground font-semibold">{formatPrice(price.price)}</span>
-                      <div className={`flex items-center space-x-1 ${price.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          {price.change >= 0 ? (
-                              <polyline points="18 15 12 9 6 15" />
-                          ) : (
-                              <polyline points="6 9 12 15 18 9" />
-                          )}
-                        </svg>
-                        <span className="text-xs font-medium">
-                      {price.changePercent >= 0 ? "+" : ""}
-                          {price.changePercent.toFixed(2)}%
-                    </span>
-                      </div>
-                    </div>
-                ))}
-                {lastUpdated && (
-                  <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
-                    {marketStatus.isOpen ? (
-                      <>Updated {formatDateTime(lastUpdated)}</>
+    <div className="fixed top-0 left-0 right-0 z-40 bg-zinc-950" data-ticker>
+      <div className="container mx-auto px-4">
+        {/* 5-Column Grid: 4 metals + timer */}
+        <div className="grid grid-cols-2 md:grid-cols-5">
+          {prices.map((price, index) => {
+            const category = price.metal.charAt(0).toUpperCase() + price.metal.slice(1);
+            return (
+            <Link
+              key={price.metal}
+              href={`/products?category=${encodeURIComponent(category)}`}
+              className={`bg-zinc-900 p-4 md:p-4 border-zinc-800 border-r transition-colors hover:bg-zinc-800 ${
+                index < 2 ? 'border-b md:border-b-0' : ''
+              }`}
+              aria-label={`View ${category} products`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+                  {price.metal}
+                </span>
+                <div className={`flex items-center ${
+                  price.change >= 0 ? 'text-green-500' : 'text-red-500'
+                }`}>
+                  <svg 
+                    className="h-3.5 w-5" 
+                    viewBox="0 0 24 24" 
+                    fill="currentColor"
+                  >
+                    {price.change >= 0 ? (
+                      <path d="M12 4l-8 8h5v8h6v-8h5z" />
                     ) : (
-                      <>From {formatDateTime(lastUpdated)}</>
+                      <path d="M12 20l8-8h-5V4H9v8H4z" />
                     )}
-                  </span>
-                )}
+                  </svg>
+                </div>
               </div>
+              <div className="text-xl md:text-2xl font-bold text-white tracking-tight">
+                {formatPrice(price.price)}
+              </div>
+            </Link>
+          )})}
+          
+          {/* 5th Column: Timer */}
+          <div className="bg-zinc-900 p-4 md:p-5 col-span-2 md:col-span-1 border-t md:border-t-0 border-zinc-800">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+                Next Update
+              </span>
+              <svg className="h-4 w-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-white font-mono tracking-tight">
+              {nextRefreshCountdown || '5:00'}
             </div>
           </div>
         </div>
+
+        {/* Status Bar - Bigger font */}
+        <div className="flex items-center justify-between py-3 border-t border-zinc-800 text-sm text-zinc-400">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${marketStatus.isOpen ? 'bg-green-500' : 'bg-orange-500'}`} />
+              <span className="font-medium">{marketStatus.isOpen ? 'Markets Open' : 'Markets Closed'}</span>
+            </div>
+            <span className="text-zinc-600">•</span>
+            <span>{currency}</span>
+            {lastUpdated && (
+              <>
+                <span className="text-zinc-600">•</span>
+                <span>
+                  Updated {lastUpdated.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
+    </div>
   );
 }

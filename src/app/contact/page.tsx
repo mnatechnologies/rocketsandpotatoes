@@ -74,7 +74,7 @@ export default function ContactPage() {
                 </svg>
                 <div>
                   <h3 className="font-medium text-card-foreground">Email</h3>
-                  <p className="text-muted-foreground">support@australiannationalbullion.com.au</p>
+                  <p className="text-muted-foreground">info@australiannationalbullion.com.au</p>
                 </div>
               </div>
 
@@ -84,7 +84,7 @@ export default function ContactPage() {
                 </svg>
                 <div>
                   <h3 className="font-medium text-card-foreground">Phone</h3>
-                  <p className="text-muted-foreground">Available via email inquiry</p>
+                  <p className="text-muted-foreground">1300 783 190</p>
                 </div>
               </div>
 

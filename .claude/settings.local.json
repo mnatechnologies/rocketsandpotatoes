@@ -6,7 +6,9 @@
       "Bash(wc:*)",
       "Bash(npm run build:*)",
       "WebSearch",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)"
     ]
   },
   "outputStyle": "default"

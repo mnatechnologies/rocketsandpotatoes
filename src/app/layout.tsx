@@ -8,15 +8,17 @@ import {MetalPricesProvider} from "@/contexts/MetalPricesContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider} from "@/contexts/CurrencyContext";
 import { Toaster } from 'sonner';
+import { ThemeProvider } from "@/contexts/Themecontext";
 //  MIGRATION SUPABASE ALTER CUSTOMERS DOCUMENT ADD CERT FIELDS DONE
 // ORDER CONFIRMATION TOTAL AMOUNT NOT MATCHING DONE
 //ADDRESS OPTIONAL NAME ON SIGN UP DONE
 // CLICKING ALTERNATIVE DOCUMENTS GETS STRIPE TO FREEZE UP DONE
 // MANAGEMENT APPROVAL MIGHT NEED IMPLEMENTATION? DONE 
-// TODO DUPLICATE EMAIL SENT AFTER RESUME DONE
-// TODO RESUME TRANSACTION ORDER EMAIL
-// TODO TTR EMAIL NOT SHOOTING OFF
-// TODO AMOUNT FROM RESUMING NOT MATCHING ORIGINAL
+//  DUPLICATE EMAIL SENT AFTER RESUME DONE
+//  RESUME TRANSACTION ORDER EMAIL
+// TTR EMAIL NOT SHOOTING OFF
+//AMOUNT FROM RESUMING NOT MATCHING ORIGINAL
+// TODO FIX DATE CHECKER AND REDIRECT FROM CLERK, PEP CHECKBOX,
 
 //UNVERiFIED
 import {
@@ -47,17 +49,19 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <MetalPricesProvider>
-            <CurrencyProvider>
-              <CartProvider>
-                <Toaster position="top-center" richColors closeButton />
-                <PriceTicker />
-                <Header />
-                {children}
-                <Footer />
-              </CartProvider>
-            </CurrencyProvider>
-          </MetalPricesProvider>
+          <ThemeProvider>
+            <MetalPricesProvider>
+              <CurrencyProvider>
+                <CartProvider>
+                  <Toaster position="top-center" richColors closeButton />
+                  <PriceTicker />
+                  <Header />
+                  {children}
+                  <Footer />
+                </CartProvider>
+              </CurrencyProvider>
+            </MetalPricesProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

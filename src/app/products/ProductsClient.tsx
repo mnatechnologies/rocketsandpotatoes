@@ -4,18 +4,15 @@ import { useState, useMemo, useEffect } from 'react';
 import { Product } from '@/types/product';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
-import { ShoppingCartIcon } from "lucide-react";
-import { createLogger } from '@/lib/utils/logger'
+import { ShoppingCartIcon, Filter, X } from "lucide-react";
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 import { generateSlug } from '@/lib/utils/slug';
-
-const logger = createLogger('PRODUCT_CLIENT')
 
 interface ProductsClientProps {
     products: Product[];
@@ -30,18 +27,18 @@ interface ProductWithDynamicPrice extends Product {
 
 export default function ProductsClient({ products, categoryNames }: ProductsClientProps) {
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name'>('price-asc');
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
     const [selectedFormType, setSelectedFormType] = useState<string>('all');
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-    // Use shared metal prices from context
-    const { prices: metalPrices, isLoading: loadingPrices, error, lastUpdated } = useMetalPrices();
-    const priceError = error ? 'Using static prices' : null;
+    const { prices: metalPrices, isLoading: loadingPrices } = useMetalPrices();
 
-    // Read URL query parameters and set filters on mount/URL change
+    // Read URL query parameters
     useEffect(() => {
         const categoryParam = searchParams.get('category');
         const formTypeParam = searchParams.get('formType');
@@ -61,20 +58,16 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
             return;
         }
 
-        // Create a map of metal prices (price per troy ounce) for calculateBulkPricingFromCache
         const metalPriceMap = new Map<MetalSymbol, number>(
             metalPrices.map(price => [price.symbol, price.price])
         );
 
-        // Use centralized pricing calculation from priceCalculations.ts
         const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
 
-        // Map the results back to products with pricing
         const productsWithCalculatedPrices: ProductWithDynamicPrice[] = products.map(product => {
             const priceInfo = priceMap.get(product.id);
             
             if (!priceInfo) {
-                // Fallback to base price if calculation failed
                 return {
                     ...product,
                     calculated_price: product.price,
@@ -105,7 +98,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     const filteredProducts = useMemo(() => {
         let filtered = productsWithPricing;
 
-        // Filter by search query
         if (searchQuery) {
             filtered = filtered.filter(product =>
               product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -113,7 +105,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
             );
         }
 
-        // Filter by category
         if (selectedCategory !== 'all') {
             filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
         }
@@ -122,7 +113,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
             filtered = filtered.filter(p => p.form_type === selectedFormType);
         }
 
-        // Sort products - use calculated_price if available
         const sorted = [...filtered].sort((a, b) => {
             const priceA = a.calculated_price ?? a.price;
             const priceB = b.calculated_price ?? b.price;
@@ -142,197 +132,324 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         return sorted;
     }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType]);
 
-    // Group by category for display
-    const productsByCategory = useMemo(() => {
-        return filteredProducts.reduce((acc, product) => {
-            const category = product.category || 'other';
+    const handleCategoryChange = (category: string) => {
+        setSelectedCategory(category);
+        setSelectedFormType('all');
+        
+        // Update URL
+        const params = new URLSearchParams();
+        if (category !== 'all') {
+            params.set('category', category);
+        }
+        router.push(`/products${params.toString() ? `?${params.toString()}` : ''}`);
+    };
 
-            if (!acc[category]) {
-                acc[category] = [];
-            }
-            acc[category].push(product);
-            return acc;
-        }, {} as Record<string, ProductWithDynamicPrice[]>);
-    }, [filteredProducts]);
+    const handleFormTypeChange = (formType: string) => {
+        setSelectedFormType(formType);
+        
+        // Update URL
+        const params = new URLSearchParams();
+        if (selectedCategory !== 'all') {
+            params.set('category', selectedCategory);
+        }
+        if (formType !== 'all') {
+            params.set('formType', formType);
+        }
+        router.push(`/products${params.toString() ? `?${params.toString()}` : ''}`);
+    };
+
+    const clearFilters = () => {
+        setSearchQuery('');
+        setSelectedCategory('all');
+        setSelectedFormType('all');
+        router.push('/products');
+    };
+
+    // Sub-nav categories
+    const subNavItems = [
+        { name: 'All Products', category: 'all' },
+        { name: 'Gold', category: 'Gold' },
+        { name: 'Silver', category: 'Silver' },
+        { name: 'Platinum', category: 'Platinum' },
+        { name: 'Palladium', category: 'Palladium' },
+    ];
 
     return (
-      <>
-          {/* Price Loading/Error Banner */}
-          {loadingPrices && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                <p className="text-blue-800">Loading live metal prices...</p>
-            </div>
-          )}
-
-          {priceError && (
-            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-                <p className="text-yellow-800">⚠️ {priceError}</p>
-            </div>
-          )}
-
-          {/* Search and Filter Controls */}
-          <div className="mb-8 space-y-4">
-              {/* Search Bar */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
-                      <input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                      />
-                  </div>
-
-                  {/* Sort Dropdown */}
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className=" bg-background px-4 py-2 border border-gray-300 text-primary rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  >
-                      <option value="price-asc">Price: Low to High</option>
-                      <option value="price-desc">Price: High to Low</option>
-                      <option value="name">Name: A-Z</option>
-                  </select>
-              </div>
-
-              {/* Category Filter */}
-              <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setSelectedCategory('all')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
-                      selectedCategory === 'all'
-                        ? 'bg-yellow-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                      All Products
-                  </button>
-                  {categories.map(category => (
-                    <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
-                        selectedCategory === category
-                          ? 'bg-yellow-500 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                        {categoryNames[category] || category}
-                    </button>
+      <div className="flex flex-col">
+          {/* Sub Navigation Bar */}
+          <div className="bg-card border-b border-border -mx-4 px-4 mb-8 shadow-sm">
+              <div className="flex items-center gap-1 overflow-x-auto py-2">
+                  {subNavItems.map((item) => (
+                      <button
+                          key={item.category}
+                          onClick={() => handleCategoryChange(item.category)}
+                          className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                              selectedCategory === item.category
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                          }`}
+                      >
+                          {item.name}
+                      </button>
                   ))}
               </div>
 
+              {/* Form Type Sub-nav (when Gold selected) */}
               {selectedCategory === 'Gold' && (
-                <div className="flex gap-2 ml-4">
-                    <button 
-                    onClick={() => setSelectedFormType('all')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
-                      selectedFormType === 'all'
-                        ? 'bg-yellow-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                    >
-                        All Gold</button>
-                    <button 
-                    onClick={() => setSelectedFormType('cast')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
-                      selectedFormType === 'cast'
-                        ? 'bg-yellow-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                    >
-                        Cast Bars</button>
-                    <button 
-                    onClick={() => setSelectedFormType('minted')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
-                      selectedFormType === 'minted'
-                        ? 'bg-yellow-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                    >
-                        Minted Tablets</button>
-                </div>
-            )}
-
-              {/* Results Count */}
-              <div className="text-gray-600">
-                  Showing {filteredProducts.length} of {productsWithPricing.length} products
-              </div>
+                  <div className="flex items-center gap-1 pb-2 border-t border-border/50 pt-2">
+                      <span className="text-xs text-muted-foreground mr-2">Type:</span>
+                      <button
+                          onClick={() => handleFormTypeChange('all')}
+                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              selectedFormType === 'all'
+                                  ? 'bg-primary/20 text-primary'
+                                  : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                      >
+                          All
+                      </button>
+                      <button
+                          onClick={() => handleFormTypeChange('cast')}
+                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              selectedFormType === 'cast'
+                                  ? 'bg-primary/20 text-primary'
+                                  : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                      >
+                          Cast Bars
+                      </button>
+                      <button
+                          onClick={() => handleFormTypeChange('minted')}
+                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              selectedFormType === 'minted'
+                                  ? 'bg-primary/20 text-primary'
+                                  : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                      >
+                          Minted
+                      </button>
+                  </div>
+              )}
           </div>
 
-          {/* Products Display */}
-          {Object.entries(productsByCategory).map(([category, categoryProducts]) => (
-            <div key={category} className="mb-16">
-                <h2 className="text-3xl font-bold text-primary mb-6 border-b-2 border-yellow-500 pb-2">
-                    {categoryNames[category] || category}
-                </h2>
+          <div className="flex gap-8">
+              {/* Left Sidebar Filters - Desktop */}
+              <aside className="hidden lg:block w-64 flex-shrink-0">
+                  <div className="sticky top-[160px] space-y-6">
+                      {/* Search */}
+                      <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Search</label>
+                          <input
+                              type="text"
+                              placeholder="Search products..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                          />
+                      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {categoryProducts.map((product) => (
-                      <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} lastUpdated={lastUpdated as Date} />
-                    ))}
-                </div>
-            </div>
-          ))}
+                      {/* Sort */}
+                      <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Sort By</label>
+                          <select
+                              value={sortBy}
+                              onChange={(e) => setSortBy(e.target.value as any)}
+                              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                          >
+                              <option value="price-asc">Price: Low to High</option>
+                              <option value="price-desc">Price: High to Low</option>
+                              <option value="name">Name: A-Z</option>
+                          </select>
+                      </div>
 
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-8 sm:py-12 max-w-md mx-auto px-4">
-                <div className="mb-6">
-                    <div className="text-5xl sm:text-6xl mb-4">🔍</div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-                        No products found
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600">
-                        We couldn&apos;t find any products matching your criteria.
-                    </p>
-                </div>
+                      {/* Categories */}
+                      <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Categories</label>
+                          <div className="space-y-1">
+                              <button
+                                  onClick={() => handleCategoryChange('all')}
+                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                      selectedCategory === 'all'
+                                          ? 'bg-primary/10 text-primary font-medium'
+                                          : 'text-muted-foreground hover:bg-muted'
+                                  }`}
+                              >
+                                  All Products
+                              </button>
+                              {categories.map(category => (
+                                  <button
+                                      key={category}
+                                      onClick={() => handleCategoryChange(category)}
+                                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                          selectedCategory === category
+                                              ? 'bg-primary/10 text-primary font-medium'
+                                              : 'text-muted-foreground hover:bg-muted'
+                                      }`}
+                                  >
+                                      {categoryNames[category] || category}
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6">
-                    <p className="text-sm font-semibold text-gray-700 mb-3">
-                        Try the following:
-                    </p>
-                    <ul className="text-sm text-gray-600 space-y-2 text-left">
-                        <li className="flex items-start gap-2">
-                            <span className="text-primary">•</span>
-                            <span>Clear your filters or search query</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-primary">•</span>
-                            <span>Browse all categories</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-primary">•</span>
-                            <span>Check back later for new inventory</span>
-                        </li>
-                    </ul>
-                </div>
+                      {/* Clear Filters */}
+                      {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all') && (
+                          <button
+                              onClick={clearFilters}
+                              className="w-full px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2"
+                          >
+                              <X className="h-4 w-4" />
+                              Clear All Filters
+                          </button>
+                      )}
 
-                <button
-                    onClick={() => {
-                        setSearchQuery('');
-                        setSelectedCategory('all');
-                        setSelectedFormType('all');
-                    }}
-                    className="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-colors shadow-md text-sm sm:text-base w-full sm:w-auto"
-                >
-                    Clear All Filters
-                </button>
-            </div>
-          )}
-      </>
+                      {/* Results Count */}
+                      <div className="text-sm text-muted-foreground pt-4 border-t border-border">
+                          Showing {filteredProducts.length} of {productsWithPricing.length} products
+                      </div>
+                  </div>
+              </aside>
+
+              {/* Mobile Filter Button */}
+              <button
+                  onClick={() => setShowMobileFilters(true)}
+                  className="lg:hidden fixed bottom-4 right-4 z-40 bg-primary text-primary-foreground px-4 py-3 rounded-full shadow-lg flex items-center gap-2"
+              >
+                  <Filter className="h-5 w-5" />
+                  Filters
+              </button>
+
+              {/* Mobile Filters Modal */}
+              {showMobileFilters && (
+                  <div className="lg:hidden fixed inset-0 z-50 bg-background">
+                      <div className="flex items-center justify-between p-4 border-b border-border">
+                          <h2 className="text-lg font-semibold">Filters</h2>
+                          <button
+                              onClick={() => setShowMobileFilters(false)}
+                              className="p-2 hover:bg-muted rounded-lg"
+                          >
+                              <X className="h-5 w-5" />
+                          </button>
+                      </div>
+                      <div className="p-4 space-y-6 overflow-y-auto max-h-[calc(100vh-140px)]">
+                          {/* Search */}
+                          <div>
+                              <label className="block text-sm font-medium text-foreground mb-2">Search</label>
+                              <input
+                                  type="text"
+                                  placeholder="Search products..."
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                              />
+                          </div>
+
+                          {/* Sort */}
+                          <div>
+                              <label className="block text-sm font-medium text-foreground mb-2">Sort By</label>
+                              <select
+                                  value={sortBy}
+                                  onChange={(e) => setSortBy(e.target.value as any)}
+                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                              >
+                                  <option value="price-asc">Price: Low to High</option>
+                                  <option value="price-desc">Price: High to Low</option>
+                                  <option value="name">Name: A-Z</option>
+                              </select>
+                          </div>
+
+                          {/* Categories */}
+                          <div>
+                              <label className="block text-sm font-medium text-foreground mb-2">Categories</label>
+                              <div className="flex flex-wrap gap-2">
+                                  <button
+                                      onClick={() => handleCategoryChange('all')}
+                                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                                          selectedCategory === 'all'
+                                              ? 'bg-primary text-primary-foreground'
+                                              : 'bg-muted text-foreground'
+                                      }`}
+                                  >
+                                      All
+                                  </button>
+                                  {categories.map(category => (
+                                      <button
+                                          key={category}
+                                          onClick={() => handleCategoryChange(category)}
+                                          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                                              selectedCategory === category
+                                                  ? 'bg-primary text-primary-foreground'
+                                                  : 'bg-muted text-foreground'
+                                          }`}
+                                      >
+                                          {categoryNames[category] || category}
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-background">
+                          <div className="flex gap-3">
+                              <button
+                                  onClick={clearFilters}
+                                  className="flex-1 px-4 py-3 border border-border rounded-lg font-medium"
+                              >
+                                  Clear All
+                              </button>
+                              <button
+                                  onClick={() => setShowMobileFilters(false)}
+                                  className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium"
+                              >
+                                  Show {filteredProducts.length} Products
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              )}
+
+              {/* Products Grid */}
+              <div className="flex-1">
+                  {loadingPrices && (
+                      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center text-sm">
+                          <p className="text-blue-800 dark:text-blue-200">Loading live prices...</p>
+                      </div>
+                  )}
+
+                  {filteredProducts.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+                          {filteredProducts.map((product) => (
+                              <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} />
+                          ))}
+                      </div>
+                  ) : (
+                      <div className="text-center py-16">
+                          <div className="text-5xl mb-4">🔍</div>
+                          <h3 className="text-xl font-bold text-foreground mb-2">No products found</h3>
+                          <p className="text-muted-foreground mb-6">Try adjusting your filters</p>
+                          <button
+                              onClick={clearFilters}
+                              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium"
+                          >
+                              Clear Filters
+                          </button>
+                      </div>
+                  )}
+              </div>
+          </div>
+      </div>
     );
 }
 
 
-function ProductCard({ product, loadingPrices, lastUpdated }: { product: ProductWithDynamicPrice; loadingPrices: boolean; lastUpdated: Date }) {
-    const { formatPrice, currency } = useCurrency();
+function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPrice; loadingPrices: boolean }) {
+    const { formatPrice } = useCurrency();
     const { addToCartById } = useCart();
 
     const displayPrice = product.calculated_price ?? product.price;
 
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         const success = await addToCartById(product.id);
         if (success) {
             toast.success('Added to cart!', {
@@ -343,127 +460,51 @@ function ProductCard({ product, loadingPrices, lastUpdated }: { product: Product
         }
     };
 
-    const formatDateTime = (date: Date) => {
-        return date.toLocaleString("en-AU", {
-            timeZone: 'Australia/Sydney',
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZoneName: 'short'
-        });
-    };
-
-    // Format category name
-    const formatCategoryName = (category: string): string => {
-        return category
-            .split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-    };
-
-    // Format form type (subcategory)
-    const formatFormType = (formType: 'cast' | 'minted' | null | undefined): string | null => {
-        if (!formType) return null;
-        return formType === 'cast' ? 'Cast' : 'Minted';
-    };
-
     return (
-      <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-          <div className="relative h-48 bg-gray-100">
-              <Image
-                src={product.image_url || '/anblogo.png'}
-                alt={product.name}
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-              />
-              {/* Category Badge Overlay */}
-              <div className="absolute top-2 left-2 flex flex-col gap-1">
-                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-white/95 text-primary border border-primary/20 shadow-sm">
-                      {formatCategoryName(product.category)}
-                  </span>
-                  {product.form_type && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-blue-500/95 text-white shadow-sm">
-                          {formatFormType(product.form_type)}
-                      </span>
-                  )}
-              </div>
-              {/*{!product.stock && (*/}
-              {/*  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">*/}
-              {/*      <span className="text-white text-xl font-bold">Out of Stock</span>*/}
-              {/*  </div>*/}
-              {/*)}*/}
-          </div>
+        <Link
+            href={`/products/${generateSlug(product.name)}`}
+            className="group block"
+        >
+            <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg shadow-sm">
+                {/* Product Image */}
+                <div className="relative aspect-square bg-muted/30">
+                    <Image
+                        src={product.image_url || '/anblogo.png'}
+                        alt={product.name}
+                        fill
+                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply dark:mix-blend-normal"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                    />
+                </div>
 
-          <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                  {product.name}
-              </h3>
+                {/* Product Info */}
+                <div className="p-4">
+                    <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 text-sm mb-2 min-h-[2.5rem]">
+                        {product.name}
+                    </h3>
 
-              <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Weight:</span>
-                      <span className="font-bold text-primary">{product.weight}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Purity:</span>
-                      <span className="font-medium text-primary">{product.purity}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Rating:</span>
-                      <span className="font-medium text-primary">⭐ {product.rating}/5</span>
-                  </div>
-                  {product.spot_price_per_gram && (
-                    <div className="flex justify-between text-xs text-gray-500">
-                        <span>Spot/gram:</span>
-                        <span>{formatPrice(product.spot_price_per_gram)}</span>
-                    </div>
-                  )}
-              </div>
-
-              <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {product.description}
-              </p>
-
-              <Link
-                href={`/products/${generateSlug(product.name)}`}
-                className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-gold"
-              >
-                View Details
-              </Link>
-
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                  <div>
-                      {loadingPrices ? (
-                        <div className="text-2xl font-bold text-gray-400 animate-pulse">
-                            Loading...
+                    {/* Price */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            {loadingPrices ? (
+                                <div className="h-6 w-20 bg-muted animate-pulse rounded" />
+                            ) : (
+                                <div className="text-lg font-bold text-foreground">
+                                    {formatPrice(displayPrice)}
+                                </div>
+                            )}
                         </div>
-                      ) : (
-                        <>
-                            <div className="text-2xl font-bold text-gray-900">
-                                {formatPrice(displayPrice)} {currency}
-                            </div>
-                            <div className="text-xs text-green-600 font-medium mt-1">
-                                ✓ Live Market Price
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                                Updated {formatDateTime(lastUpdated)}
-                            </div>
-                        </>
-                      )}
-                  </div>
 
-                  <button
-                    onClick={handleAddToCart}
-                    className="px-4 py-2 rounded-lg font-semibold transition-colors bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer"
-                    aria-label="Add to cart"
-                  >
-                      <ShoppingCartIcon/>
-                  </button>
-              </div>
-          </div>
-      </div>
+                        <button
+                            onClick={handleAddToCart}
+                            className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                            aria-label="Add to cart"
+                        >
+                            <ShoppingCartIcon className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Link>
     );
 }
