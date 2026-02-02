@@ -56,9 +56,9 @@ export default function PriceTicker() {
         if (diff > 0) {
           const mins = Math.floor(diff / 60000);
           const secs = Math.floor((diff % 60000) / 1000);
-          setNextRefreshCountdown(`${mins}:${secs.toString().padStart(2, '0')}`);
+          setNextRefreshCountdown(`0${mins}:${secs.toString().padStart(2, '0')}`);
         } else {
-          setNextRefreshCountdown('0:00');
+          setNextRefreshCountdown('00:00');
         }
       }
     }, 1000);
@@ -133,7 +133,7 @@ export default function PriceTicker() {
           )})}
           
           {/* 5th Column: Timer */}
-          <div className="bg-zinc-900 p-4 md:p-5 col-span-2 md:col-span-1 border-t md:border-t-0 border-zinc-800">
+          <div className="bg-primary p-4 md:p-5 col-span-2 md:col-span-1 border-t md:border-t-0 border-zinc-800">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
                 Next Update

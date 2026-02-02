@@ -16,7 +16,7 @@ interface PricingConfig {
 }
 
 const DEFAULT_CONFIG: PricingConfig = {
-  markup_percentage: 5,
+  markup_percentage: 10,
   base_fee: 10,
   volume_discounts: [
     {threshold: 100, discount_percentage: 2},
