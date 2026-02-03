@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { auth } from '@clerk/nextjs/server';
+import { requireManagement } from '@/lib/auth/admin';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,29 +16,9 @@ const supabase = createClient(
 // GET: Fetch current pricing configuration
 export async function GET(req: NextRequest) {
   try {
-    // Verify admin authorization
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin (you may need to adjust this based on your auth setup)
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('role')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (customer?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
-    }
+    // Verify management authorization (admin or manager)
+    const authCheck = await requireManagement();
+    if (!authCheck.authorized) return authCheck.error;
 
     // Fetch pricing config (there should only be one row)
     const { data, error } = await supabase
@@ -67,29 +47,11 @@ export async function GET(req: NextRequest) {
 // PUT: Update pricing configuration
 export async function PUT(req: NextRequest) {
   try {
-    // Verify admin authorization
-    const { userId } = await auth();
+    // Verify management authorization (admin or manager)
+    const authCheck = await requireManagement();
+    if (!authCheck.authorized) return authCheck.error;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('role')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (customer?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
-    }
+    const userId = authCheck.userId;
 
     const body = await req.json();
     const { markup_percentage, default_base_fee, brand_base_fees } = body;
