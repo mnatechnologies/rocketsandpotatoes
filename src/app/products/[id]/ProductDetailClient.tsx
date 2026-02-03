@@ -170,11 +170,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             </div>
 
             {/* Specs */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
-                <div className="text-sm text-muted-foreground">Weight</div>
-                <div className="text-lg font-semibold text-foreground">{product.weight}</div>
-              </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
                 <div className="text-sm text-muted-foreground">Purity</div>
                 <div className="text-lg font-semibold text-foreground">{product.purity}</div>

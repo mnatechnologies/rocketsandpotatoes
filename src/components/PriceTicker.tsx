@@ -58,7 +58,7 @@ export default function PriceTicker() {
           const secs = Math.floor((diff % 60000) / 1000);
           setNextRefreshCountdown(`0${mins}:${secs.toString().padStart(2, '0')}`);
         } else {
-          setNextRefreshCountdown('00:00');
+          setNextRefreshCountdown('0:00');
         }
       }
     }, 1000);
@@ -93,8 +93,8 @@ export default function PriceTicker() {
   return (
     <div className="fixed top-0 left-0 right-0 z-40 bg-zinc-950" data-ticker>
       <div className="container mx-auto px-4">
-        {/* 5-Column Grid: 4 metals + timer */}
-        <div className="grid grid-cols-2 md:grid-cols-5">
+        {/* 6-Column Grid: 4 metals + timer + fx rate */}
+        <div className="grid grid-cols-3 md:grid-cols-6">
           {prices.map((price, index) => {
             const category = price.metal.charAt(0).toUpperCase() + price.metal.slice(1);
             return (
@@ -102,7 +102,7 @@ export default function PriceTicker() {
               key={price.metal}
               href={`/products?category=${encodeURIComponent(category)}`}
               className={`bg-zinc-900 p-4 md:p-4 border-zinc-800 border-r transition-colors hover:bg-zinc-800 ${
-                index < 2 ? 'border-b md:border-b-0' : ''
+                index < 3 ? 'border-b md:border-b-0' : ''
               }`}
               aria-label={`View ${category} products`}
             >
@@ -113,9 +113,9 @@ export default function PriceTicker() {
                 <div className={`flex items-center ${
                   price.change >= 0 ? 'text-green-500' : 'text-red-500'
                 }`}>
-                  <svg 
-                    className="h-3.5 w-5" 
-                    viewBox="0 0 24 24" 
+                  <svg
+                    className="h-3.5 w-5"
+                    viewBox="0 0 24 24"
                     fill="currentColor"
                   >
                     {price.change >= 0 ? (
@@ -131,20 +131,41 @@ export default function PriceTicker() {
               </div>
             </Link>
           )})}
-          
+
           {/* 5th Column: Timer */}
-          <div className="bg-primary p-4 md:p-5 col-span-2 md:col-span-1 border-t md:border-t-0 border-zinc-800">
+          <div className="bg-zinc-900 p-4 md:p-5 border-zinc-800 border-r border-b md:border-b-0">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
                 Next Update
               </span>
-              <svg className="h-4 w-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <div className="text-xl md:text-2xl font-bold text-white font-mono tracking-tight">
+            <div className="text-xl md:text-2xl font-bold text-primary font-mono tracking-tight">
               {nextRefreshCountdown || '5:00'}
+            </div>
+          </div>
+
+          {/* 6th Column: FX Rate */}
+          <div className="bg-zinc-900 p-4 md:p-5 col-span-2 md:col-span-1 border-t md:border-t-0 border-zinc-800">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                FX Rate
+              </span>
+              <svg className="h-4 w-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-white tracking-tight">
+              {currency === 'USD' ? exchangeRate.toFixed(2) : (1 / exchangeRate).toFixed(4)}
+            </div>
+            <div className="text-xs text-zinc-500 mt-1">
+              {currency === 'USD'
+                ? `1 USD = ${exchangeRate.toFixed(2)} AUD`
+                : `1 AUD = ${(1 / exchangeRate).toFixed(4)} USD`
+              }
             </div>
           </div>
         </div>

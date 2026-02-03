@@ -34,6 +34,20 @@ export async function POST(req: NextRequest) {
     );
   
   const { customerId, amount, currency = 'USD', productDetails, cartItems, sessionId } = await (req as any).json();
+
+  // 🚀 COMING SOON: Block all checkout attempts gracefully
+  // TODO: Remove this IF block when ready to launch
+  const COMING_SOON_MODE = true; // Set to false to enable checkout
+  if (COMING_SOON_MODE) {
+    logger.log('Checkout blocked - Coming Soon mode active');
+    return NextResponse.json(
+      {
+        status: 'coming_soon',
+        message: 'Checkout is coming soon. We are preparing to launch.',
+      },
+      { status: 200 }
+    );
+  }
   logger.log('Request data:', {
     customerId,
     amount,
@@ -80,7 +94,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  logger.log('📦 Found price locks:', locks.map(lock => ({
+  // Type guard - locks is definitely not null here
+  const validLocks = locks;
+
+  logger.log('📦 Found price locks:', validLocks.map(lock => ({
     product_id: lock.product_id,
     price_usd: lock.locked_price_usd,
     price_aud: lock.locked_price_aud,
@@ -90,7 +107,7 @@ export async function POST(req: NextRequest) {
   // ✅ Calculate amounts in BOTH currencies using LOCKED prices (single source of truth)
   logger.log('🧮 Calculating totals from locks...');
 
-  const amountInUSD = locks.reduce((sum, lock) => {
+  const amountInUSD = validLocks.reduce((sum, lock) => {
     const item = cartItems?.find((i: any) => i.productId === lock.product_id);
 
     // SKIP locks for products not in current cart (old locks from previous sessions)
@@ -105,7 +122,7 @@ export async function POST(req: NextRequest) {
     return sum + (lock.locked_price_usd * quantity);
   }, 0);
 
-  const amountInAUD = locks.reduce((sum, lock) => {
+  const amountInAUD = validLocks.reduce((sum, lock) => {
     const item = cartItems?.find((i: any) => i.productId === lock.product_id);
 
     // SKIP locks for products not in current cart
@@ -117,14 +134,14 @@ export async function POST(req: NextRequest) {
     return sum + (lock.locked_price_aud * quantity);
   }, 0);
 
-  const fxRate = locks[0].fx_rate;
+  const fxRate = validLocks[0].fx_rate;
   const calculatedAmount = currency === 'AUD' ? amountInAUD : amountInUSD;
 
   logger.log('✅ Using locked prices (NO conversion):', {
     amountInUSD: amountInUSD.toFixed(2),
     amountInAUD: amountInAUD.toFixed(2),
     fxRate,
-    locksCount: locks.length,
+    locksCount: validLocks.length,
     submittedAmount: calculatedAmount,
     submittedCurrency: currency,
   });
@@ -231,7 +248,7 @@ export async function POST(req: NextRequest) {
       .eq('id', customer.business_customer_id)
       .single();
 
-    if (businessError) {
+    if (businessError || !business) {
       logger.error('Failed to fetch business customer:', businessError);
       return NextResponse.json({
         status: 'requires_review',
@@ -459,9 +476,9 @@ export async function POST(req: NextRequest) {
         description: 'Transaction blocked: EDD investigation under review by admin',
         metadata: {
           amount_aud: amountInAUD,
-          investigation_id: activeInvestigation.id,
-          investigation_number: activeInvestigation.investigation_number,
-          investigation_status: activeInvestigation.status,
+          investigation_id: activeInvestigation!.id,
+          investigation_number: activeInvestigation!.investigation_number,
+          investigation_status: activeInvestigation!.status,
         },
       });
 
@@ -470,8 +487,8 @@ export async function POST(req: NextRequest) {
         reason: 'edd_investigation_required',
         message: 'Your Enhanced Due Diligence information has been submitted and is under review. Your account will remain blocked until the review is complete.',
         investigation: {
-          number: activeInvestigation.investigation_number,
-          status: activeInvestigation.status,
+          number: activeInvestigation!.investigation_number,
+          status: activeInvestigation!.status,
         },
       }, { status: 403 });
     }
@@ -563,7 +580,7 @@ export async function POST(req: NextRequest) {
         description: 'Transaction blocked: Customer has pending transaction under review',
         metadata: {
           amount_aud: amountInAUD,
-          existing_transaction_id: existingPendingTx.id,
+          existing_transaction_id: existingPendingTx!.id,
         },
       });
 
@@ -572,8 +589,8 @@ export async function POST(req: NextRequest) {
         reason: 'pending_review',
         message: 'You have a transaction pending review. Our compliance team will contact you once the review is complete. Please do not attempt additional transactions at this time.',
         existingTransaction: {
-          id: existingPendingTx.id,
-          createdAt: existingPendingTx.created_at,
+          id: existingPendingTx!.id,
+          createdAt: existingPendingTx!.created_at,
         },
       }, { status: 403 });
     }
@@ -632,12 +649,12 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (flagError) {
+    if (flagError || !flaggedTransaction) {
       logger.error('Failed to create flagged transaction:', flagError);
       return NextResponse.json(
           {
             error: 'Failed to process transaction. Please contact support.',
-            details: flagError.message
+            details: flagError?.message || 'Unknown error'
           },
           { status: 500 }
       );

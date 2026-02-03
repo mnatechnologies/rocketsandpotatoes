@@ -213,8 +213,6 @@ export async function POST(request: NextRequest) {
         locked_price_aud: priceAUD,
         fx_rate: fxRate,
         currency: currency,
-        // Keep legacy field for backwards compatibility
-        locked_price: currency === 'AUD' ? priceAUD : priceUSD,
         metal_type: product.metal_type,
         expires_at: expiresAt.toISOString(),
         status: 'active',

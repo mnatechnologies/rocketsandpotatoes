@@ -9,26 +9,26 @@ export default function TextSection() {
             Australia's Trusted Bullion Dealer
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Aliquam nibh. Mauris ac mauris sed pede pellentesque fermentum. Maecenas adipiscing ante non diam sodales hendrerit.
+            Australian National Bullion is committed to providing secure, transparent, and competitive precious metals trading. As an AUSTRAC-registered dealer, we ensure full compliance with Australian anti-money laundering regulations while offering real-time pricing on gold, silver, platinum, and palladium products. Whether you're investing in wealth preservation, portfolio diversification, or collecting premium bullion, we deliver certified quality and secure transactions you can trust.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
             <div className="p-6 rounded-lg bg-card border border-border shadow-sm">
-              <h3 className="text-xl font-semibold mb-3 text-primary">Lorem</h3>
+              <h3 className="text-xl font-semibold mb-3 text-primary">AUSTRAC Registered</h3>
               <p className="text-muted-foreground">
-               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor.
+                Fully compliant with Australian AML/CTF regulations, ensuring secure and transparent transactions. Our registration demonstrates our commitment to regulatory excellence and customer protection.
               </p>
             </div>
             <div className="p-6 rounded-lg bg-card border border-border shadow-sm">
-              <h3 className="text-xl font-semibold mb-3 text-primary">Ipsum</h3>
+              <h3 className="text-xl font-semibold mb-3 text-primary">Live Market Pricing</h3>
               <p className="text-muted-foreground">
-                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,
+                Real-time pricing based on global spot markets, updated every 5 minutes. Our transparent pricing model ensures you always get fair market value for your precious metals investments.
               </p>
             </div>
             <div className="p-6 rounded-lg bg-card border border-border shadow-sm">
-              <h3 className="text-xl font-semibold mb-3 text-primary">Lorem Ipsum</h3>
+              <h3 className="text-xl font-semibold mb-3 text-primary">Certified Quality</h3>
               <p className="text-muted-foreground">
-               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor.
+                Premium bullion products from trusted refineries worldwide. Every item meets strict purity standards, with detailed specifications and authenticity guarantees for your peace of mind.
               </p>
             </div>
           </div>
