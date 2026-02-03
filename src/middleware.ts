@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   '/products(.*)',
   '/api/metals(.*)',
   '/api/products(.*)',
+  '/api/products/(.*)',
   '/api/checkout(.*)',
   '/api/create-payment-intent',
   '/kyc-return',
