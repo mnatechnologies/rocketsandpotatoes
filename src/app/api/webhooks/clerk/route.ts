@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         risk_level: 'low',
         risk_score: 0,
         customer_type: 'individual',
-        onboarding_completed: false,
+        onboarding_complete: false,
       };
 
       logger.log('Customer data prepared:', customerData);
