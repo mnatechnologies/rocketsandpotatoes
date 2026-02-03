@@ -129,8 +129,8 @@ export default function Header() {
     <>
       {/* Main Header */}
       <nav
-        className={`fixed left-0 right-0 z-30 backdrop-blur-md border-b border-border transition-all duration-300 ${
-          isScrolled ? 'bg-background/95 shadow-lg' : 'bg-background/80'
+        className={`fixed left-0 right-0 z-30 backdrop-blur-md border-y-2 border-border transition-all duration-300 ${
+          isScrolled ? 'bg-secondary/95 shadow-lg' : 'bg-secondary/90'
         }`}
         style={{
           top: `${tickerHeight}px`,
@@ -166,7 +166,7 @@ export default function Header() {
                     <button
                       onClick={() => handleDropdownToggle(item.name)}
                       onMouseEnter={() => setActiveDropdown(item.name)}
-                      className={`flex items-center gap-1 px-4 py-2 text-foreground hover:text-primary transition-colors duration-200 font-medium rounded-md hover:bg-muted/50 ${
+                      className={`flex items-center gap-1 px-4 py-2 text-foreground dark:text-zinc-800 hover:text-primary transition-colors duration-200 font-semibold rounded-md hover:bg-muted/50 ${
                         activeDropdown === item.name ? 'text-primary bg-muted/50' : ''
                       }`}
                     >
@@ -176,7 +176,7 @@ export default function Header() {
                   ) : (
                     <Link
                       href={item.href}
-                      className="px-4 py-2 text-foreground hover:text-primary transition-colors duration-200 font-medium rounded-md hover:bg-muted/50"
+                      className="px-4 py-2 text-foreground dark:text-zinc-800 hover:text-primary transition-colors duration-200 font-semibold rounded-md hover:bg-muted/50"
                     >
                       {item.name}
                     </Link>

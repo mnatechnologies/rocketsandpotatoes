@@ -8,6 +8,7 @@ const logger = createLogger('PRICING');
 interface PricingConfig {
   markup_percentage: number;
   base_fee: number;
+  brand_base_fees?: Record<string, number>;
   //unsure what else may be added here
   volume_discounts?: {
     threshold: number;
@@ -18,11 +19,20 @@ interface PricingConfig {
 const DEFAULT_CONFIG: PricingConfig = {
   markup_percentage: 5,
   base_fee: 10,
+  brand_base_fees: {},
   volume_discounts: [
     {threshold: 100, discount_percentage: 2},
     {threshold: 500, discount_percentage: 5},
     {threshold: 1000, discount_percentage: 8},
   ],
+}
+
+// Helper function to get the base fee for a product based on brand
+function getBaseFee(config: PricingConfig, brand?: string): number {
+  if (brand && config.brand_base_fees && config.brand_base_fees[brand] !== undefined) {
+    return config.brand_base_fees[brand];
+  }
+  return config.base_fee;
 }
 
 export interface ProductWithPricing {
@@ -107,6 +117,7 @@ export async function calculateBulkPricing(
     weight_grams?: number;
     category?: string;
     name?: string;
+    brand?: string;
   }>,
   //   id: string;
   //   metal_type: MetalSymbol;
@@ -150,7 +161,8 @@ export async function calculateBulkPricing(
       const spotCost = spotPricePerGram * product.weight_grams;
       const cfg = config || DEFAULT_CONFIG;
       const markupAmount = spotCost * (cfg.markup_percentage / 100);
-      const calculatedPrice = spotCost + markupAmount + cfg.base_fee;
+      const baseFee = getBaseFee(cfg, product.original.brand);
+      const calculatedPrice = spotCost + markupAmount + baseFee;
 
       priceMap.set(product.id, Math.round(calculatedPrice * 100) / 100);
     } catch (error) {
@@ -177,6 +189,7 @@ export function calculateBulkPricingFromCache(
     weight_grams?: number;
     category?: string;
     name?: string;
+    brand?: string;
   }>,
   metalPrices: Map<MetalSymbol, number>, // price per troy ounce
   config?: PricingConfig
@@ -216,7 +229,8 @@ export function calculateBulkPricingFromCache(
       const spotCost = spotPricePerGram * product.weight_grams;
       const cfg = config || DEFAULT_CONFIG;
       const markupAmount = spotCost * (cfg.markup_percentage / 100);
-      const calculatedPrice = spotCost + markupAmount + cfg.base_fee;
+      const baseFee = getBaseFee(cfg, product.original.brand);
+      const calculatedPrice = spotCost + markupAmount + baseFee;
 
       priceMap.set(product.id, {
         calculatedPrice: Math.round(calculatedPrice * 100) / 100,

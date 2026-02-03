@@ -8,7 +8,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
-import { ShoppingCartIcon, Filter, X } from "lucide-react";
+import { ShoppingCartIcon, Filter, X, ChevronDown } from "lucide-react";
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
@@ -35,6 +35,15 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
     const [selectedFormType, setSelectedFormType] = useState<string>('all');
     const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+    const [selectedWeight, setSelectedWeight] = useState<string>('All Weights');
+    const [collapsedSections, setCollapsedSections] = useState({
+        search: false,
+        sort: false,
+        categories: false,
+        brand: false,
+        weight: false,
+    });
 
     const { prices: metalPrices, isLoading: loadingPrices } = useMetalPrices();
 
@@ -94,6 +103,57 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         return Array.from(cats);
     }, [productsWithPricing]);
 
+    // Get unique brands from products
+    const brands = useMemo(() => {
+        const brandSet = new Set(productsWithPricing.map(p => p.brand).filter(Boolean));
+        return Array.from(brandSet).sort();
+    }, [productsWithPricing]);
+
+    // Get unique weights from products (dynamically filtered by category and form type)
+    const weights = useMemo(() => {
+        let filtered = productsWithPricing;
+
+        // Apply search filter
+        if (searchQuery) {
+            filtered = filtered.filter(product =>
+              product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+
+        // Apply category filter
+        if (selectedCategory !== 'all') {
+            filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
+        }
+
+        // Apply form type filter (for Gold)
+        if (selectedCategory === 'Gold' && selectedFormType !== 'all') {
+            filtered = filtered.filter(p => p.form_type === selectedFormType);
+        }
+
+        // Apply brand filter
+        if (selectedBrands.length > 0) {
+            filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
+        }
+
+        // Extract unique weights from filtered products
+        const weightSet = new Set(filtered.map(p => p.weight).filter(Boolean));
+        return ['All Weights', ...Array.from(weightSet).sort((a, b) => {
+            // Extract numeric value for sorting
+            const numA = parseFloat(a as string);
+            const numB = parseFloat(b as string);
+            return numA - numB;
+        })];
+    }, [productsWithPricing, searchQuery, selectedCategory, selectedFormType, selectedBrands]);
+
+    // Reset weight filter when available weights change
+    useEffect(() => {
+        // Check if current selected weight is still available
+        if (selectedWeight !== 'All Weights' && !weights.includes(selectedWeight)) {
+            setSelectedWeight('All Weights');
+        }
+    }, [weights, selectedWeight]);
+
     // Filter and sort products
     const filteredProducts = useMemo(() => {
         let filtered = productsWithPricing;
@@ -108,9 +168,19 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         if (selectedCategory !== 'all') {
             filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
         }
-        
+
         if (selectedCategory === 'Gold' && selectedFormType !== 'all') {
             filtered = filtered.filter(p => p.form_type === selectedFormType);
+        }
+
+        // Brand filter
+        if (selectedBrands.length > 0) {
+            filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
+        }
+
+        // Weight filter (exact match from database)
+        if (selectedWeight !== 'All Weights') {
+            filtered = filtered.filter(p => p.weight === selectedWeight);
         }
 
         const sorted = [...filtered].sort((a, b) => {
@@ -130,7 +200,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         });
 
         return sorted;
-    }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType]);
+    }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType, selectedBrands, selectedWeight]);
 
     const handleCategoryChange = (category: string) => {
         setSelectedCategory(category);
@@ -162,7 +232,24 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         setSearchQuery('');
         setSelectedCategory('all');
         setSelectedFormType('all');
+        setSelectedBrands([]);
+        setSelectedWeight('All Weights');
         router.push('/products');
+    };
+
+    const toggleBrand = (brand: string) => {
+        setSelectedBrands(prev =>
+            prev.includes(brand)
+                ? prev.filter(b => b !== brand)
+                : [...prev, brand]
+        );
+    };
+
+    const toggleSection = (section: keyof typeof collapsedSections) => {
+        setCollapsedSections(prev => ({
+            ...prev,
+            [section]: !prev[section]
+        }));
     };
 
     // Sub-nav categories
@@ -177,16 +264,16 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     return (
       <div className="flex flex-col">
           {/* Sub Navigation Bar */}
-          <div className="bg-card border-b border-border -mx-4 px-4 mb-8 shadow-sm">
-              <div className="flex items-center gap-1 overflow-x-auto py-2">
+          <div className="bg-secondary border-b-2 border-border -mx-4 px-4 sm:px-6 mb-8 shadow-md">
+              <div className="flex items-center gap-1 overflow-x-auto py-3">
                   {subNavItems.map((item) => (
                       <button
                           key={item.category}
                           onClick={() => handleCategoryChange(item.category)}
-                          className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                          className={`px-4 py-2 rounded-md text-sm font-semibold whitespace-nowrap transition-colors ${
                               selectedCategory === item.category
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                  ? 'bg-primary text-black dark:text-primary-foreground shadow-md'
+                                  : 'text-foreground hover:text-primary hover:bg-muted'
                           }`}
                       >
                           {item.name}
@@ -194,16 +281,49 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                   ))}
               </div>
 
+              {/* Brand Filter Bar (when brands available) */}
+              {brands.length > 0 && (
+                  <div className="flex items-center gap-1 pb-2 border-t border-border/50 pt-2 overflow-x-auto">
+                      <span className="text-xs text-black mr-2">Brand:</span>
+                      <button
+                          onClick={() => setSelectedBrands([])}
+                          className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
+                              selectedBrands.length === 0
+                                  ? 'bg-primary/20 text-primary'
+                                  : 'text-black hover:text-primary'
+                          }`}
+                      >
+                          All Brands
+                      </button>
+                      {brands.slice(0, 10).map(brand => (
+                          <button
+                              key={brand}
+                              onClick={() => toggleBrand(brand as string)}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
+                                  selectedBrands.includes(brand as string)
+                                      ? 'bg-primary/20 text-primary'
+                                      : 'text-black hover:text-primary'
+                              }`}
+                          >
+                              {brand}
+                          </button>
+                      ))}
+                      {brands.length > 10 && (
+                          <span className="text-xs text-black ml-2">+{brands.length - 10} more in filters</span>
+                      )}
+                  </div>
+              )}
+
               {/* Form Type Sub-nav (when Gold selected) */}
               {selectedCategory === 'Gold' && (
                   <div className="flex items-center gap-1 pb-2 border-t border-border/50 pt-2">
-                      <span className="text-xs text-muted-foreground mr-2">Type:</span>
+                      <span className="text-xs text-black mr-2">Type:</span>
                       <button
                           onClick={() => handleFormTypeChange('all')}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'all'
                                   ? 'bg-primary/20 text-primary'
-                                  : 'text-muted-foreground hover:text-foreground'
+                                  : 'text-black hover:text-primary'
                           }`}
                       >
                           All
@@ -213,7 +333,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'cast'
                                   ? 'bg-primary/20 text-primary'
-                                  : 'text-muted-foreground hover:text-foreground'
+                                  : 'text-black hover:text-primary'
                           }`}
                       >
                           Cast Bars
@@ -223,7 +343,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'minted'
                                   ? 'bg-primary/20 text-primary'
-                                  : 'text-muted-foreground hover:text-foreground'
+                                  : 'text-black hover:text-primary'
                           }`}
                       >
                           Minted
@@ -235,65 +355,148 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
           <div className="flex gap-8">
               {/* Left Sidebar Filters - Desktop */}
               <aside className="hidden lg:block w-64 flex-shrink-0">
-                  <div className="sticky top-[160px] space-y-6">
+                  <div className="sticky top-[160px] space-y-4 bg-secondary p-6 rounded-xl border border-border shadow-md">
                       {/* Search */}
                       <div>
-                          <label className="block text-sm font-medium text-foreground mb-2">Search</label>
-                          <input
-                              type="text"
-                              placeholder="Search products..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                          />
+                          <button
+                              onClick={() => toggleSection('search')}
+                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                          >
+                              Search
+                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.search ? '' : 'rotate-180'}`} />
+                          </button>
+                          {!collapsedSections.search && (
+                              <input
+                                  type="text"
+                                  placeholder="Search products..."
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                              />
+                          )}
                       </div>
 
                       {/* Sort */}
                       <div>
-                          <label className="block text-sm font-medium text-foreground mb-2">Sort By</label>
-                          <select
-                              value={sortBy}
-                              onChange={(e) => setSortBy(e.target.value as any)}
-                              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                          <button
+                              onClick={() => toggleSection('sort')}
+                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
                           >
-                              <option value="price-asc">Price: Low to High</option>
-                              <option value="price-desc">Price: High to Low</option>
-                              <option value="name">Name: A-Z</option>
-                          </select>
+                              Sort By
+                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.sort ? '' : 'rotate-180'}`} />
+                          </button>
+                          {!collapsedSections.sort && (
+                              <select
+                                  value={sortBy}
+                                  onChange={(e) => setSortBy(e.target.value as any)}
+                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                              >
+                                  <option value="price-asc">Price: Low to High</option>
+                                  <option value="price-desc">Price: High to Low</option>
+                                  <option value="name">Name: A-Z</option>
+                              </select>
+                          )}
                       </div>
 
                       {/* Categories */}
                       <div>
-                          <label className="block text-sm font-medium text-foreground mb-2">Categories</label>
-                          <div className="space-y-1">
-                              <button
-                                  onClick={() => handleCategoryChange('all')}
-                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                                      selectedCategory === 'all'
-                                          ? 'bg-primary/10 text-primary font-medium'
-                                          : 'text-muted-foreground hover:bg-muted'
-                                  }`}
-                              >
-                                  All Products
-                              </button>
-                              {categories.map(category => (
+                          <button
+                              onClick={() => toggleSection('categories')}
+                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                          >
+                              Categories
+                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.categories ? '' : 'rotate-180'}`} />
+                          </button>
+                          {!collapsedSections.categories && (
+                              <div className="space-y-1">
                                   <button
-                                      key={category}
-                                      onClick={() => handleCategoryChange(category)}
+                                      onClick={() => handleCategoryChange('all')}
                                       className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                                          selectedCategory === category
+                                          selectedCategory === 'all'
                                               ? 'bg-primary/10 text-primary font-medium'
-                                              : 'text-muted-foreground hover:bg-muted'
+                                              : 'text-black hover:bg-muted'
                                       }`}
                                   >
-                                      {categoryNames[category] || category}
+                                      All Products
                                   </button>
-                              ))}
+                                  {categories.map(category => (
+                                      <button
+                                          key={category}
+                                          onClick={() => handleCategoryChange(category)}
+                                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                              selectedCategory === category
+                                                  ? 'bg-primary/10 text-primary font-medium'
+                                                  : 'text-black hover:bg-muted'
+                                          }`}
+                                      >
+                                          {categoryNames[category] || category}
+                                      </button>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Brand Filter */}
+                      {brands.length > 0 && (
+                          <div>
+                              <button
+                                  onClick={() => toggleSection('brand')}
+                                  className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                              >
+                                  Brand
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.brand ? '' : 'rotate-180'}`} />
+                              </button>
+                              {!collapsedSections.brand && (
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                      {brands.map(brand => (
+                                          <label
+                                              key={brand}
+                                              className="flex items-center gap-2 cursor-pointer hover:bg-muted px-2 py-1 rounded transition-colors"
+                                          >
+                                              <input
+                                                  type="checkbox"
+                                                  checked={selectedBrands.includes(brand as string)}
+                                                  onChange={() => toggleBrand(brand as string)}
+                                                  className="rounded border-border text-primary focus:ring-primary"
+                                              />
+                                              <span className="text-sm text-black">{brand}</span>
+                                          </label>
+                                      ))}
+                                  </div>
+                              )}
                           </div>
+                      )}
+
+                      {/* Weight Filter */}
+                      <div>
+                          <button
+                              onClick={() => toggleSection('weight')}
+                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                          >
+                              Weight
+                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.weight ? '' : 'rotate-180'}`} />
+                          </button>
+                          {!collapsedSections.weight && (
+                              <div className="space-y-1">
+                                  {weights.map(weight => (
+                                      <button
+                                          key={weight}
+                                          onClick={() => setSelectedWeight(weight as string)}
+                                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                              selectedWeight === weight
+                                                  ? 'bg-primary/10 text-primary font-medium'
+                                                  : 'text-black hover:bg-muted'
+                                          }`}
+                                      >
+                                          {weight}
+                                      </button>
+                                  ))}
+                              </div>
+                          )}
                       </div>
 
                       {/* Clear Filters */}
-                      {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all') && (
+                      {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all' || selectedBrands.length > 0 || selectedWeight !== 'All Weights') && (
                           <button
                               onClick={clearFilters}
                               className="w-full px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -321,8 +524,8 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
               {/* Mobile Filters Modal */}
               {showMobileFilters && (
-                  <div className="lg:hidden fixed inset-0 z-50 bg-background">
-                      <div className="flex items-center justify-between p-4 border-b border-border">
+                  <div className="lg:hidden fixed inset-0 z-50 bg-secondary">
+                      <div className="flex items-center justify-between p-4 border-b-2 border-border bg-secondary/80 backdrop-blur-sm">
                           <h2 className="text-lg font-semibold">Filters</h2>
                           <button
                               onClick={() => setShowMobileFilters(false)}
@@ -383,6 +586,49 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                           }`}
                                       >
                                           {categoryNames[category] || category}
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
+
+                          {/* Brand Filter */}
+                          {brands.length > 0 && (
+                              <div>
+                                  <label className="block text-sm font-medium text-foreground mb-2">Brand</label>
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                      {brands.map(brand => (
+                                          <label
+                                              key={brand}
+                                              className="flex items-center gap-2 cursor-pointer hover:bg-muted px-2 py-1 rounded transition-colors"
+                                          >
+                                              <input
+                                                  type="checkbox"
+                                                  checked={selectedBrands.includes(brand as string)}
+                                                  onChange={() => toggleBrand(brand as string)}
+                                                  className="rounded border-border text-primary focus:ring-primary"
+                                              />
+                                              <span className="text-sm text-foreground">{brand}</span>
+                                          </label>
+                                      ))}
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* Weight Filter */}
+                          <div>
+                              <label className="block text-sm font-medium text-foreground mb-2">Weight</label>
+                              <div className="flex flex-wrap gap-2">
+                                  {weights.map(weight => (
+                                      <button
+                                          key={weight}
+                                          onClick={() => setSelectedWeight(weight as string)}
+                                          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                                              selectedWeight === weight
+                                                  ? 'bg-primary text-primary-foreground'
+                                                  : 'bg-muted text-foreground dark:text-zinc-200'
+                                          }`}
+                                      >
+                                          {weight}
                                       </button>
                                   ))}
                               </div>

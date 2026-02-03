@@ -13,37 +13,39 @@ interface BreadcrumbProps {
 export default function Breadcrumb({ items, className = "mb-8" }: BreadcrumbProps) {
   return (
     <nav className={className} aria-label="Breadcrumb">
-      <ol className="flex items-center text-sm flex-wrap">
-        {items.map((item, index) => {
-          const isLast = index === items.length - 1;
+      <div className="bg-secondary/50 rounded-lg px-4 py-3 border border-border shadow-sm">
+        <ol className="flex items-center text-sm flex-wrap">
+          {items.map((item, index) => {
+            const isLast = index === items.length - 1;
 
-          return (
-            <li key={index} className="flex items-center">
-              {index > 0 && (
-                <span className="text-muted-foreground mx-2">/</span>
-              )}
-              {item.href && !isLast ? (
-                <Link
-                  href={item.href}
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <span
-                  className={
-                    isLast
-                      ? 'text-foreground font-medium'
-                      : 'text-muted-foreground'
-                  }
-                >
-                  {item.label}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+            return (
+              <li key={index} className="flex items-center">
+                {index > 0 && (
+                  <span className="text-muted-foreground mx-2">/</span>
+                )}
+                {item.href && !isLast ? (
+                  <Link
+                    href={item.href}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span
+                    className={
+                      isLast
+                        ? 'text-foreground font-medium'
+                        : 'text-muted-foreground'
+                    }
+                  >
+                    {item.label}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </nav>
   );
 }

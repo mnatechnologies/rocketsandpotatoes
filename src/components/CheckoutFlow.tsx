@@ -35,7 +35,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const { getLockedPriceForProduct } = useCart();
 
 
-  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked' | 'business_verification' | 'payment'>('validate');
+  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked' | 'business_verification' | 'payment' | 'coming_soon'>('validate');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -114,6 +114,10 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       setValidationResult(result);
 
       if (!response.ok) {
+        if (result.status === 'coming_soon') {
+          setStep('coming_soon');
+          return;
+        }
         if (result.status === 'blocked') {
           setStep('blocked');
           return;
@@ -126,7 +130,9 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         return;
       }
 
-      if (result.status === 'kyc_required') {
+      if (result.status === 'coming_soon') {
+        setStep('coming_soon');
+      } else if (result.status === 'kyc_required') {
         setStep('kyc');
       } else if (result.status === 'sof_required') {
         setStep('sof');
@@ -483,6 +489,69 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
           <p className="text-xs text-center text-gray-600">
             Estimated time: 5-10 minutes
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'coming_soon') {
+    return (
+      <div className="max-w-2xl mx-auto p-8 bg-gradient-to-br from-primary/5 to-background rounded-2xl border-2 border-primary/20 shadow-lg">
+        <div className="text-center mb-6">
+          <div className="text-7xl mb-4">🚀</div>
+          <h2 className="text-3xl font-bold text-foreground mb-3">Coming Soon</h2>
+          <div className="w-24 h-1 bg-primary mx-auto rounded-full mb-4"></div>
+        </div>
+
+        <div className="space-y-6 text-center">
+          <p className="text-xl font-semibold text-foreground">
+            We're preparing to launch!
+          </p>
+
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            Australian National Bullion is currently finalizing our systems to ensure a secure and seamless experience for our customers. Our checkout will be available very soon.
+          </p>
+
+          <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <p className="font-semibold text-foreground mb-3">In the meantime:</p>
+            <ul className="space-y-3 text-left text-muted-foreground">
+              <li className="flex items-start gap-3">
+                <span className="text-primary text-xl">✓</span>
+                <span>Browse our full range of precious metals products</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary text-xl">✓</span>
+                <span>View live market pricing updated every 5 minutes</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary text-xl">✓</span>
+                <span>Learn about our AUSTRAC-compliant processes</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary text-xl">✓</span>
+                <span>Contact us with any questions about our products</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <button
+              onClick={() => window.location.href = '/products'}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-8 rounded-xl transition-colors text-lg"
+            >
+              Browse Products
+            </button>
+            <button
+              onClick={() => window.location.href = '/contact'}
+              className="bg-muted hover:bg-muted/80 text-foreground font-bold py-3 px-8 rounded-xl border border-border transition-colors text-lg"
+            >
+              Contact Us
+            </button>
+          </div>
+
+          <p className="text-sm text-muted-foreground pt-4">
+            Thank you for your patience as we prepare to serve you.
           </p>
         </div>
       </div>

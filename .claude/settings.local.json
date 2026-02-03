@@ -8,7 +8,9 @@
       "WebSearch",
       "Bash(xargs ls:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx supabase:*)",
+      "Bash(npx tsc:*)"
     ]
   },
   "outputStyle": "default"

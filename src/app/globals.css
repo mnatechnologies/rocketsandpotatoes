@@ -11,9 +11,9 @@
   --popover: 220 15% 9%;
   --popover-foreground: 45 10% 95%;
 
-  --primary: 45 85% 58%;
+  --primary: 45 90% 62%;
   --primary-foreground: 220 15% 9%;
-  --primary-glow: 45 90% 68%;
+  --primary-glow: 45 95% 72%;
 
   --secondary: 210 6% 75%;
   --secondary-foreground: 220 15% 9%;
@@ -70,11 +70,11 @@
   --card-foreground: 220 15% 15%;
   --popover: 45 15% 99%;
   --popover-foreground: 220 15% 15%;
-  --primary: 45 85% 45%;
+  --primary: 45 90% 50%;
   --primary-foreground: 45 15% 97%;
   --border: 45 15% 85%;
   --input: 45 15% 90%;
-  --muted: 45 15% 92%;
+  --muted: 240 5% 96%;
   --muted-foreground: 220 15% 45%;
   --success-foreground: 220 15% 15%;
   --destructive-foreground: 220 15% 15%;
