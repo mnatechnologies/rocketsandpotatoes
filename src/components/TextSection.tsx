@@ -6,10 +6,10 @@ export default function TextSection() {
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground">
-            Australia's Trusted Bullion Dealer
+            Australia&#39;s Trusted Bullion Dealer
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-            Australian National Bullion is committed to providing secure, transparent, and competitive precious metals trading. As an AUSTRAC-registered dealer, we ensure full compliance with Australian anti-money laundering regulations while offering real-time pricing on gold, silver, platinum, and palladium products. Whether you're investing in wealth preservation, portfolio diversification, or collecting premium bullion, we deliver certified quality and secure transactions you can trust.
+            Australian National Bullion is committed to providing secure, transparent, and competitive precious metals trading. As an AUSTRAC-registered dealer, we ensure full compliance with Australian anti-money laundering regulations while offering real-time pricing on gold, silver, platinum, and palladium products. Whether you&#39;re investing in wealth preservation, portfolio diversification, or collecting premium bullion, we deliver certified quality and secure transactions you can trust.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
