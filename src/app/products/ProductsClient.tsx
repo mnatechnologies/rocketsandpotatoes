@@ -279,8 +279,8 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           onClick={() => handleCategoryChange(item.category)}
                           className={`px-4 py-2 rounded-md text-sm font-semibold whitespace-nowrap transition-colors ${
                               selectedCategory === item.category
-                                  ? 'bg-primary text-black dark:text-primary-foreground shadow-md'
-                                  : 'text-foreground hover:text-primary hover:bg-muted'
+                                  ? 'bg-primary text-black  shadow-md'
+                                  : 'text-black hover:text-primary hover:bg-muted'
                           }`}
                       >
                           {item.name}
@@ -296,7 +296,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           onClick={() => setSelectedBrands([])}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                               selectedBrands.length === 0
-                                  ? 'bg-primary/20 text-primary'
+                                  ? 'bg-primary/20 text-black'
                                   : 'text-black hover:text-primary'
                           }`}
                       >
@@ -329,7 +329,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           onClick={() => handleFormTypeChange('all')}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'all'
-                                  ? 'bg-primary/20 text-primary'
+                                  ? 'bg-primary text-black'
                                   : 'text-black hover:text-primary'
                           }`}
                       >
@@ -339,7 +339,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           onClick={() => handleFormTypeChange('cast')}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'cast'
-                                  ? 'bg-primary/20 text-primary'
+                                  ? 'bg-primary text-black'
                                   : 'text-black hover:text-primary'
                           }`}
                       >
@@ -349,7 +349,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           onClick={() => handleFormTypeChange('minted')}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'minted'
-                                  ? 'bg-primary/20 text-primary'
+                                  ? 'bg-primary text-black'
                                   : 'text-black hover:text-primary'
                           }`}
                       >
@@ -420,7 +420,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                       onClick={() => handleCategoryChange('all')}
                                       className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                                           selectedCategory === 'all'
-                                              ? 'bg-primary/10 text-primary font-medium'
+                                              ? 'bg-primary text-black font-medium'
                                               : 'text-black hover:bg-muted'
                                       }`}
                                   >
@@ -432,7 +432,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                           onClick={() => handleCategoryChange(category)}
                                           className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                                               selectedCategory === category
-                                                  ? 'bg-primary/10 text-primary font-medium'
+                                                  ? 'bg-primary text-black font-medium'
                                                   : 'text-black hover:bg-muted'
                                           }`}
                                       >
@@ -491,7 +491,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                           onClick={() => setSelectedWeight(weight as string)}
                                           className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                                               selectedWeight === weight
-                                                  ? 'bg-primary/10 text-primary font-medium'
+                                                  ? 'bg-primary text-black font-medium'
                                                   : 'text-black hover:bg-muted'
                                           }`}
                                       >
@@ -506,7 +506,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all' || selectedBrands.length > 0 || selectedWeight !== 'All Weights') && (
                           <button
                               onClick={clearFilters}
-                              className="w-full px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2"
+                              className="w-full px-3 py-2 text-sm font-medium text-black hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2"
                           >
                               <X className="h-4 w-4" />
                               Clear All Filters
@@ -514,7 +514,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       )}
 
                       {/* Results Count */}
-                      <div className="text-sm text-muted-foreground pt-4 border-t border-border">
+                      <div className="text-sm text-black pt-4 border-t border-border">
                           Showing {filteredProducts.length} of {productsWithPricing.length} products
                       </div>
                   </div>

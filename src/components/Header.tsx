@@ -130,7 +130,7 @@ export default function Header() {
       {/* Main Header */}
       <nav
         className={`fixed left-0 right-0 z-30 backdrop-blur-md border-y-2 border-border transition-all duration-300 ${
-          isScrolled ? 'bg-secondary shadow-lg' : 'bg-secondary/90'
+          isScrolled ? 'bg-secondary/90 shadow-lg' : 'bg-secondary/90'
         }`}
         style={{
           top: `${tickerHeight}px`,
