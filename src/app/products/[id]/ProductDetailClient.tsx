@@ -22,7 +22,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const router = useRouter();
   const { addToCart } = useCart();
   const { formatPrice, currency } = useCurrency();
-  const { prices: metalPrices, isLoading: loadingPrices, lastUpdated } = useMetalPrices();
+  const { prices: metalPrices, pricingConfig, isLoading: loadingPrices, lastUpdated } = useMetalPrices();
 
   const [quantity, setQuantity] = useState(1);
   const [livePrice, setLivePrice] = useState<number>(product.price);
@@ -30,7 +30,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   // Calculate product price when metal prices change
   useEffect(() => {
-    if (loadingPrices || !metalPrices || metalPrices.length === 0) {
+    if (loadingPrices || !metalPrices || metalPrices.length === 0 || !pricingConfig) {
       return;
     }
 
@@ -38,7 +38,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       metalPrices.map(price => [price.symbol, price.price])
     );
 
-    const priceMap = calculateBulkPricingFromCache([product], metalPriceMap);
+    // Transform pricingConfig to match the expected format
+    const config = {
+      markup_percentage: pricingConfig.markup_percentage,
+      base_fee: pricingConfig.default_base_fee,
+      brand_base_fees: pricingConfig.brand_base_fees,
+    };
+
+    const priceMap = calculateBulkPricingFromCache([product], metalPriceMap, config);
     const priceInfo = priceMap.get(product.id);
 
     if (priceInfo) {
@@ -46,7 +53,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     } else {
       setLivePrice(product.price);
     }
-  }, [product, metalPrices, loadingPrices]);
+  }, [product, metalPrices, pricingConfig, loadingPrices]);
 
   const handleAddToCart = async () => {
     setAddingToCart(true);

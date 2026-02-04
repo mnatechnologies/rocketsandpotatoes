@@ -45,7 +45,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         weight: false,
     });
 
-    const { prices: metalPrices, isLoading: loadingPrices } = useMetalPrices();
+    const { prices: metalPrices, pricingConfig, isLoading: loadingPrices } = useMetalPrices();
 
     // Read URL query parameters
     useEffect(() => {
@@ -63,7 +63,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
     // Calculate product prices when metal prices change
     useEffect(() => {
-        if (loadingPrices || !metalPrices || metalPrices.length === 0) {
+        if (loadingPrices || !metalPrices || metalPrices.length === 0 || !pricingConfig) {
             return;
         }
 
@@ -71,7 +71,14 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
             metalPrices.map(price => [price.symbol, price.price])
         );
 
-        const priceMap = calculateBulkPricingFromCache(products, metalPriceMap);
+        // Transform pricingConfig to match the expected format
+        const config = {
+            markup_percentage: pricingConfig.markup_percentage,
+            base_fee: pricingConfig.default_base_fee,
+            brand_base_fees: pricingConfig.brand_base_fees,
+        };
+
+        const priceMap = calculateBulkPricingFromCache(products, metalPriceMap, config);
 
         const productsWithCalculatedPrices: ProductWithDynamicPrice[] = products.map(product => {
             const priceInfo = priceMap.get(product.id);
@@ -95,7 +102,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         });
 
         setProductsWithPricing(productsWithCalculatedPrices);
-    }, [products, metalPrices, loadingPrices]);
+    }, [products, metalPrices, pricingConfig, loadingPrices]);
 
     // Get unique categories from products
     const categories = useMemo(() => {

@@ -13,25 +13,26 @@ const supabase = createClient(
   }
 );
 
-// GET: Fetch current pricing configuration
+// GET: Fetch current pricing configuration (PUBLIC - no auth required for reading)
 export async function GET(req: NextRequest) {
   try {
-    // Verify management authorization (admin or manager)
-    const authCheck = await requireManagement();
-    if (!authCheck.authorized) return authCheck.error;
-
     // Fetch pricing config (there should only be one row)
     const { data, error } = await supabase
       .from('pricing_config')
-      .select('*')
+      .select('markup_percentage, default_base_fee, brand_base_fees')
       .single();
 
     if (error) {
       console.error('Error fetching pricing config:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch pricing configuration' },
-        { status: 500 }
-      );
+      // Return defaults if not found
+      return NextResponse.json({
+        success: true,
+        data: {
+          markup_percentage: 10,
+          default_base_fee: 10,
+          brand_base_fees: {},
+        }
+      });
     }
 
     return NextResponse.json({ success: true, data });

@@ -13,8 +13,15 @@ interface MetalPrice {
   timestamp?: string;
 }
 
+interface PricingConfig {
+  markup_percentage: number;
+  default_base_fee: number;
+  brand_base_fees?: Record<string, number>;
+}
+
 interface MetalPricesContextType {
   prices: MetalPrice[];
+  pricingConfig: PricingConfig | null;
   isLoading: boolean;
   error: string | null;
   lastUpdated: Date | null;
@@ -53,6 +60,7 @@ function getMarketStatus() {
 
 export function MetalPricesProvider({ children }: { children: ReactNode }) {
   const [prices, setPrices] = useState<MetalPrice[]>([]);
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -63,23 +71,53 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/metals?baseCurrency=USD');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      // Fetch both metal prices and pricing config in parallel
+      const [pricesResponse, configResponse] = await Promise.all([
+        fetch('/api/metals?baseCurrency=USD'),
+        fetch('/api/admin/pricing')
+      ]);
 
-      const result = await response.json();
+      if (!pricesResponse.ok) throw new Error(`HTTP error! status: ${pricesResponse.status}`);
 
-      if (result.success && result.data) {
-        setPrices(result.data);
+      const pricesResult = await pricesResponse.json();
+
+      if (pricesResult.success && pricesResult.data) {
+        setPrices(pricesResult.data);
         setLastUpdated(new Date());
 
-      if (result.timestamp) {
-        setDataTimestamp(new Date(result.timestamp));
-      }
+        if (pricesResult.timestamp) {
+          setDataTimestamp(new Date(pricesResult.timestamp));
+        }
       } else {
         throw new Error('Invalid response format');
       }
+
+      // Fetch pricing config (non-blocking - use defaults if it fails)
+      if (configResponse.ok) {
+        const configResult = await configResponse.json();
+        if (configResult.success && configResult.data) {
+          setPricingConfig({
+            markup_percentage: configResult.data.markup_percentage,
+            default_base_fee: configResult.data.default_base_fee,
+            brand_base_fees: configResult.data.brand_base_fees || {},
+          });
+        }
+      } else {
+        // Use defaults if pricing config fetch fails
+        setPricingConfig({
+          markup_percentage: 10,
+          default_base_fee: 10,
+          brand_base_fees: {},
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch prices');
+      // Set default pricing config on error
+      setPricingConfig({
+        markup_percentage: 10,
+        default_base_fee: 10,
+        brand_base_fees: {},
+      });
     } finally {
       setIsLoading(false);
     }
@@ -132,10 +170,10 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <MetalPricesContext.Provider value={{ prices, isLoading, error, lastUpdated, dataTimestamp, refetch: fetchPrices }}>
-  {children}
-  </MetalPricesContext.Provider>
-);
+    <MetalPricesContext.Provider value={{ prices, pricingConfig, isLoading, error, lastUpdated, dataTimestamp, refetch: fetchPrices }}>
+      {children}
+    </MetalPricesContext.Provider>
+  );
 }
 
 export function useMetalPrices() {

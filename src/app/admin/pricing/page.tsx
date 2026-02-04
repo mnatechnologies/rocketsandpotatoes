@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Save, Plus, Trash2 } from 'lucide-react';
-import {useUser} from '@clerk/nextjs'
+
 
 interface PricingConfig {
   id: string;
@@ -18,9 +18,7 @@ export default function AdminPricingPage() {
   const [config, setConfig] = useState<PricingConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { user } = useUser();
-  const isManagementUser = user?.publicMetadata?.role === 'admin' ||
-    user?.publicMetadata?.role === 'manager';
+
 
   // Form state
   const [markupPercentage, setMarkupPercentage] = useState<number>(5);
@@ -165,10 +163,9 @@ export default function AdminPricingPage() {
           <input
             type="number"
             min="0"
-            max="100"
             step="0.1"
             value={markupPercentage}
-            onChange={(e) => setMarkupPercentage(parseFloat(e.target.value) || 0)}
+            onChange={(e) => setMarkupPercentage(parseFloat(e.target.value))}
             className="w-full max-w-xs px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <p className="text-xs text-muted-foreground">
@@ -189,7 +186,7 @@ export default function AdminPricingPage() {
             min="0"
             step="0.01"
             value={defaultBaseFee}
-            onChange={(e) => setDefaultBaseFee(parseFloat(e.target.value) || 0)}
+            onChange={(e) => setDefaultBaseFee(parseFloat(e.target.value))}
             className="w-full max-w-xs px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <p className="text-xs text-muted-foreground">
