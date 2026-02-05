@@ -45,12 +45,12 @@ export default clerkMiddleware(async (auth, request) => {
     request.headers.get('user-agent')?.includes('Stripe');
 
   // Geo-blocking
-  if (!isWebhook && !isBlockedPage && !isClerkService && !isStripeService) {
-    const { country } = geolocation(request);
-    if (country && !allowedCountries.includes(country)) {
-      return NextResponse.redirect(new URL('/blocked', request.url));
-    }
-  }
+  // if (!isWebhook && !isBlockedPage && !isClerkService && !isStripeService) {
+  //   const { country } = geolocation(request);
+  //   if (country && !allowedCountries.includes(country)) {
+  //     return NextResponse.redirect(new URL('/blocked', request.url));
+  //   }
+  // }
 
   // Get auth status
   const { userId } = await auth();
