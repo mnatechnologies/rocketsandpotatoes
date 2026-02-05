@@ -17,7 +17,7 @@ const logger = createLogger('CHECKOUT_PAGE');
 export default function CheckoutPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const { formatPrice, currency, convertPrice } = useCurrency();
+  const { formatPrice, currency, exchangeRate } = useCurrency();
 
   const { getLockedPriceForProduct, isTimerExpired, timerRemaining, cart, customerId, isLoading: cartLoading, sessionId } = useCart();
   const [timeDisplay, setTimeDisplay] = useState(formatRemainingTime());
@@ -52,8 +52,8 @@ export default function CheckoutPage() {
     if (currency === 'AUD') {
       return getTotalAmount();
     }
-    // If in USD, convert to AUD for compliance display (approx rate)
-    return convertPrice(getTotalAmount());
+    // If in USD, convert back to AUD by multiplying by the USD→AUD rate
+    return getTotalAmount() * exchangeRate;
   };
 
   const getMainProduct = (): Product | null => {

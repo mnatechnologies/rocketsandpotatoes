@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const idsParam = searchParams.get('ids');
     const productIds: string[] = idsParam ? idsParam.split(',') : [];
     const supabase = getSupabase();
-    const currency = searchParams.get('currency') || 'USD';
+    const currency = searchParams.get('currency') || 'AUD';
 
 
     let query = supabase
@@ -90,10 +90,10 @@ export async function GET(request: NextRequest) {
         weight: product.weight,
         purity: product.purity,
         image_url: fullImageUrl,
-        // ✅ Only calculated price in both currencies
-        calculated_price: calculatedPrice * fxRate,
-        price_usd: calculatedPrice,
-        price_aud: calculatedPrice * fxRate,
+        // ✅ Prices from calculateBulkPricing are now AUD
+        calculated_price: calculatedPrice,
+        price_usd: calculatedPrice / fxRate,
+        price_aud: calculatedPrice,
         currency: currency,
         fx_rate: fxRate,
       };
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase();
-    const { sessionId, customerId, products, currency = "USD" } = await request.json();
+    const { sessionId, customerId, products, currency = "AUD" } = await request.json();
 
     logger.log('POST /api/products/pricing called:', { sessionId, currency, productCount: products?.length });
 
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ Calculate live prices in USD (no fallback!)
+    // ✅ Calculate live prices in AUD (no fallback!)
     const priceMap = await calculateBulkPricing(dbProducts);
 
     const { data: existingLocks } = await supabase
@@ -195,14 +195,14 @@ export async function POST(request: NextRequest) {
 
     // ✅ Create new locks with BOTH currencies (single source of truth)
     const locksToInsert = dbProducts.map((product) => {
-      const priceUSD = priceMap.get(product.id);
+      const priceAUD = priceMap.get(product.id);
 
       // ❌ NO FALLBACK - if no live price, we can't lock
-      if (!priceUSD) {
+      if (!priceAUD) {
         throw new Error(`Unable to calculate price for product ${product.id} (${product.name})`);
       }
 
-      const priceAUD = priceUSD * fxRate;
+      const priceUSD = priceAUD / fxRate;
 
       return {
         session_id: sessionId,
@@ -241,16 +241,18 @@ export async function POST(request: NextRequest) {
 
     // ✅ Return locked prices in user's selected currency
     const lockedPrices = dbProducts.map((product) => {
-      const priceUSD = priceMap.get(product.id);
-      if (!priceUSD) {
+      const priceAUD = priceMap.get(product.id);
+      if (!priceAUD) {
         throw new Error(`Missing price for product ${product.id}`);
       }
 
+      const priceUSD = priceAUD / fxRate;
+
       return {
         productId: product.id,
-        price: currency === 'AUD' ? priceUSD * fxRate : priceUSD,
+        price: currency === 'AUD' ? priceAUD : priceUSD,
         priceUSD: priceUSD,
-        priceAUD: priceUSD * fxRate,
+        priceAUD: priceAUD,
         currency: currency,
       };
     });

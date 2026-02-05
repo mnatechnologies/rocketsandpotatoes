@@ -73,7 +73,7 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
 
       // Fetch both metal prices and pricing config in parallel
       const [pricesResponse, configResponse] = await Promise.all([
-        fetch('/api/metals?baseCurrency=USD'),
+        fetch('/api/metals?baseCurrency=AUD'),
         fetch('/api/admin/pricing')
       ]);
 

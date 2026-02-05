@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         }
     );
   
-  const { customerId, amount, currency = 'USD', productDetails, cartItems, sessionId } = await (req as any).json();
+  const { customerId, amount, currency = 'AUD', productDetails, cartItems, sessionId } = await (req as any).json();
 
   // 🚀 COMING SOON: Block all checkout attempts gracefully
   // TODO: Remove this IF block when ready to launch

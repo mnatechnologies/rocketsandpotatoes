@@ -84,7 +84,7 @@ export function SourceOfFundsForm({
 
       <div className="bg-primary/10 border border-primary/30 rounded p-3 mb-4">
         <p className="text-sm text-primary-foreground">
-          <strong>Transaction Amount:</strong> ${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+          <strong>Transaction Amount:</strong> ${amount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} {currency}
         </p>
       </div>
 

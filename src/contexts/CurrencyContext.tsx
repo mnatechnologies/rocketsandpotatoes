@@ -13,8 +13,8 @@ interface CurrencyContextType {
   setCurrency: (currency: Currency) => void;
   exchangeRate: number;
   isLoadingRate: boolean;
-  formatPrice: (usdPrice: number) => string;
-  convertPrice: (usdPrice: number) => number;
+  formatPrice: (audPrice: number) => string;
+  convertPrice: (audPrice: number) => number;
   fxRate: number;
   fxTimestamp: Date | null;
   isLoading: boolean;
@@ -30,21 +30,14 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [fxTimestamp, setFxTimestamp] = useState<Date | null>(null);
 
 
-  // Fetch exchange rate when currency changes
+  // Always fetch USD→AUD rate on mount (needed for USD conversion)
   useEffect(() => {
     const fetchRate = async () => {
-      if (currency === 'USD') {
-        setExchangeRate(1);
-        setFxTimestamp(new Date());
-        return;
-      }
-
       setIsLoadingRate(true);
       try {
-        logger.log(`Fetching exchange rate: USD → ${currency}`);
+        logger.log('Fetching exchange rate: USD → AUD');
 
-        // Call our API route instead of the metals API directly
-        const response = await fetch(`/api/fx-rate?from=USD&to=${currency}`);
+        const response = await fetch('/api/fx-rate?from=USD&to=AUD');
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${await response.text()}`);
@@ -56,13 +49,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
           throw new Error(data.error || 'Failed to fetch exchange rate');
         }
 
-        logger.log(`✓ Exchange rate USD/${currency}: ${data.rate.toFixed(4)}`);
+        logger.log(`✓ Exchange rate USD/AUD: ${data.rate.toFixed(4)}`);
         setExchangeRate(data.rate);
         setFxTimestamp(new Date(data.timestamp));
       } catch (error) {
         logger.error('Failed to fetch FX rate:', error);
-        // API and database both failed - use last known rate or 1.52 as reasonable default
-        const fallbackRate = currency === 'AUD' ? (exchangeRate !== 1.57 ? exchangeRate : 1.52) : 1;
+        const fallbackRate = exchangeRate !== 1 ? exchangeRate : 1.52;
         logger.warn(`Using fallback rate: ${fallbackRate} (last known: ${exchangeRate})`);
         setExchangeRate(fallbackRate);
         setFxTimestamp(new Date());
@@ -72,25 +64,22 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchRate();
-  }, [currency]);
+  }, []);
 
   const convertPrice = useCallback(
-    (usdPrice: number): number => {
-      return usdPrice * exchangeRate;
-    },
-    [exchangeRate]
-  );
-
-  const reverseConvertPrice = useCallback(
     (audPrice: number): number => {
-      return audPrice * exchangeRate;
+      if (currency === 'AUD') {
+        return audPrice;
+      }
+      // Convert AUD to USD by dividing by the USD→AUD rate
+      return audPrice / exchangeRate;
     },
-    [exchangeRate]
+    [currency, exchangeRate]
   );
 
   const formatPrice = useCallback(
-    (usdPrice: number): string => {
-      const convertedPrice = convertPrice(usdPrice);
+    (audPrice: number): string => {
+      const convertedPrice = convertPrice(audPrice);
       return `$${convertedPrice.toLocaleString('en-AU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,

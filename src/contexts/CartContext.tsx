@@ -337,7 +337,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       return total + price * item.quantity;
     }, 0);
-  }, [cart]);
+  }, [cart, currency]);
 
   const getCartCount = useCallback(() => {
     return cart.reduce((count, item) => count + item.quantity, 0);

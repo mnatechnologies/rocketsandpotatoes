@@ -188,8 +188,9 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   useEffect(() => {
     const checkComplianceStatus = async () => {
     
-      // Check EDD status for $50K+ AUD
-      if (finalAmount >= EDD_THRESHOLD) {
+      // Check EDD status for $50K+ AUD (convert to AUD if user is viewing in USD)
+      const amountInAUD = currency === 'AUD' ? finalAmount : finalAmount * exchangeRate;
+      if (amountInAUD >= EDD_THRESHOLD) {
         try {
           const response = await fetch(`/api/customer/enhanced-dd?customerId=${customerId}`);
           const result = await response.json();

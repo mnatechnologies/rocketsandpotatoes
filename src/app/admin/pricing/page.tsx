@@ -21,7 +21,7 @@ export default function AdminPricingPage() {
 
 
   // Form state
-  const [markupPercentage, setMarkupPercentage] = useState<number>(5);
+  const [markupPercentage, setMarkupPercentage] = useState<number>(10);
   const [defaultBaseFee, setDefaultBaseFee] = useState<number>(10);
   const [brandFees, setBrandFees] = useState<Record<string, number>>({});
 

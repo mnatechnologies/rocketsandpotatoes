@@ -28,13 +28,13 @@ function getMarketStatus() {
 
 export default function PriceTicker() {
   const { prices: contextPrices, isLoading, lastUpdated } = useMetalPrices();
-  const { currency, exchangeRate } = useCurrency();
+  const { currency, exchangeRate, convertPrice } = useCurrency();
   const [marketStatus, setMarketStatus] = useState(getMarketStatus());
   const [nextRefreshCountdown, setNextRefreshCountdown] = useState('');
 
   const prices: TickerPrice[] = contextPrices.map((quote) => {
     const metalInfo = getMetalInfo(quote.symbol as MetalSymbol);
-    const priceInCurrency = currency === 'AUD' ? quote.price * exchangeRate : quote.price;
+    const priceInCurrency = convertPrice(quote.price);
     return {
       metal: metalInfo.label,
       symbol: quote.symbol as MetalSymbol,

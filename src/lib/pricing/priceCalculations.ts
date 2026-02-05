@@ -141,7 +141,7 @@ export async function calculateBulkPricing(
 
   // ⚡ FETCH ONCE for all metals
   const quotes = await fetchMetalsQuotes({
-    baseCurrency: 'USD',
+    baseCurrency: 'AUD',
     symbols: uniqueMetals
   });
 

@@ -89,7 +89,7 @@ interface FetchMetalsQuotesOptions {
 export const fetchMetalsQuotes = async (
   options?: FetchMetalsQuotesOptions
 ): Promise<metalsQuote[]> => {
-  const { baseCurrency = "USD", symbols = METALS.map(m => m.symbol) } = options ?? {};
+  const { baseCurrency = "AUD", symbols = METALS.map(m => m.symbol) } = options ?? {};
   const apiKey = process.env.METALPRICEAPI_API_KEY;
 
   if (!apiKey) {

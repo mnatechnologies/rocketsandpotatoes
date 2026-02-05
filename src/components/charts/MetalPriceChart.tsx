@@ -12,10 +12,19 @@ import {
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { useTheme } from '@/contexts/Themecontext';
+import { useMetalPrices } from '@/contexts/MetalPricesContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const PERIODS = ['1W', '1M', '3M', '6M', '1Y', '5Y'];
 const METALS = ['Gold', 'Silver', 'Platinum', 'Palladium'];
 const CURRENCIES = ['AUD', 'USD'];
+
+const METAL_SYMBOL_MAP: Record<string, string> = {
+  Gold: 'XAU',
+  Silver: 'XAG',
+  Platinum: 'XPT',
+  Palladium: 'XPD',
+};
 
 const METAL_COLORS: Record<string, string> = {
   Gold: '#D4AF37',       // Metallic Gold
@@ -26,6 +35,8 @@ const METAL_COLORS: Record<string, string> = {
 
 export default function MetalPriceChart() {
   const { resolvedTheme } = useTheme();
+  const { prices: contextPrices } = useMetalPrices();
+  const { exchangeRate } = useCurrency();
   const [metal, setMetal] = useState('Gold');
   const [currency, setCurrency] = useState('AUD');
   const [period, setPeriod] = useState('1M');
@@ -59,7 +70,13 @@ export default function MetalPriceChart() {
     fetchData();
   }, [metal, currency, period]);
 
-  const latestPrice = data.length > 0 ? data[data.length - 1].price : 0;
+  // Use real-time price from MetalPricesContext (same source as ticker) for the header
+  const metalSymbol = METAL_SYMBOL_MAP[metal];
+  const contextPrice = contextPrices.find(p => p.symbol === metalSymbol)?.price;
+  // Context prices are always AUD — convert if chart currency is USD
+  const latestPrice = contextPrice
+    ? (currency === 'AUD' ? contextPrice : contextPrice / exchangeRate)
+    : (data.length > 0 ? data[data.length - 1].price : 0);
   const startPrice = data.length > 0 ? data[0].price : 0;
   const change = latestPrice - startPrice;
   const percentChange = startPrice ? (change / startPrice) * 100 : 0;
