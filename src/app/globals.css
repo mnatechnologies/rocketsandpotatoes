@@ -211,6 +211,12 @@
   .animate-fade-in {
     animation: fade-in 0.4s ease-out forwards;
   }
+
+  /* Hero carousel - dot progress indicator */
+  @keyframes hero-dot-progress {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
 }
 
 /* Utility classes */
