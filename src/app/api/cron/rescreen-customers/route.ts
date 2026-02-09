@@ -8,10 +8,17 @@ import { createLogger } from '@/lib/utils/logger';
 const logger = createLogger('CRON_RESCREEN_CUSTOMERS');
 
 export async function GET(req: NextRequest) {
-  // Security check for cron jobs
+  // Security check for cron jobs — always require auth
   const authHeader = req.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  const isVercelCron = req.headers.get('x-vercel-cron') === '1';
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
     logger.warn('Unauthorized cron job access attempt.');
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+  if (!cronSecret && !isVercelCron && process.env.NODE_ENV === 'production') {
+    logger.warn('Cron endpoint called without authorization in production');
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 

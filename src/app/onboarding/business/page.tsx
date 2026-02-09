@@ -291,9 +291,9 @@ export default function BusinessOnboardingPage() {
                       </div>
                     </div>
                     <div className={`px-3 py-1 rounded-full text-sm ${
-                      owner.verification_status === 'verified' ? 'bg-green-100 text-green-800' :
-                        owner.verification_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
+                      owner.verification_status === 'verified' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                        owner.verification_status === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
+                          'bg-muted text-muted-foreground'
                     }`}>
                       {owner.verification_status}
                     </div>
@@ -355,13 +355,13 @@ export default function BusinessOnboardingPage() {
                     </div>
 
                     {owner.verification_status === 'verified' && (
-                      <div className="flex items-center gap-2 text-green-600">
+                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                         <Check className="w-5 h-5" />
                         Verified
                       </div>
                     )}
                     {owner.verification_status === 'pending' && (
-                      <div className="text-yellow-600">
+                      <div className="text-yellow-600 dark:text-yellow-400">
                         {owner.verification_level === 'stripe_identity'
                           ? 'Stripe verification in progress'
                           : 'Documents under review'}
@@ -397,9 +397,9 @@ export default function BusinessOnboardingPage() {
 
             {allOwnersVerified && (
               <div className="mt-8">
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-                  <div className="font-semibold text-green-800">All owners verified!</div>
-                  <p className="text-sm text-green-700">
+                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg mb-4">
+                  <div className="font-semibold text-green-600 dark:text-green-400">All owners verified!</div>
+                  <p className="text-sm text-green-600/80 dark:text-green-400/80">
                     Your business account is ready. You can now start purchasing.
                   </p>
                 </div>

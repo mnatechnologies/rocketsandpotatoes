@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from "@supabase/supabase-js";
 import { createLogger}  from "@/lib/utils/logger";
+import { auth } from '@clerk/nextjs/server';
 
 const logger = createLogger('DOCUMENT_UPLOAD_API')
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const formData = await (req as any).formData();
 
   const supabase = createClient(
@@ -32,6 +38,17 @@ export async function POST(req: NextRequest) {
 
   if (!file || !customerId || !documentType) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Verify customer belongs to authenticated user
+  const { data: customerOwner } = await supabase
+    .from('customers')
+    .select('clerk_user_id')
+    .eq('id', customerId)
+    .single();
+
+  if (!customerOwner || customerOwner.clerk_user_id !== userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   // Validate certification if claimed
@@ -92,8 +109,7 @@ export async function POST(req: NextRequest) {
       logger.error('Database insert error:', docError);
       return NextResponse.json({
         error: `Database error: ${docError?.message || 'Failed to store document metadata'}`,
-        details: docError
-      }, { status: 500 });
+        }, { status: 500 });
     }
 
     logger.log('✅ Document metadata saved:', docData.id);
@@ -135,8 +151,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     logger.error('Unexpected error during upload:', error);
     return NextResponse.json({
-      error: 'Internal server error during document upload',
-      details: error.message
+      error: 'Internal server error during document upload'
     }, { status: 500 });
   }
 }

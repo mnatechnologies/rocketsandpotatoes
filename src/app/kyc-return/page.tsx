@@ -79,15 +79,15 @@ function KYCReturnContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg text-center">
+      <div className="max-w-md mx-auto p-8 bg-card rounded-lg shadow-card text-center">
         {status === 'processing' && (
           <>
             <div className="text-6xl mb-4">⏳</div>
-            <h1 className="text-2xl font-bold mb-4">Processing Verification</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold text-foreground mb-4">Processing Verification</h1>
+            <p className="text-muted-foreground mb-4">
               Please wait while we confirm your identity verification...
             </p>
-            <div className="animate-pulse text-sm text-gray-500">
+            <div className="animate-pulse text-sm text-muted-foreground">
               This usually takes just a few seconds
             </div>
           </>
@@ -96,35 +96,35 @@ function KYCReturnContent() {
         {status === 'verified' && (
           <>
             <div className="text-6xl mb-4">✓</div>
-            <h1 className="text-2xl font-bold text-green-600 mb-4">Verification Complete!</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">Verification Complete!</h1>
+            <p className="text-muted-foreground mb-4">
               Your identity has been verified successfully.
             </p>
-            <p className="text-sm text-gray-500">Redirecting to checkout...</p>
+            <p className="text-sm text-muted-foreground">Redirecting to checkout...</p>
           </>
         )}
 
         {status === 'review' && (
           <>
             <div className="text-6xl mb-4">🔍</div>
-            <h1 className="text-2xl font-bold text-yellow-600 mb-4">Under Review</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-4">Under Review</h1>
+            <p className="text-muted-foreground mb-4">
               Your verification requires additional review. We&#39;ll email you within 1-2 business days.
             </p>
-            <p className="text-sm text-gray-500">Redirecting...</p>
+            <p className="text-sm text-muted-foreground">Redirecting...</p>
           </>
         )}
 
         {status === 'timeout' && (
           <>
             <div className="text-6xl mb-4">⏱️</div>
-            <h1 className="text-2xl font-bold text-orange-600 mb-4">Processing Taking Longer</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-400 mb-4">Processing Taking Longer</h1>
+            <p className="text-muted-foreground mb-4">
               Your verification is still being processed. You can continue to checkout - We&#39;ll update your status shortly.
             </p>
             <button
               onClick={() => router.push('/checkout')}
-              className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="mt-4 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
             >
               Continue to Checkout
             </button>
@@ -134,13 +134,13 @@ function KYCReturnContent() {
         {status === 'error' && (
           <>
             <div className="text-6xl mb-4">⚠️</div>
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Connection Error</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold text-destructive mb-4">Connection Error</h1>
+            <p className="text-muted-foreground mb-4">
               We couldn&#39;t verify your status. Please try refreshing or continue to checkout.
             </p>
             <button
               onClick={() => router.push('/checkout')}
-              className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="mt-4 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
             >
               Continue to Checkout
             </button>

@@ -55,14 +55,7 @@ export async function GET(
       .eq('id', orderId)
       .single();
 
-    const requirements = await getComplianceRequirements(
-      order.customer_id,
-      order.amount_aud || order.amount
-    );
-
-    
-
-    if (orderError) {
+    if (orderError || !order) {
       logger.error('Error fetching order:', orderError);
       return NextResponse.json(
         { error: 'Order not found' },
@@ -70,13 +63,10 @@ export async function GET(
       );
     }
 
-    if (!order) {
-      logger.log('Order not found:', orderId);
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
-    }
+    const requirements = await getComplianceRequirements(
+      order.customer_id,
+      order.amount_aud || order.amount
+    );
 
     // Verify the order belongs to the authenticated user
     if (order.customers.clerk_user_id !== userId) {

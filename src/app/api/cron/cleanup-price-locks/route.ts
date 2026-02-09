@@ -1,10 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('CLEANUP_PRICE_LOCKS');
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Verify cron authorization
+  const authHeader = req.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  const isVercelCron = req.headers.get('x-vercel-cron') === '1';
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!cronSecret && !isVercelCron && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -80,7 +80,7 @@ export default function MetalsPricing() {
 
   if (error) {
     return (
-      <div className="bg-black text-white p-4 md:p-8">
+      <div className="bg-background text-foreground p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-900/20 border border-red-500 rounded-lg p-6 text-center">
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Prices</h2>
@@ -98,7 +98,7 @@ export default function MetalsPricing() {
   }
 
   return (
-    <div id= 'pricing' className="bg-black text-white p-4 md:p-8">
+    <div id= 'pricing' className="bg-background text-foreground p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
@@ -112,7 +112,7 @@ export default function MetalsPricing() {
               </span>
             )}
           </div>
-          <p suppressHydrationWarning={true} className="text-gray-500 text-sm">
+          <p suppressHydrationWarning={true} className="text-muted-foreground text-sm">
             {isLoading ? (
               "Loading prices..."
             ) : lastUpdated ? (
@@ -132,21 +132,21 @@ export default function MetalsPricing() {
           {prices.map((metal) => (
             <div
               key={metal.metal}
-              className={`bg-zinc-900 rounded-lg p-6 border border-zinc-800 transition-opacity ${
+              className={`bg-card rounded-lg p-6 border border-border transition-opacity ${
                 isLoading ? 'opacity-50' : 'opacity-100'
               }`}
             >
               {/* Metal Name and Unit */}
               <div className="flex items-start justify-between mb-6">
                 <h2 className="text-lg font-semibold">{metal.metal}</h2>
-                <span className="text-xs text-gray-500">/oz</span>
+                <span className="text-xs text-muted-foreground">/oz</span>
               </div>
 
               {/* Price */}
               <div className="mb-4">
                 <p className="text-3xl font-bold">
                   {isLoading && metal.price === 0 ? (
-                    <span className="text-gray-600">Loading...</span>
+                    <span className="text-muted-foreground">Loading...</span>
                   ) : (
                     formatPrice(metal.price)
                   )}

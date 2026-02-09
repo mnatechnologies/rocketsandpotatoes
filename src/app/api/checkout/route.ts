@@ -11,6 +11,7 @@ import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
 import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 import {sendTransactionFlaggedAlert} from "@/lib/email/sendComplianceAlert";
 import { createEDDInvestigation } from '@/lib/compliance/edd-service';
+import { auth } from '@clerk/nextjs/server';
 
 
 
@@ -20,6 +21,11 @@ const logger = createLogger('CHECKOUT_API');
 
 export async function POST(req: NextRequest) {
   logger.log('Checkout validation request received');
+
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     //subject to removal once I actually get createServerSupabase workin with clerk lmao
     const supabase = createClient(
@@ -199,11 +205,12 @@ export async function POST(req: NextRequest) {
     }
   } catch (error) {
     logger.error('Sanctions screening failed:', error);
-    // FAIL SAFE - if screening fails, require manual review
+    // FAIL SAFE - if screening fails, block checkout and require manual review
     return Response.json({
       status: 'requires_review',
       reason: 'screening_error',
-    });
+      message: 'Unable to complete compliance screening. Please try again later or contact support.',
+    }, { status: 503 });
   } finally {
     logger.log('screening_test', customerId)
   }
@@ -385,10 +392,13 @@ export async function POST(req: NextRequest) {
 
       if (result.success) {
         logger.log('✅ EDD investigation created:', result.investigation.investigation_number);
-        logger.log('✅ EDD investigation created - allowing checkout to proceed to show EDD form');
       } else {
         logger.error('Failed to create EDD investigation:', result.error);
-        // Continue anyway - don't block the transaction due to investigation creation failure
+        return NextResponse.json({
+          status: 'error',
+          reason: 'edd_creation_failed',
+          message: 'Unable to process compliance requirements. Please try again or contact support.',
+        }, { status: 503 });
       }
     }
 
@@ -441,7 +451,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Check Source of Funds for $10K+ transactions (after KYC, before EDD)
-  if (requirements.requiresTTR) {
+  if (requirements.requiresTTR && (!customer.source_of_funds || !customer.occupation)) {
     logger.log('Source of Funds required but not provided');
     return NextResponse.json({
       status: 'sof_required',
@@ -653,8 +663,7 @@ export async function POST(req: NextRequest) {
       logger.error('Failed to create flagged transaction:', flagError);
       return NextResponse.json(
           {
-            error: 'Failed to process transaction. Please contact support.',
-            details: flagError?.message || 'Unknown error'
+            error: 'Failed to process transaction. Please contact support.'
           },
           { status: 500 }
       );

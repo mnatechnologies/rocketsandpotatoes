@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
+import { auth } from '@clerk/nextjs/server';
 
 const logger = createLogger('ENHANCED_DD');
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -33,6 +39,17 @@ export async function POST(req: NextRequest) {
         { error: 'Customer ID, source of wealth, transaction purpose, and expected frequency are required' },
         { status: 400 }
       );
+    }
+
+    // Verify customer belongs to authenticated user
+    const { data: customerOwner } = await supabase
+      .from('customers')
+      .select('clerk_user_id')
+      .eq('id', customerId)
+      .single();
+
+    if (!customerOwner || customerOwner.clerk_user_id !== userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     logger.log('Processing Enhanced DD for customer:', customerId);
@@ -201,6 +218,11 @@ export async function POST(req: NextRequest) {
 
 // GET endpoint to check EDD status for a customer
 export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

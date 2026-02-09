@@ -3,14 +3,19 @@ import {createVerificationSession} from "@/lib/stripe/identity";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {createClient} from "@supabase/supabase-js";
 import { createLogger } from "@/lib/utils/logger";
+import { auth } from '@clerk/nextjs/server';
 
 /* eslint-disable */
 
 const logger = createLogger('KYC_INITIATE_API');
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { customerId } = await (req as any).json();
-    //subject to removal once I actually get createServerSupabase workin with clerk lmao
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,6 +27,17 @@ export async function POST(req: NextRequest) {
         },
       }
   );
+
+  // Verify customer belongs to authenticated user
+  const { data: customerOwner } = await supabase
+    .from('customers')
+    .select('clerk_user_id')
+    .eq('id', customerId)
+    .single();
+
+  if (!customerOwner || customerOwner.clerk_user_id !== userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
 
 
   const session = await createVerificationSession(customerId);

@@ -285,9 +285,9 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   if (step === 'review') {
     if (validationResult?.reason === "screening error") {
       return (
-        <div className="max-w-md mx-auto p-6 bg-red-50 rounded-lg border border-red-200">
-          <h2 className="text-xl font-bold text-red-800 mb-4">Transaction Cannot Proceed</h2>
-          <p className="text-red-700">
+        <div className="max-w-md mx-auto p-6 bg-red-500/10 rounded-lg border border-red-500/20">
+          <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">Transaction Cannot Proceed</h2>
+          <p className="text-red-600 dark:text-red-400">
             {`Your transaction requires additional verification for AUSTRAC Compliance purposes. Our compliance team will contact you within 1-2 business days. Please contact support if you need help with something urgent. We apologize for the inconvenience.`}
           </p>
         </div>
@@ -305,21 +305,21 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     if (needsEDD || needsSOF) {
       return (
         <div className="max-w-2xl mx-auto p-6 space-y-6">
-          <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+          <div className="bg-blue-500/10 rounded-lg border border-blue-500/20 p-6">
             <div className="text-center mb-4">
               <div className="text-5xl mb-2">📋</div>
-              <h2 className="text-2xl font-bold text-blue-800">Additional Information Required</h2>
+              <h2 className="text-2xl font-bold text-blue-600 dark:text-blue-400">Additional Information Required</h2>
             </div>
 
             <div className="space-y-4">
-              <p className="text-gray-700">
+              <p className="text-foreground/80">
                 This transaction: <strong>${backendAmountAUD.toFixed(2)} AUD</strong>
               </p>
-              <p className="text-gray-700">
+              <p className="text-foreground/80">
                 Your cumulative total {needsEDD ? 'has reached' : 'will be'}: <strong>${validationResult.requirements?.newCumulativeTotal?.toFixed(2)} AUD</strong>
               </p>
               {needsEDD && (
-                  <p className="text-gray-700">
+                  <p className="text-foreground/80">
                     {eddInvestigation?.trigger_reason ? (
                         <>✓ {eddInvestigation.trigger_reason}</>
                     ) : validationResult.requirements?.newCumulativeTotal >= 50000 ? (
@@ -330,11 +330,11 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
                   </p>
               )}
               {needsSOF && (
-                <p className="text-gray-700">
+                <p className="text-foreground/80">
                   ✓ Source of funds verification is required for transactions over <strong>$10,000 AUD</strong>
                 </p>
               )}
-              <p className="text-gray-700 font-semibold">
+              <p className="text-foreground/80 font-semibold">
                 Please complete the {needsEDD && needsSOF ? 'forms' : 'form'} below to continue.
               </p>
             </div>
@@ -342,8 +342,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
           {/* Source of Funds Form - Show first as it's simpler */}
           {needsSOF && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
+            <div className="bg-card rounded-lg shadow-card p-6">
+              <h3 className="text-xl font-bold text-foreground mb-4">
                 1. Source of Funds Declaration
               </h3>
               <SourceOfFundsForm
@@ -362,8 +362,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
           {/* Enhanced Due Diligence Form */}
           {needsEDD && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
+            <div className="bg-card rounded-lg shadow-card p-6">
+              <h3 className="text-xl font-bold text-foreground mb-4">
                 {needsSOF ? '2. Enhanced Due Diligence' : 'Enhanced Due Diligence'}
               </h3>
               <EnhancedDueDiligenceForm
@@ -389,28 +389,28 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     if (validationResult?.flags?.highValue && !needsEDD) reasons.push('High-value transaction requiring review');
 
     return (
-      <div className="max-w-md mx-auto p-6 bg-yellow-50 rounded-lg border border-yellow-200">
+      <div className="max-w-md mx-auto p-6 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
         <div className="text-center mb-4">
           <div className="text-5xl mb-2">⏳</div>
-          <h2 className="text-2xl font-bold text-yellow-800">Transaction Under Review</h2>
+          <h2 className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">Transaction Under Review</h2>
         </div>
 
         <div className="space-y-4">
-          <p className="text-gray-700">
-            {/* ✅ Use backend-calculated AUD amount (no double conversion) */}
+          <p className="text-foreground/80">
+            {/* Use backend-calculated AUD amount (no double conversion) */}
             Your transaction of <strong>${backendAmountAUD.toFixed(2)} AUD</strong> has been flagged for manual compliance review.
           </p>
 
           {validationResult?.requirements?.newCumulativeTotal && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Cumulative total: <strong>${validationResult.requirements.newCumulativeTotal.toFixed(2)} AUD</strong>
             </p>
           )}
 
           {reasons.length > 0 && (
-            <div className="bg-white p-4 rounded border border-yellow-300">
-              <p className="font-semibold text-gray-800 mb-2">Review Reasons:</p>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+            <div className="bg-card p-4 rounded-lg border border-yellow-500/30">
+              <p className="font-semibold text-foreground mb-2">Review Reasons:</p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-foreground/80">
                 {reasons.map((reason, index) => (
                   <li key={index}>{reason}</li>
                 ))}
@@ -419,24 +419,24 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
           )}
 
           {validationResult?.riskScore && (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               <p>Risk Assessment: <span className="font-semibold capitalize">{validationResult.riskLevel}</span></p>
               <p>Risk Score: {validationResult.riskScore}/100</p>
             </div>
           )}
 
-          <div className="bg-blue-50 p-4 rounded border border-blue-200">
-            <p className="text-sm text-blue-800">
+          <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/20">
+            <p className="text-sm text-blue-600 dark:text-blue-400">
               <strong>What happens next?</strong>
             </p>
-            <ul className="text-sm text-blue-700 mt-2 space-y-1">
+            <ul className="text-sm text-blue-600 dark:text-blue-400 mt-2 space-y-1">
               <li>• Our compliance team will review your transaction within 1-2 business days</li>
               <li>• You&apos;ll receive an email notification once the review is complete</li>
               <li>• No payment has been processed yet</li>
             </ul>
           </div>
 
-          <p className="text-xs text-gray-500 text-center">
+          <p className="text-xs text-muted-foreground text-center">
             This review is a standard compliance procedure required by Australian regulations.
           </p>
         </div>
@@ -448,30 +448,30 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
   if (step === 'business_verification') {
     return (
-      <div className="max-w-md mx-auto p-6 bg-yellow-50 rounded-lg border border-yellow-200">
+      <div className="max-w-md mx-auto p-6 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
         <div className="text-center mb-4">
           <div className="text-5xl mb-2">🏢</div>
-          <h2 className="text-xl font-bold text-yellow-800 mb-2">Business Verification Required</h2>
+          <h2 className="text-xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">Business Verification Required</h2>
         </div>
 
-        <div className="space-y-4 text-yellow-800">
+        <div className="space-y-4 text-yellow-600 dark:text-yellow-400">
           <p className="font-semibold">
             Your business account needs to be verified before you can make purchases.
           </p>
 
-          <div className="bg-white rounded-lg p-4 text-sm text-gray-700">
+          <div className="bg-card rounded-lg p-4 text-sm text-foreground/80">
             <p className="font-semibold mb-2">What's needed:</p>
             <ul className="space-y-2">
               <li className="flex items-start gap-2">
-                <span className="text-yellow-600">•</span>
+                <span className="text-yellow-600 dark:text-yellow-400">•</span>
                 <span>ABN verification</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-yellow-600">•</span>
+                <span className="text-yellow-600 dark:text-yellow-400">•</span>
                 <span>Beneficial owner identification (25%+ ownership)</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-yellow-600">•</span>
+                <span className="text-yellow-600 dark:text-yellow-400">•</span>
                 <span>Identity verification for all beneficial owners</span>
               </li>
             </ul>
@@ -483,12 +483,12 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
           <button
             onClick={() => window.location.href = '/onboarding/business'}
-            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Complete Business Verification
           </button>
 
-          <p className="text-xs text-center text-gray-600">
+          <p className="text-xs text-center text-muted-foreground">
             Estimated time: 5-10 minutes
           </p>
         </div>
@@ -579,12 +579,12 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     // Show account blocked message
     if (blockReason === 'account_blocked') {
       return (
-        <div className="max-w-md mx-auto p-6 bg-red-50 rounded-lg border border-red-200">
-          <h2 className="text-xl font-bold text-red-800 mb-4">Account Blocked</h2>
-          <p className="text-red-700 mb-4">
+        <div className="max-w-md mx-auto p-6 bg-red-500/10 rounded-lg border border-red-500/20">
+          <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">Account Blocked</h2>
+          <p className="text-red-600 dark:text-red-400 mb-4">
             {validationResult?.message || 'Your account has been blocked. Please contact our compliance team for further information.'}
           </p>
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-red-600/80 dark:text-red-400/80">
             If you believe this is an error, please contact support.
           </p>
         </div>
@@ -594,18 +594,18 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     // Show pending review message
     if (blockReason === 'pending_review') {
       return (
-        <div className="max-w-md mx-auto p-6 bg-amber-50 rounded-lg border border-amber-200">
-          <h2 className="text-xl font-bold text-amber-800 mb-4">Transaction Under Review</h2>
-          <p className="text-amber-700 mb-4">
+        <div className="max-w-md mx-auto p-6 bg-amber-500/10 rounded-lg border border-amber-500/20">
+          <h2 className="text-xl font-bold text-amber-600 dark:text-amber-400 mb-4">Transaction Under Review</h2>
+          <p className="text-amber-600 dark:text-amber-400 mb-4">
             {validationResult?.message || 'You have a transaction pending review. Our compliance team will contact you once the review is complete.'}
           </p>
           {validationResult?.existingTransaction && (
-            <div className="bg-amber-100 rounded p-3 text-sm text-amber-800">
+            <div className="bg-amber-500/10 rounded-lg p-3 text-sm text-amber-600 dark:text-amber-400">
               <p><strong>Transaction ID:</strong> {validationResult.existingTransaction.id}</p>
               <p className="mt-1"><strong>Submitted:</strong> {new Date(validationResult.existingTransaction.createdAt).toLocaleString()}</p>
             </div>
           )}
-          <p className="text-sm text-amber-600 mt-4">
+          <p className="text-sm text-amber-600/80 dark:text-amber-400/80 mt-4">
             Please do not attempt additional transactions while your current transaction is under review.
           </p>
         </div>
@@ -614,9 +614,9 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
 
     // Generic blocked message (fallback)
     return (
-      <div className="max-w-md mx-auto p-6 bg-red-50 rounded-lg border border-red-200">
-        <h2 className="text-xl font-bold text-red-800 mb-4">Transaction Cannot Proceed</h2>
-        <p className="text-red-700">
+      <div className="max-w-md mx-auto p-6 bg-red-500/10 rounded-lg border border-red-500/20">
+        <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">Transaction Cannot Proceed</h2>
+        <p className="text-red-600 dark:text-red-400">
           {validationResult?.message || 'Your transaction requires additional verification. Our compliance team will contact you within 1-2 business days.'}
         </p>
       </div>

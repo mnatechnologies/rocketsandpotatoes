@@ -28,23 +28,21 @@ export async function detectStructuring(
   if (!recentTransactions || recentTransactions.length === 0) return false;
 
 
-// to review
-// tx = transaction. getting lazy
-  const suspiciousTransactions = recentTransactions.filter(
-    tx => tx.amount_aud >=4000 && tx.amount_aud <  5000
+  // Check for KYC threshold structuring ($4K-$5K range)
+  const kycStructuring = recentTransactions.filter(
+    tx => tx.amount_aud >= 4000 && tx.amount_aud < 5000
   );
 
-  if (suspiciousTransactions.length >= 3) return true;
+  if (kycStructuring.length >= 3) return true;
 
-  const totalRecent = recentTransactions.reduce((sum, tx) => sum +parseFloat(tx.amount_aud.toString()), 0);
+  const totalRecent = recentTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount_aud.toString()), 0);
 
-  if (totalRecent + currentAmount >= 10000 && suspiciousTransactions.length >= 2) {
-
+  if (totalRecent + currentAmount >= 10000 && kycStructuring.length >= 2) {
     await generateSMR({
       customerId,
       suspicionType: 'structuring',
       indicators: [
-        `${suspiciousTransactions.length} transactions between $4,000-$5,000 in 7 days`,
+        `${kycStructuring.length} transactions between $4,000-$5,000 in 7 days`,
         `Total amount: $${totalRecent.toFixed(2)}`,
       ],
       narrative: 'Customer appears to be structuring transactions to avoid $5,000 KYC threshold',
@@ -52,6 +50,26 @@ export async function detectStructuring(
     });
     return true;
   }
+
+  // Check for TTR threshold structuring ($8K-$10K range)
+  const ttrStructuring = recentTransactions.filter(
+    tx => tx.amount_aud >= 8000 && tx.amount_aud < 10000
+  );
+
+  if (ttrStructuring.length >= 2) {
+    await generateSMR({
+      customerId,
+      suspicionType: 'structuring',
+      indicators: [
+        `${ttrStructuring.length} transactions between $8,000-$10,000 in 7 days`,
+        `Total amount: $${totalRecent.toFixed(2)}`,
+      ],
+      narrative: 'Customer appears to be structuring transactions to avoid $10,000 TTR threshold',
+      transactionAmount: totalRecent + currentAmount,
+    });
+    return true;
+  }
+
   return false;
 }
 

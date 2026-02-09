@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
 import { createLogger } from '@/lib/utils/logger';
+import { auth } from '@clerk/nextjs/server';
 
 const logger = createLogger('SEND_EMAIL_API');
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
 

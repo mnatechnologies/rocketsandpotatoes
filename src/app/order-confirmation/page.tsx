@@ -222,9 +222,9 @@ function OrderConfirmationContent() {
 
         {/* Compliance Notice */}
         {(order.requires_kyc || order.requires_ttr) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-blue-900 mb-2">Compliance Notice</h3>
-            <div className="text-sm text-blue-800 space-y-1">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-6 mb-6">
+            <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">Compliance Notice</h3>
+            <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
               {order.requires_kyc && (
                 <p>✓ Your identity verification is on file (KYC completed)</p>
               )}

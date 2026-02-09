@@ -155,29 +155,29 @@ export default function SMRReportsPage() {
 
   const getSeverityColor = (category: string, daysRemaining: number | null) => {
     if (daysRemaining !== null && daysRemaining <= 1) {
-      return 'bg-red-100 text-red-800 border-red-300';
+      return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30';
     }
     if (category === 'sanctions_match') {
-      return 'bg-red-100 text-red-800 border-red-300';
+      return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30';
     }
     if (category === 'structuring') {
-      return 'bg-orange-100 text-orange-800 border-orange-300';
+      return 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30';
     }
-    return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30';
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400';
       case 'under_review':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
       case 'reported':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/10 text-green-600 dark:text-green-400';
       case 'dismissed':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -485,7 +485,7 @@ export default function SMRReportsPage() {
                 <li>Enter the AUSTRAC reference number and click &quot;Mark as Submitted&quot;</li>
                 <li>If determined to be a false positive, provide a reason and dismiss</li>
               </ol>
-              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+              <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-600 dark:text-yellow-400">
                 <strong>⚠️ Important:</strong> SMRs must be submitted to AUSTRAC within 3 business days of forming a suspicion. 
                 Failure to report may result in regulatory penalties.
               </div>

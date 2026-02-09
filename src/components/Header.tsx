@@ -211,7 +211,7 @@ export default function Header() {
             </div>
 
             {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2">
               <ThemeToggle />
               <CurrencySelector />
               <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>

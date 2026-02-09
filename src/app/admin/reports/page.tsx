@@ -44,14 +44,14 @@ export default function AdminReportsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-8">
+        <div className="border-b border-border mb-8">
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab('compliance')}
               className={`${
                 activeTab === 'compliance'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
             >
               📊 Compliance Report
@@ -61,7 +61,7 @@ export default function AdminReportsPage() {
               className={`${
                 activeTab === 'austrac'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
             >
               📝 AUSTRAC Reports Tracker
@@ -159,16 +159,16 @@ function ComplianceReportTab() {
   return (
     <div>
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-card rounded-lg shadow-card p-6 mb-6">
         <div className="flex items-end gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
               Select Year
             </label>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-md text-foreground"
             >
               {years.map(y => (
                 <option key={y} value={y}>{y}</option>
@@ -197,15 +197,15 @@ function ComplianceReportTab() {
       {reportData && (
         <div className="space-y-6">
           {/* Transaction Metrics */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Transaction Metrics</h3>
+          <div className="bg-card rounded-lg shadow-card p-6">
+            <h3 className="text-xl font-bold text-foreground mb-4">Transaction Metrics</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Total Transactions</div>
+                <div className="text-sm text-muted-foreground">Total Transactions</div>
                 <div className="text-2xl font-bold text-primary">{reportData.transactions.total}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Total Value (AUD)</div>
+                <div className="text-sm text-muted-foreground">Total Value (AUD)</div>
                 <div className="text-2xl font-bold text-primary">
                   ${reportData.transactions.totalValue.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                 </div>
@@ -214,125 +214,125 @@ function ComplianceReportTab() {
           </div>
 
           {/* AUSTRAC Reports */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">AUSTRAC Reports</h3>
+          <div className="bg-card rounded-lg shadow-card p-6">
+            <h3 className="text-xl font-bold text-foreground mb-4">AUSTRAC Reports</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">TTRs Submitted</div>
+                <div className="text-sm text-muted-foreground">TTRs Submitted</div>
                 <div className="text-2xl font-bold text-green-600">{reportData.austracReports.ttrsSubmitted}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">TTRs Pending</div>
+                <div className="text-sm text-muted-foreground">TTRs Pending</div>
                 <div className="text-2xl font-bold text-yellow-600">{reportData.austracReports.ttrsPending}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">SARs Total</div>
+                <div className="text-sm text-muted-foreground">SARs Total</div>
                 <div className="text-2xl font-bold text-orange-600">{reportData.austracReports.sarsTotal}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">SARs Submitted</div>
+                <div className="text-sm text-muted-foreground">SARs Submitted</div>
                 <div className="text-2xl font-bold text-green-600">{reportData.austracReports.sarsSubmitted}</div>
               </div>
             </div>
           </div>
 
           {/* Customer Verification */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Customer Verification</h3>
+          <div className="bg-card rounded-lg shadow-card p-6">
+            <h3 className="text-xl font-bold text-foreground mb-4">Customer Verification</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Total Customers</div>
+                <div className="text-sm text-muted-foreground">Total Customers</div>
                 <div className="text-2xl font-bold text-primary">{reportData.customerVerification.totalCustomers}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Verified</div>
+                <div className="text-sm text-muted-foreground">Verified</div>
                 <div className="text-2xl font-bold text-green-600">{reportData.customerVerification.verifiedCustomers}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Verification Rate</div>
+                <div className="text-sm text-muted-foreground">Verification Rate</div>
                 <div className="text-2xl font-bold text-primary">{reportData.customerVerification.verificationRate}%</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Documents Reviewed</div>
+                <div className="text-sm text-muted-foreground">Documents Reviewed</div>
                 <div className="text-2xl font-bold text-primary">{reportData.customerVerification.documentsReviewed}</div>
               </div>
             </div>
           </div>
 
           {/* Staff Training */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Staff Training</h3>
+          <div className="bg-card rounded-lg shadow-card p-6">
+            <h3 className="text-xl font-bold text-foreground mb-4">Staff Training</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Staff Trained</div>
+                <div className="text-sm text-muted-foreground">Staff Trained</div>
                 <div className="text-2xl font-bold text-primary">{reportData.staffTraining.staffTrained}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Training Sessions Completed</div>
+                <div className="text-sm text-muted-foreground">Training Sessions Completed</div>
                 <div className="text-2xl font-bold text-primary">{reportData.staffTraining.trainingSessionsCompleted}</div>
               </div>
             </div>
           </div>
 
           {/* EDD Investigations */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">EDD Investigations</h3>
+          <div className="bg-card rounded-lg shadow-card p-6">
+            <h3 className="text-xl font-bold text-foreground mb-4">EDD Investigations</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Total Investigations</div>
+                <div className="text-sm text-muted-foreground">Total Investigations</div>
                 <div className="text-2xl font-bold text-primary">{reportData.eddInvestigations.total}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Completed</div>
+                <div className="text-sm text-muted-foreground">Completed</div>
                 <div className="text-2xl font-bold text-green-600">{reportData.eddInvestigations.completed}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Open</div>
+                <div className="text-sm text-muted-foreground">Open</div>
                 <div className="text-2xl font-bold text-blue-600">{reportData.eddInvestigations.open}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Awaiting Info</div>
+                <div className="text-sm text-muted-foreground">Awaiting Info</div>
                 <div className="text-2xl font-bold text-yellow-600">{reportData.eddInvestigations.awaitingInfo}</div>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Escalated</div>
+                <div className="text-sm text-muted-foreground">Escalated</div>
                 <div className="text-2xl font-bold text-red-600">{reportData.eddInvestigations.escalated}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Approved</div>
+                <div className="text-sm text-muted-foreground">Approved</div>
                 <div className="text-2xl font-bold text-green-600">{reportData.eddInvestigations.approved}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Rejected</div>
-                <div className="text-2xl font-bold text-gray-600">{reportData.eddInvestigations.rejected}</div>
+                <div className="text-sm text-muted-foreground">Rejected</div>
+                <div className="text-2xl font-bold text-muted-foreground">{reportData.eddInvestigations.rejected}</div>
               </div>
               <div className="border rounded-lg p-4">
-                <div className="text-sm text-gray-600">Ongoing Monitoring</div>
+                <div className="text-sm text-muted-foreground">Ongoing Monitoring</div>
                 <div className="text-2xl font-bold text-teal-600">{reportData.eddInvestigations.ongoingMonitoring}</div>
               </div>
             </div>
           </div>
 
           {/* Monthly Breakdown */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Monthly Breakdown</h3>
+          <div className="bg-card rounded-lg shadow-card p-6">
+            <h3 className="text-xl font-bold text-foreground mb-4">Monthly Breakdown</h3>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Transactions</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Value (AUD)</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Month</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Transactions</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Value (AUD)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-border">
                   {reportData.transactions.monthly.map((month: any, idx: number) => (
                     <tr key={idx}>
-                      <td className="px-4 py-2 text-sm text-gray-900">{month.month}</td>
-                      <td className="px-4 py-2 text-sm text-gray-900">{month.count}</td>
-                      <td className="px-4 py-2 text-sm text-gray-900">
+                      <td className="px-4 py-2 text-sm text-foreground">{month.month}</td>
+                      <td className="px-4 py-2 text-sm text-foreground">{month.count}</td>
+                      <td className="px-4 py-2 text-sm text-foreground">
                         ${month.value.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -424,14 +424,14 @@ function AustracTrackerTab() {
   return (
     <div>
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-card rounded-lg shadow-card p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">Report Type</label>
             <select
               value={filters.type}
               onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-md text-foreground"
             >
               <option value="all">All Reports</option>
               <option value="ttr">TTRs Only</option>
@@ -439,11 +439,11 @@ function AustracTrackerTab() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">Status</label>
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-md text-foreground"
             >
               <option value="">All Statuses</option>
               <option value="pending">Pending</option>
@@ -451,33 +451,33 @@ function AustracTrackerTab() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">Search</label>
             <input
               type="text"
               placeholder="Reference, customer name..."
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-md text-foreground"
             />
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">Start Date</label>
             <input
               type="date"
               value={filters.startDate}
               onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-md text-foreground"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">End Date</label>
             <input
               type="date"
               value={filters.endDate}
               onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+              className="w-full px-3 py-2 border border-border rounded-md text-foreground"
             />
           </div>
         </div>
@@ -503,55 +503,55 @@ function AustracTrackerTab() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm text-gray-600">Total Reports</div>
+          <div className="bg-card rounded-lg shadow-card p-4">
+            <div className="text-sm text-muted-foreground">Total Reports</div>
             <div className="text-2xl font-bold text-primary">{summary.total}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm text-gray-600">TTRs</div>
+          <div className="bg-card rounded-lg shadow-card p-4">
+            <div className="text-sm text-muted-foreground">TTRs</div>
             <div className="text-2xl font-bold text-blue-600">{summary.ttrs}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm text-gray-600">SARs</div>
+          <div className="bg-card rounded-lg shadow-card p-4">
+            <div className="text-sm text-muted-foreground">SARs</div>
             <div className="text-2xl font-bold text-orange-600">{summary.sars}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm text-gray-600">Pending</div>
+          <div className="bg-card rounded-lg shadow-card p-4">
+            <div className="text-sm text-muted-foreground">Pending</div>
             <div className="text-2xl font-bold text-yellow-600">{summary.pending}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm text-gray-600">Submitted</div>
+          <div className="bg-card rounded-lg shadow-card p-4">
+            <div className="text-sm text-muted-foreground">Submitted</div>
             <div className="text-2xl font-bold text-green-600">{summary.submitted}</div>
           </div>
         </div>
       )}
 
       {/* Reports Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-card rounded-lg shadow-card overflow-hidden">
         {/* Mobile: Card View */}
         <div className="block md:hidden">
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-border">
             {loading ? (
-                <div className="px-6 py-8 text-center text-gray-500">
+                <div className="px-6 py-8 text-center text-muted-foreground">
                   Loading reports...
                 </div>
             ) : reports.length === 0 ? (
-                <div className="px-6 py-8 text-center text-gray-500">
+                <div className="px-6 py-8 text-center text-muted-foreground">
                   No reports found. Try adjusting your filters.
                 </div>
             ) : (
                 reports.map((report, idx) => (
-                    <div key={idx} className="p-4 hover:bg-gray-50">
+                    <div key={idx} className="p-4 hover:bg-muted/50">
                       <div className="space-y-3">
                         {/* Type and Status */}
                         <div className="flex items-center justify-between">
                   <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                      report.type === 'TTR' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                      report.type === 'TTR' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
                   }`}>
                     {report.type}
                   </span>
                           <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                              report.status === 'submitted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              report.status === 'submitted' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
                           }`}>
                     {report.status}
                   </span>
@@ -559,27 +559,27 @@ function AustracTrackerTab() {
 
                         {/* Reference */}
                         <div>
-                          <div className="text-xs text-gray-500">Reference</div>
-                          <div className="text-sm font-medium text-gray-900">{report.reference || 'N/A'}</div>
+                          <div className="text-xs text-muted-foreground">Reference</div>
+                          <div className="text-sm font-medium text-foreground">{report.reference || 'N/A'}</div>
                         </div>
 
                         {/* Date */}
                         <div>
-                          <div className="text-xs text-gray-500">Date</div>
-                          <div className="text-sm text-gray-900">{new Date(report.date).toLocaleDateString()}</div>
+                          <div className="text-xs text-muted-foreground">Date</div>
+                          <div className="text-sm text-foreground">{new Date(report.date).toLocaleDateString()}</div>
                         </div>
 
                         {/* Customer */}
                         <div>
-                          <div className="text-xs text-gray-500">Customer</div>
-                          <div className="text-sm text-gray-900">{report.customerName}</div>
-                          <div className="text-xs text-gray-500">{report.customerEmail}</div>
+                          <div className="text-xs text-muted-foreground">Customer</div>
+                          <div className="text-sm text-foreground">{report.customerName}</div>
+                          <div className="text-xs text-muted-foreground">{report.customerEmail}</div>
                         </div>
 
                         {/* Details */}
                         <div>
-                          <div className="text-xs text-gray-500">Details</div>
-                          <div className="text-sm text-gray-900">
+                          <div className="text-xs text-muted-foreground">Details</div>
+                          <div className="text-sm text-foreground">
                             {report.amount && `$${report.amount.toFixed(2)} ${report.currency || 'AUD'}`}
                             {report.transactionCount && `${report.transactionCount} transactions`}
                           </div>
@@ -594,57 +594,57 @@ function AustracTrackerTab() {
         {/* Desktop: Table View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-muted">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Reference</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Customer</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Details</th>
             </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
             {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
                     Loading reports...
                   </td>
                 </tr>
             ) : reports.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
                     No reports found. Try adjusting your filters.
                   </td>
                 </tr>
             ) : (
                 reports.map((report, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
+                    <tr key={idx} className="hover:bg-muted/50">
                       <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                      report.type === 'TTR' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                      report.type === 'TTR' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
                   }`}>
                     {report.type}
                   </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                         {report.reference || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                         {new Date(report.date).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                      report.status === 'submitted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      report.status === 'submitted' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
                   }`}>
                     {report.status}
                   </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-foreground">
                         <div>{report.customerName}</div>
-                        <div className="text-xs text-gray-500">{report.customerEmail}</div>
+                        <div className="text-xs text-muted-foreground">{report.customerEmail}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-foreground">
                         {report.amount && `$${report.amount.toFixed(2)} ${report.currency || 'AUD'}`}
                         {report.transactionCount && `${report.transactionCount} transactions`}
                       </td>

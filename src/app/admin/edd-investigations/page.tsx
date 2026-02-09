@@ -178,15 +178,15 @@ export default function EDDInvestigationsPage() {
 
   const getStatusBadge = (status: InvestigationStatus) => {
     const badges: Record<InvestigationStatus, string> = {
-      open: 'bg-blue-100 text-blue-800',
-      awaiting_customer_info: 'bg-amber-100 text-amber-800',
-      under_review: 'bg-purple-100 text-purple-800',
-      escalated: 'bg-red-100 text-red-800',
-      completed_approved: 'bg-green-100 text-green-800',
-      completed_rejected: 'bg-gray-100 text-gray-800',
-      completed_ongoing_monitoring: 'bg-teal-100 text-teal-800',
+      open: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+      awaiting_customer_info: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+      under_review: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+      escalated: 'bg-red-500/10 text-red-600 dark:text-red-400',
+      completed_approved: 'bg-green-500/10 text-green-600 dark:text-green-400',
+      completed_rejected: 'bg-muted text-muted-foreground',
+      completed_ongoing_monitoring: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
     };
-    return badges[status] || 'bg-gray-100 text-gray-800';
+    return badges[status] || 'bg-muted text-muted-foreground';
   };
 
   const getStatusLabel = (status: InvestigationStatus) => {
@@ -212,8 +212,8 @@ export default function EDDInvestigationsPage() {
               onClick={() => setStatusFilter(filter)}
               className={`px-4 py-2 rounded-lg font-medium transition ${
                 statusFilter === filter
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-foreground/80 hover:bg-muted/50'
               }`}
             >
               {filter === 'all' ? 'All' : getStatusLabel(filter as InvestigationStatus)}
@@ -224,7 +224,7 @@ export default function EDDInvestigationsPage() {
         {/* Investigations List */}
         <div className="space-y-4">
           {investigations.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            <div className="bg-card rounded-lg shadow-card p-8 text-center text-muted-foreground">
               No investigations found for the selected filter.
             </div>
           ) : (
@@ -280,15 +280,15 @@ function InvestigationCard({
 
   const getStatusBadge = (status: InvestigationStatus) => {
     const badges: Record<InvestigationStatus, string> = {
-      open: 'bg-blue-100 text-blue-800',
-      awaiting_customer_info: 'bg-amber-100 text-amber-800',
-      under_review: 'bg-purple-100 text-purple-800',
-      escalated: 'bg-red-100 text-red-800',
-      completed_approved: 'bg-green-100 text-green-800',
-      completed_rejected: 'bg-gray-100 text-gray-800',
-      completed_ongoing_monitoring: 'bg-teal-100 text-teal-800',
+      open: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+      awaiting_customer_info: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+      under_review: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+      escalated: 'bg-red-500/10 text-red-600 dark:text-red-400',
+      completed_approved: 'bg-green-500/10 text-green-600 dark:text-green-400',
+      completed_rejected: 'bg-muted text-muted-foreground',
+      completed_ongoing_monitoring: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
     };
-    return badges[status] || 'bg-gray-100 text-gray-800';
+    return badges[status] || 'bg-muted text-muted-foreground';
   };
 
   const getStatusLabel = (status: InvestigationStatus) => {
@@ -298,23 +298,23 @@ function InvestigationCard({
   const isCompleted = investigation.status.startsWith('completed_');
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-card rounded-lg shadow-card">
       {/* Card Header */}
       <div
-        className="p-6 cursor-pointer hover:bg-gray-50 transition"
+        className="p-6 cursor-pointer hover:bg-muted/50 transition"
         onClick={onToggle}
       >
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-foreground">
                 {investigation.investigation_number}
               </h3>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(investigation.status)}`}>
                 {getStatusLabel(investigation.status)}
               </span>
               {investigation.customer_is_pep && (
-                <span className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
                   PEP
                 </span>
               )}
@@ -322,41 +322,41 @@ function InvestigationCard({
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-500">Customer:</span>{' '}
+                <span className="text-muted-foreground">Customer:</span>{' '}
                 <span className="font-medium text-primary-foreground">{investigation.customer_name}</span>
               </div>
               <div>
-                <span className="text-gray-500">Email:</span>{' '}
+                <span className="text-muted-foreground">Email:</span>{' '}
                 <span className="font-medium text-primary-foreground">{investigation.customer_email}</span>
               </div>
               <div>
-                <span className="text-gray-500">Trigger:</span>{' '}
+                <span className="text-muted-foreground">Trigger:</span>{' '}
                 <span className="font-medium text-primary-foreground">{investigation.triggered_by}</span>
               </div>
               <div>
-                <span className="text-gray-500">Opened:</span>{' '}
+                <span className="text-muted-foreground">Opened:</span>{' '}
                 <span className="font-medium text-primary-foreground">{new Date(investigation.opened_at).toLocaleDateString()}</span>
               </div>
               {investigation.transaction_amount_aud && (
                 <div>
-                  <span className="text-gray-500">Amount:</span>{' '}
+                  <span className="text-muted-foreground">Amount:</span>{' '}
                   <span className="font-medium text-primary-foreground">${investigation.transaction_amount_aud.toLocaleString()} AUD</span>
                 </div>
               )}
               <div>
-                <span className="text-gray-500">Risk Level:</span>{' '}
-                <span className={`font-medium ${investigation.customer_risk_level === 'high' ? 'text-red-600' : 'text-gray-900'}`}>
+                <span className="text-muted-foreground">Risk Level:</span>{' '}
+                <span className={`font-medium ${investigation.customer_risk_level === 'high' ? 'text-red-600' : 'text-foreground'}`}>
                   {investigation.customer_risk_level || 'Unknown'}
                 </span>
               </div>
             </div>
 
-            <p className="mt-3 text-sm text-gray-600">{investigation.trigger_reason}</p>
+            <p className="mt-3 text-sm text-muted-foreground">{investigation.trigger_reason}</p>
           </div>
 
           <div className="ml-4">
             <svg
-              className={`w-6 h-6 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+              className={`w-6 h-6 text-muted-foreground/60 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -369,15 +369,15 @@ function InvestigationCard({
 
       {/* Expanded Details */}
       {isExpanded && (
-        <div className="border-t border-gray-200">
+        <div className="border-t border-border">
           {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200 px-6">
+          <div className="flex border-b border-border px-6">
             <button
               onClick={() => setActiveTab('checklist')}
               className={`px-6 py-3 font-medium transition ${
                 activeTab === 'checklist'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Investigation Checklist
@@ -386,8 +386,8 @@ function InvestigationCard({
               onClick={() => setActiveTab('timeline')}
               className={`px-6 py-3 font-medium transition ${
                 activeTab === 'timeline'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Timeline & Requests
@@ -396,8 +396,8 @@ function InvestigationCard({
               onClick={() => setActiveTab('complete')}
               className={`px-6 py-3 font-medium transition ${
                 activeTab === 'complete'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               disabled={isCompleted}
             >
@@ -429,7 +429,7 @@ function InvestigationCard({
             )}
 
             {activeTab === 'complete' && isCompleted && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 Investigation already completed on {new Date(investigation.completed_at!).toLocaleDateString()}
               </div>
             )}
@@ -469,7 +469,7 @@ function ChecklistTab({ investigation, onUpdate }: { investigation: Investigatio
         const isCompleted = section?.completed || false;
 
         return (
-          <div key={key} className="border border-gray-200 rounded-lg p-4">
+          <div key={key} className="border border-border rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <input
@@ -478,16 +478,16 @@ function ChecklistTab({ investigation, onUpdate }: { investigation: Investigatio
                   onChange={() => handleToggleSection(key)}
                   className="w-5 h-5 text-blue-600 rounded"
                 />
-                <span className="font-medium text-gray-900">{label}</span>
+                <span className="font-medium text-foreground">{label}</span>
               </div>
               {isCompleted && (
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                <span className="px-3 py-1 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full text-sm font-medium">
                   Completed
                 </span>
               )}
             </div>
             {section?.notes && (
-              <p className="mt-2 text-sm text-gray-600 ml-8">{section.notes}</p>
+              <p className="mt-2 text-sm text-muted-foreground ml-8">{section.notes}</p>
             )}
           </div>
         );
@@ -501,10 +501,10 @@ function TimelineTab({ investigation, onRequestInformation, onApproveManagement,
     <div className="space-y-6">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Information Requests</h3>
+          <h3 className="text-lg font-semibold text-foreground">Information Requests</h3>
           <button
             onClick={() => onRequestInformation(investigation.id)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition"
           >
             Request Information
           </button>
@@ -522,20 +522,20 @@ function TimelineTab({ investigation, onRequestInformation, onApproveManagement,
         {investigation.information_requests && investigation.information_requests.length > 0 ? (
           <div className="space-y-3">
             {investigation.information_requests.map((req: any) => (
-              <div key={req.id} className="bg-gray-50 rounded-lg p-4">
+              <div key={req.id} className="bg-muted/50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-foreground">
                     {new Date(req.requested_at).toLocaleDateString()}
                   </span>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    req.status === 'received' ? 'bg-green-100 text-green-800' :
-                    req.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                    'bg-amber-100 text-amber-800'
+                    req.status === 'received' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                    req.status === 'overdue' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
+                    'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                   }`}>
                     {req.status}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   <span className="font-medium">Items requested:</span>
                   <ul className="list-disc list-inside mt-1">
                     {req.items.map((item: string, idx: number) => (
@@ -548,30 +548,30 @@ function TimelineTab({ investigation, onRequestInformation, onApproveManagement,
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-4">No information requests sent yet</p>
+          <p className="text-muted-foreground text-center py-4">No information requests sent yet</p>
         )}
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Escalations</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Escalations</h3>
         {investigation.escalations && investigation.escalations.length > 0 ? (
           <div className="space-y-3">
             {investigation.escalations.map((esc: any) => (
-              <div key={esc.id} className="bg-red-50 rounded-lg p-4">
+              <div key={esc.id} className="bg-red-500/10 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-foreground">
                     Escalated to {esc.escalated_to}
                   </span>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-muted-foreground">
                     {new Date(esc.escalated_at).toLocaleDateString()}
                   </span>
                 </div>
-                <p className="text-sm text-gray-700">{esc.reason}</p>
+                <p className="text-sm text-foreground/80">{esc.reason}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-4">No escalations</p>
+          <p className="text-muted-foreground text-center py-4">No escalations</p>
         )}
       </div>
     </div>
@@ -616,39 +616,39 @@ function CompleteTab({
   return (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-foreground/80 mb-2">
           Investigation Findings *
         </label>
         <textarea
           value={findings}
           onChange={(e) => setFindings(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2 border text-primary-foreground border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border text-primary-foreground border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring"
           placeholder="Summarize the key findings from your investigation..."
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-foreground/80 mb-2">
           Risk Assessment Summary *
         </label>
         <textarea
           value={assessment}
           onChange={(e) => setAssessment(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2 border text-primary-foreground border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border text-primary-foreground border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring"
           placeholder="Assess the overall risk level and implications..."
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-foreground/80 mb-2">
           Compliance Decision *
         </label>
         <select
           value={recommendation}
           onChange={(e) => setRecommendation(e.target.value)}
-          className="w-full px-3 py-2 border text-primary-foreground border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border text-primary-foreground border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring"
         >
           <option value="">Select a decision...</option>
           {decisions.map((d) => (
@@ -659,13 +659,13 @@ function CompleteTab({
         </select>
 
         {recommendation && (
-          <div className="mt-3 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-900">
+          <div className="mt-3 p-4 bg-blue-500/10 rounded-lg">
+            <p className="text-sm text-blue-600 dark:text-blue-400">
               <span className="font-medium">Impact:</span> Customer monitoring level will be set to{' '}
               <span className="font-semibold">{decisions.find(d => d.value === recommendation)?.level}</span>
             </p>
             {highRiskDecisions.includes(recommendation) && (
-              <p className="text-sm text-red-900 mt-2">
+              <p className="text-sm text-red-600 dark:text-red-400 mt-2">
                 ⚠️ This decision requires management approval
               </p>
             )}
@@ -674,9 +674,9 @@ function CompleteTab({
       </div>
 
       {requiresApproval && !hasApproval && !isAdminUser && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-amber-900 font-medium">Management approval required</p>
-          <p className="text-sm text-amber-700 mt-1">
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+          <p className="text-amber-600 dark:text-amber-400 font-medium">Management approval required</p>
+          <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
             A manager must approve this decision before you can complete the investigation.
           </p>
         </div>
@@ -688,7 +688,7 @@ function CompleteTab({
         className={`w-full cursor-pointer py-3 rounded-lg font-medium transition ${
           canComplete
             ? 'bg-green-600 text-white hover:bg-green-700'
-            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-muted text-muted-foreground cursor-not-allowed'
         }`}
       >
         {requiresApproval && !hasApproval && !isAdminUser

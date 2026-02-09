@@ -1,6 +1,7 @@
 //import {createServerSupabase} from "@/lib/supabase/server";
 import {createClient} from "@supabase/supabase-js";
 import { createLogger} from "@/lib/utils/logger";
+import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 
 const logger = createLogger('COMPLIANCE_THRESHOLDS')
 export const complianceThreshold : {readonly enhancedDD: 50000, readonly kycRequired: 5000, readonly ttrRequired: 10000} = {
@@ -42,12 +43,26 @@ export async function getComplianceRequirements(
 
   logger.log(transactions)
 
+  // Fetch current FX rate for legacy transaction conversion
+  let currentFxRate: number | null = null;
+  const hasLegacyTx = transactions?.some(tx => !tx.amount_aud && tx.currency === 'USD');
+  if (hasLegacyTx) {
+    try {
+      const fxResult = await fetchFxRate('USD', 'AUD');
+      currentFxRate = fxResult.rate;
+    } catch (e) {
+      logger.error('Failed to fetch FX rate for legacy tx conversion, using conservative fallback');
+    }
+  }
+
   const lifetimeTotal = transactions?.reduce((sum, tx) => {
-    // Use amount_aud if available, otherwise convert
+    // Use amount_aud if available, otherwise convert with current rate
     let audAmount = tx.amount_aud;
     if (!audAmount) {
-      // Legacy transaction without amount_aud - must convert
-      audAmount = tx.currency === 'USD' ? tx.amount * 1.52 : tx.amount;
+      // Legacy transaction without amount_aud — use current FX rate or conservative fallback
+      const rate = currentFxRate || 1.70; // Conservative high fallback to avoid under-counting
+      audAmount = tx.currency === 'USD' ? tx.amount * rate : tx.amount;
+      logger.log(`Legacy tx conversion: ${tx.amount} ${tx.currency} → ${audAmount} AUD (rate: ${rate})`);
     }
     return sum + audAmount;
   }, 0) || 0;

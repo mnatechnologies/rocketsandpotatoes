@@ -32,7 +32,10 @@ export async function POST(req: NextRequest) {
     const { amount, currency, customerId, customerEmail, clerkUserId, sessionId, cartItems } = await req.json();
 
     const { userId: clerkUserIdFromAuth } = await auth();
-    const finalClerkUserId = clerkUserIdFromAuth || clerkUserId;
+    if (!clerkUserIdFromAuth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const finalClerkUserId = clerkUserIdFromAuth;
 
     logger.log('Request params:', { amount, currency, customerId, finalClerkUserId, sessionId, cartItems });
 

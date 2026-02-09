@@ -72,10 +72,26 @@ export async function sanctionsScreening(
 async function checkExactMatch(supabase: any, fullName: string) {
   const normalisedName = normalizeName(fullName);
 
-  const {data, error} = await supabase
+  // Use separate parameterized queries to prevent filter injection
+  const { data: nameMatches, error: nameError } = await supabase
     .from('sanctioned_entities')
     .select('*')
-    .or(`full_name.ilike.%${normalisedName}%,aliases.cs.{${normalisedName}}`);
+    .ilike('full_name', `%${normalisedName}%`);
+
+  const { data: aliasMatches, error: aliasError } = await supabase
+    .from('sanctioned_entities')
+    .select('*')
+    .contains('aliases', [normalisedName]);
+
+  const error = nameError || aliasError;
+  // Combine and deduplicate by id
+  const combined = [...(nameMatches || []), ...(aliasMatches || [])];
+  const seen = new Set<string>();
+  const data = combined.filter(e => {
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  });
 
   if (error) {
     logger.error('Exact match error: ', error)

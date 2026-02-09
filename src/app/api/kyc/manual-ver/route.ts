@@ -3,6 +3,7 @@
 import {NextResponse, NextRequest} from 'next/server'
 /* eslint-disable */
 import {createClient} from "@supabase/supabase-js";
+import { auth } from '@clerk/nextjs/server';
 
 type VerificationMethod =
   | 'stripe_identity'
@@ -17,7 +18,10 @@ interface ManualVerificationRequest {
 }
 
 export async function POST(request: NextRequest) {
-  //const supabase = createServerSupabase();
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +34,17 @@ export async function POST(request: NextRequest) {
     }
   );
   const { customerId, verificationMethod, documents } = await request.json();
+
+  // Verify customer belongs to authenticated user
+  const { data: customerOwner } = await supabase
+    .from('customers')
+    .select('clerk_user_id')
+    .eq('id', customerId)
+    .single();
+
+  if (!customerOwner || customerOwner.clerk_user_id !== userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
 
   if (!customerId || !verificationMethod || !documents) {
     return NextResponse.json(

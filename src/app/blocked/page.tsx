@@ -13,11 +13,11 @@ export default function BlockedPage() {
             We apologize, but our services are currently only available to customers located in Australia.
           </p>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-            <p className="font-semibold text-primary-foreground mb-2">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm">
+            <p className="font-semibold text-blue-600 dark:text-blue-400 mb-2">
               Why am I seeing this?
             </p>
-            <p className="text-secondary-foreground">
+            <p className="text-blue-600 dark:text-blue-400">
               Due to Australian regulatory requirements and compliance obligations under AUSTRAC,
               we can only serve customers with Australian addresses at this time.
             </p>

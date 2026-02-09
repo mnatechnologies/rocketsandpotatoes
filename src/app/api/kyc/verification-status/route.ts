@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { retrieveVerificationSession, processVerificationResult, stripe } from '@/lib/stripe/identity';
 import { createLogger } from '@/lib/utils/logger';
+import { auth } from '@clerk/nextjs/server';
 
 const logger = createLogger('VERIFICATION_STATUS_API');
 
 export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const customerId = searchParams.get('customerId');
 
@@ -23,6 +29,17 @@ export async function GET(req: NextRequest) {
       },
     }
   );
+
+  // Verify customer belongs to authenticated user
+  const { data: customerOwner } = await supabase
+    .from('customers')
+    .select('clerk_user_id')
+    .eq('id', customerId)
+    .single();
+
+  if (!customerOwner || customerOwner.clerk_user_id !== userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
 
   try {
     // Get customer's current status

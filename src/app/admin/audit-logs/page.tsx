@@ -24,16 +24,16 @@ const formatActionType = (action: string): string => {
 
 const getActionColor = (action: string): string => {
   if (action.includes('match') || action.includes('blocked') || action.includes('rejected')) {
-    return 'bg-red-100 text-red-800';
+    return 'bg-red-500/10 text-red-600 dark:text-red-400';
   }
   if (action.includes('alert') || action.includes('flagged') || action.includes('smr')) {
-    return 'bg-amber-100 text-amber-800';
+    return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
   }
   if (action.includes('approved') || action.includes('verified') || action.includes('submitted')) {
-    return 'bg-green-100 text-green-800';
+    return 'bg-green-500/10 text-green-600 dark:text-green-400';
   }
   if (action.includes('created') || action.includes('declared')) {
-    return 'bg-blue-100 text-blue-800';
+    return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
   }
   return 'bg-gray-100 text-gray-800';
 };

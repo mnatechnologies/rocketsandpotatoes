@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
+import { auth } from '@clerk/nextjs/server';
 
 const logger = createLogger('SOURCE_OF_FUNDS');
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -18,6 +24,17 @@ export async function POST(req: NextRequest) {
 
   try {
     const { customerId, sourceOfFunds, occupation, employer, isPep, pepRelationship } = await req.json();
+
+    // Verify customer belongs to authenticated user
+    const { data: customerOwner } = await supabase
+      .from('customers')
+      .select('clerk_user_id')
+      .eq('id', customerId)
+      .single();
+
+    if (!customerOwner || customerOwner.clerk_user_id !== userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     // Validate required fields
     if (!customerId || !sourceOfFunds || !occupation) {
@@ -117,6 +134,11 @@ export async function POST(req: NextRequest) {
 
 // GET endpoint to retrieve source of funds for a customer
 export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -135,6 +157,17 @@ export async function GET(req: NextRequest) {
       { error: 'Customer ID is required' },
       { status: 400 }
     );
+  }
+
+  // Verify customer belongs to authenticated user
+  const { data: customerOwner } = await supabase
+    .from('customers')
+    .select('clerk_user_id')
+    .eq('id', customerId)
+    .single();
+
+  if (!customerOwner || customerOwner.clerk_user_id !== userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   try {

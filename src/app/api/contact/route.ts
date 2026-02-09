@@ -24,6 +24,15 @@ interface ContactFormData {
   message: string;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: ContactFormData = await req.json();
@@ -72,6 +81,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const safeName = escapeHtml(name);
+    const safeEmail = escapeHtml(email);
+    const safePhone = phone ? escapeHtml(phone) : '';
+    const safeSubject = escapeHtml(subject);
+    const safeMessage = escapeHtml(message);
+
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1f2937; border-bottom: 2px solid #eab308; padding-bottom: 10px;">
@@ -79,20 +94,20 @@ export async function POST(req: NextRequest) {
         </h2>
 
         <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 8px 0;"><strong>From:</strong> ${name}</p>
-          <p style="margin: 8px 0;"><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
-          ${phone ? `<p style="margin: 8px 0;"><strong>Phone:</strong> ${phone}</p>` : ''}
-          <p style="margin: 8px 0;"><strong>Subject:</strong> ${subject}</p>
+          <p style="margin: 8px 0;"><strong>From:</strong> ${safeName}</p>
+          <p style="margin: 8px 0;"><strong>Email:</strong> <a href="mailto:${safeEmail}">${safeEmail}</a></p>
+          ${safePhone ? `<p style="margin: 8px 0;"><strong>Phone:</strong> ${safePhone}</p>` : ''}
+          <p style="margin: 8px 0;"><strong>Subject:</strong> ${safeSubject}</p>
         </div>
 
         <div style="background-color: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
           <h3 style="color: #1f2937; margin-top: 0;">Message:</h3>
-          <p style="white-space: pre-wrap; color: #374151; line-height: 1.6;">${message}</p>
+          <p style="white-space: pre-wrap; color: #374151; line-height: 1.6;">${safeMessage}</p>
         </div>
 
         <div style="margin-top: 20px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #eab308; border-radius: 4px;">
           <p style="margin: 0; color: #92400e; font-size: 14px;">
-            <strong>Reply to this inquiry at:</strong> <a href="mailto:${email}" style="color: #92400e;">${email}</a>
+            <strong>Reply to this inquiry at:</strong> <a href="mailto:${safeEmail}" style="color: #92400e;">${safeEmail}</a>
           </p>
         </div>
 
@@ -125,12 +140,12 @@ export async function POST(req: NextRequest) {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #16a34a;">Thank you for contacting us!</h2>
 
-        <p>Dear ${name},</p>
+        <p>Dear ${safeName},</p>
 
         <p>We've received your message and will get back to you within 24 hours.</p>
 
         <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 8px 0;"><strong>Subject:</strong> ${subject}</p>
+          <p style="margin: 8px 0;"><strong>Subject:</strong> ${safeSubject}</p>
           <p style="margin: 8px 0; color: #6b7280; font-size: 14px;">
             Your inquiry has been logged and assigned to our support team.
           </p>

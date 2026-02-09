@@ -353,7 +353,7 @@ function CartContent() {
 
               <button
                 onClick={clearCart}
-                className="text-red-600 hover:text-red-800 font-medium text-sm"
+                className="text-destructive hover:text-destructive/80 font-medium text-sm"
               >
                 Clear Cart
               </button>

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     // ✅ NO CONVERSION - Get locked prices from database (single source of truth)
     let amountInUSD = amount;
     let amountInAUD = amount;
-    let fxRate = 1.57; // Fallback
+    let fxRate: number;
 
     if (sessionId) {
       const { data: locks, error: lockError } = await supabase
@@ -98,8 +98,9 @@ export async function POST(req: NextRequest) {
           locksCount: locks.length,
         });
       } else {
-        logger.warn('⚠️ No locked prices found, using submitted amount (not recommended)');
-        // If no locks found, assume amount is in the submitted currency
+        logger.warn('⚠️ No locked prices found, fetching live FX rate');
+        const fxResult1 = await fetchFxRate('USD', 'AUD');
+        fxRate = fxResult1.rate;
         if (currency === 'USD') {
           amountInUSD = amount;
           amountInAUD = amount * fxRate;
@@ -109,8 +110,9 @@ export async function POST(req: NextRequest) {
         }
       }
     } else {
-      logger.warn('⚠️ No sessionId provided, cannot fetch locked prices');
-      // Fallback if no sessionId
+      logger.warn('⚠️ No sessionId provided, fetching live FX rate');
+      const fxResult2 = await fetchFxRate('USD', 'AUD');
+      fxRate = fxResult2.rate;
       if (currency === 'USD') {
         amountInUSD = amount;
         amountInAUD = amount * fxRate;
@@ -152,12 +154,27 @@ export async function POST(req: NextRequest) {
     });
 
 
-    // ✅ Check source of funds for $10K+ AUD transactions
-    let sourceOfFundsMissing = false;
+    // ✅ Check source of funds for $10K+ AUD transactions — BLOCK if missing
     if (requirements.requiresTTR) {
       if (!customer.source_of_funds || !customer.occupation) {
-        logger.log('⚠️ Source of funds missing for $10K+ AUD transaction');
-        sourceOfFundsMissing = true;
+        logger.log('⛔ Source of funds missing for $10K+ AUD transaction — blocking order');
+
+        await supabase.from('audit_logs').insert({
+          action_type: 'order_blocked_missing_sof',
+          entity_type: 'customer',
+          entity_id: customerId,
+          description: 'Order blocked: missing source of funds for $10K+ AUD transaction',
+          metadata: {
+            amount_aud: amountInAUD,
+            user_id: userId,
+          },
+          created_at: new Date().toISOString(),
+        });
+
+        return NextResponse.json(
+          { error: 'Source of funds declaration is required for transactions over $10,000 AUD. Please complete this before checkout.' },
+          { status: 403 }
+        );
       } else {
         logger.log('✅ Source of funds verified:', {
           source: customer.source_of_funds,
@@ -247,9 +264,9 @@ export async function POST(req: NextRequest) {
         requires_enhanced_dd: requirements.requiresEnhancedDD,
         source_of_funds_checked: requirements.requiresTTR,
         source_of_funds_check_date: amountInAUD >= 10000 ? new Date().toISOString() : null,
-        flagged_for_review: sourceOfFundsMissing,
-        review_status: sourceOfFundsMissing ? 'pending' : null,
-        review_notes: sourceOfFundsMissing ? 'Missing source of funds declaration for $10K+ AUD transaction' : null,
+        flagged_for_review: false,
+        review_status: null,
+        review_notes: null,
       };
 
       const { data: created, error: createError } = await supabase
@@ -265,32 +282,12 @@ export async function POST(req: NextRequest) {
     if (transactionError) {
       logger.error('Error creating transaction:', transactionError);
       return NextResponse.json(
-        { error: 'Failed to create order', details: transactionError },
+        { error: 'Failed to create order' },
         { status: 500 }
       );
     }
 
     logger.log('Transaction created successfully:', transaction.id);
-
-    // ✅ Log if source of funds is missing
-    if (sourceOfFundsMissing) {
-      await supabase.from('audit_logs').insert({
-        action_type: 'transaction_flagged_missing_sof',
-        entity_type: 'transaction',
-        entity_id: transaction.id,
-        description: 'Transaction flagged: missing source of funds for $10K+ AUD transaction',
-        metadata: {
-          customer_id: customerId,
-          amount: amount,
-          currency: currency,
-          amountInAUD: amountInAUD,
-          requires_manual_review: true,
-        },
-        created_at: new Date().toISOString(),
-      });
-
-      logger.log('🚩 Transaction flagged for missing source of funds');
-    }
 
     // ✅ Generate TTR if required (using AUD amount)
     if (requirements.requiresTTR) {
@@ -423,7 +420,7 @@ export async function POST(req: NextRequest) {
         locked_fx_rate: fxRate,
         payment_intent_id: stripePaymentIntentId,
         source_of_funds_checked: amountInAUD >= 10000,
-        flagged_for_review: sourceOfFundsMissing,
+        flagged_for_review: false,
         requires_ttr: requirements.requiresTTR,
         requires_kyc: requirements.requiresKYC,
         requires_edd: requirements.requiresEnhancedDD,
@@ -446,17 +443,14 @@ export async function POST(req: NextRequest) {
         requires_kyc: requirements.requiresKYC,
         requires_ttr: requirements.requiresTTR,
         requires_edd: requirements.requiresEnhancedDD,
-        flaggedForReview: sourceOfFundsMissing,
+        flaggedForReview: false,
       },
     });
 
   } catch (error) {
     logger.error('Error in order creation:', error);
     return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

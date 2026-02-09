@@ -172,23 +172,23 @@ export default function StaffDetailPage() {
         </Link>
 
         {/* Staff Header */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+        <div className="bg-card rounded-lg shadow-card p-8 mb-8">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{staff.full_name}</h1>
+              <h1 className="text-3xl font-bold text-foreground mb-2">{staff.full_name}</h1>
               <div className="space-y-1">
-                <p className="text-gray-600">{staff.email}</p>
-                {staff.position && <p className="text-gray-600">{staff.position}</p>}
-                {staff.department && <p className="text-gray-600">{staff.department}</p>}
+                <p className="text-muted-foreground">{staff.email}</p>
+                {staff.position && <p className="text-muted-foreground">{staff.position}</p>}
+                {staff.department && <p className="text-muted-foreground">{staff.department}</p>}
               </div>
             </div>
             <div className="text-right">
               {staff.is_active ? (
-                <span className="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                <span className="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
                   Active
                 </span>
               ) : (
-                <span className="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                <span className="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-muted text-muted-foreground">
                   Inactive
                 </span>
               )}
@@ -197,7 +197,7 @@ export default function StaffDetailPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-8 border-t">
             <div>
-              <div className="text-sm text-gray-600">Employment Start</div>
+              <div className="text-sm text-muted-foreground">Employment Start</div>
               <div className="font-semibold">
                 <span className="text-primary">
                   {staff.employment_start_date
@@ -207,44 +207,44 @@ export default function StaffDetailPage() {
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-600">Training Requirement</div>
+              <div className="text-sm text-muted-foreground">Training Requirement</div>
               <div className="font-semibold">
                 {staff.requires_aml_training ? (
                   <span className="text-yellow-600">AML/CTF Required</span>
                 ) : (
-                  <span className="text-gray-500">Not Required</span>
+                  <span className="text-muted-foreground">Not Required</span>
                 )}
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-600">Training Status</div>
+              <div className="text-sm text-muted-foreground">Training Status</div>
               <div className="font-semibold">
                 {staff.requires_aml_training ? (
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
                       trainingStatus.color === 'green'
-                        ? 'bg-green-100 text-green-800'
+                        ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                         : trainingStatus.color === 'yellow'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
+                        ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                        : 'bg-red-500/10 text-red-600 dark:text-red-400'
                     }`}
                   >
                     {trainingStatus.label}
                   </span>
                 ) : (
-                  <span className="text-gray-500">N/A</span>
+                  <span className="text-muted-foreground">N/A</span>
                 )}
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-600">Next Training Due</div>
+              <div className="text-sm text-muted-foreground">Next Training Due</div>
               <div className="font-semibold">
                 {trainingStatus.nextDue ? (
                   <span className={trainingStatus.status === 'overdue' ? 'text-red-600' : 'text-green-600'}>
                     {trainingStatus.nextDue.toLocaleDateString()}
                   </span>
                 ) : (
-                  <span className="text-gray-500">No future training scheduled</span>
+                  <span className="text-muted-foreground">No future training scheduled</span>
                 )}
               </div>
             </div>
@@ -252,9 +252,9 @@ export default function StaffDetailPage() {
         </div>
 
         {/* Training Records */}
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-card rounded-lg shadow-card p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Training Records</h2>
+            <h2 className="text-2xl font-bold text-foreground">Training Records</h2>
             <button
               onClick={() => setShowAddTrainingModal(true)}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 font-semibold"
@@ -264,7 +264,7 @@ export default function StaffDetailPage() {
           </div>
 
           {staff.training_records.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
               <p>No training records found.</p>
               <button
                 onClick={() => setShowAddTrainingModal(true)}
@@ -276,23 +276,23 @@ export default function StaffDetailPage() {
           ) : (
             <div className="space-y-4">
               {staff.training_records.map((record) => (
-                <div key={record.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                <div key={record.id} className="border border-border rounded-lg p-6 hover:shadow-card-hover transition-shadow">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="font-semibold text-lg text-gray-900">
+                      <h3 className="font-semibold text-lg text-foreground">
                         {getTrainingTypeLabel(record.training_type)}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         Completed: {new Date(record.training_date).toLocaleDateString()}
                       </p>
                     </div>
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         record.completion_status === 'completed'
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                           : record.completion_status === 'in_progress'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                          : 'bg-red-500/10 text-red-600 dark:text-red-400'
                       }`}
                     >
                       {record.completion_status}
@@ -302,31 +302,31 @@ export default function StaffDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     {record.training_provider && (
                       <div>
-                        <span className="text-gray-600">Provider: </span>
+                        <span className="text-muted-foreground">Provider: </span>
                         <span className="font-medium text-primary">{record.training_provider}</span>
                       </div>
                     )}
                     {record.duration_hours && (
                       <div>
-                        <span className="text-gray-600">Duration: </span>
+                        <span className="text-muted-foreground">Duration: </span>
                         <span className="font-medium text-primary">{record.duration_hours} hours</span>
                       </div>
                     )}
                     {record.conducted_by && (
                       <div>
-                        <span className="text-gray-600">Conducted by: </span>
+                        <span className="text-muted-foreground">Conducted by: </span>
                         <span className="font-medium text-primary">{record.conducted_by}</span>
                       </div>
                     )}
                     {record.pass_score !== null && record.pass_score !== undefined && (
                       <div>
-                        <span className="text-gray-600">Score: </span>
+                        <span className="text-muted-foreground">Score: </span>
                         <span className="font-medium text-primary">{record.pass_score}%</span>
                       </div>
                     )}
                     {record.next_training_due && (
                       <div>
-                        <span className="text-gray-600">Next Due: </span>
+                        <span className="text-muted-foreground">Next Due: </span>
                         <span className="font-medium text-primary">
                           {new Date(record.next_training_due).toLocaleDateString()}
                         </span>
@@ -336,12 +336,12 @@ export default function StaffDetailPage() {
 
                   {record.topics_covered && record.topics_covered.length > 0 && (
                     <div className="mt-4">
-                      <div className="text-sm text-gray-600 mb-2">Topics Covered:</div>
+                      <div className="text-sm text-muted-foreground mb-2">Topics Covered:</div>
                       <div className="flex flex-wrap gap-2">
                         {record.topics_covered.map((topic, idx) => (
                           <span
                             key={idx}
-                            className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded"
+                            className="px-2 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs rounded"
                           >
                             {topic}
                           </span>
@@ -351,8 +351,8 @@ export default function StaffDetailPage() {
                   )}
 
                   {record.notes && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded text-sm">
-                      <span className="text-gray-600">Notes: </span>
+                    <div className="mt-4 p-3 bg-muted/50 rounded-lg text-sm">
+                      <span className="text-muted-foreground">Notes: </span>
                       <span>{record.notes}</span>
                     </div>
                   )}
@@ -413,22 +413,22 @@ function AddTrainingModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 my-8">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+      <div className="bg-card rounded-lg p-8 max-w-2xl w-full mx-4 my-8">
         <h2 className="text-2xl font-bold mb-2 text-primary">Add Training Record</h2>
-        <p className="text-gray-600 mb-6">For: {staffName}</p>
+        <p className="text-muted-foreground mb-6">For: {staffName}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Training Type *
               </label>
               <select
                 required
                 value={formData.training_type}
                 onChange={(e) => setFormData({ ...formData, training_type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               >
                 <option value="initial_aml">Initial AML/CTF Training</option>
                 <option value="annual_refresher">Annual Refresher</option>
@@ -438,7 +438,7 @@ function AddTrainingModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Training Date *
               </label>
               <input
@@ -446,18 +446,18 @@ function AddTrainingModal({
                 required
                 value={formData.training_date}
                 onChange={(e) => setFormData({ ...formData, training_date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Completion Status
               </label>
               <select
                 value={formData.completion_status}
                 onChange={(e) => setFormData({ ...formData, completion_status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               >
                 <option value="completed">Completed</option>
                 <option value="in_progress">In Progress</option>
@@ -466,7 +466,7 @@ function AddTrainingModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Training Provider
               </label>
               <input
@@ -474,12 +474,12 @@ function AddTrainingModal({
                 value={formData.training_provider}
                 onChange={(e) => setFormData({ ...formData, training_provider: e.target.value })}
                 placeholder="e.g., AUSTRAC eLearning, Internal"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Duration (hours)
               </label>
               <input
@@ -487,12 +487,12 @@ function AddTrainingModal({
                 step="0.5"
                 value={formData.duration_hours}
                 onChange={(e) => setFormData({ ...formData, duration_hours: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Conducted By
               </label>
               <input
@@ -500,12 +500,12 @@ function AddTrainingModal({
                 value={formData.conducted_by}
                 onChange={(e) => setFormData({ ...formData, conducted_by: e.target.value })}
                 placeholder="Trainer/Facilitator name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Pass Score (%)
               </label>
               <input
@@ -514,12 +514,12 @@ function AddTrainingModal({
                 max="100"
                 value={formData.pass_score}
                 onChange={(e) => setFormData({ ...formData, pass_score: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Topics Covered (comma-separated)
               </label>
               <input
@@ -527,19 +527,19 @@ function AddTrainingModal({
                 value={formData.topics_covered}
                 onChange={(e) => setFormData({ ...formData, topics_covered: e.target.value })}
                 placeholder="e.g., ML/TF risks, Customer identification, SMR reporting"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Notes
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-primary"
+                className="w-full px-3 py-2 border border-border rounded-md text-primary"
               />
             </div>
           </div>
@@ -548,7 +548,7 @@ function AddTrainingModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="flex-1 px-4 py-2 border border-border rounded-md text-foreground/80 hover:bg-muted/50"
             >
               Cancel
             </button>
