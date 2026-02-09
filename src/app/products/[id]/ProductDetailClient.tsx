@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Product } from '@/types/product';
 import { useCart } from '@/contexts/CartContext';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
-import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
+import { calculateBulkPricingFromCache, getVolumeDiscount, applyVolumeDiscount, DEFAULT_VOLUME_DISCOUNT_TIERS } from '@/lib/pricing/priceCalculations';
 import { getMetalInfo, type MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { useCurrency } from "@/contexts/CurrencyContext";
 import Breadcrumb, { BreadcrumbItem } from '@/components/Breadcrumb';
@@ -93,7 +93,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     }
   };
 
-  const totalPrice = livePrice * quantity;
+  const volumeDiscount = applyVolumeDiscount(livePrice, quantity);
+  const totalPrice = volumeDiscount.discountedUnitPrice * quantity;
+  const { nextTier } = getVolumeDiscount(quantity);
   const metalInfo = product.metal_type ? getMetalInfo(product.metal_type as MetalSymbol) : null;
 
   // Format category name
@@ -205,9 +207,43 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   </button>
                 </div>
               </div>
+              {volumeDiscount.discountPercentage > 0 && (
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-success-foreground font-medium">Bulk discount ({volumeDiscount.discountPercentage}%)</span>
+                  <span className="text-success-foreground font-medium">-{formatPrice(volumeDiscount.totalSavings)}</span>
+                </div>
+              )}
+              {nextTier && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  Add {nextTier.threshold - quantity} more for {nextTier.discount_percentage}% off each
+                </p>
+              )}
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <span className="font-medium text-foreground">Total</span>
                 <span className="text-2xl font-bold text-primary">{formatPrice(totalPrice)}</span>
+              </div>
+            </div>
+
+            {/* Bulk Pricing Tiers */}
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="font-semibold text-foreground mb-3 text-sm">Bulk Pricing</h3>
+              <div className="space-y-1.5">
+                {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => {
+                  const isActive = quantity >= tier.threshold;
+                  return (
+                    <div
+                      key={tier.threshold}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
+                        isActive
+                          ? 'bg-success/10 text-success-foreground font-medium'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      <span>{tier.threshold}+ units</span>
+                      <span>{tier.discount_percentage}% off per unit</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

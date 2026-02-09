@@ -8,9 +8,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
-import { ShoppingCartIcon, Filter, X, ChevronDown } from "lucide-react";
+import { ShoppingCartIcon, Filter, X, ChevronDown, Minus, Plus } from "lucide-react";
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useCart } from '@/contexts/CartContext';
+import { getVolumeDiscount } from '@/lib/pricing/priceCalculations';
 import { toast } from 'sonner';
 import { generateSlug } from '@/lib/utils/slug';
 
@@ -696,9 +697,13 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
 function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPrice; loadingPrices: boolean }) {
     const { formatPrice } = useCurrency();
-    const { addToCartById } = useCart();
+    const { addToCartById, cart, removeFromCart, updateQuantity } = useCart();
 
     const displayPrice = product.calculated_price ?? product.price;
+
+    const cartItem = cart.find(item => item.product.id === product.id);
+    const quantity = cartItem?.quantity || 0;
+    const { discountPercentage } = getVolumeDiscount(quantity);
 
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -710,6 +715,22 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
             });
         } else {
             toast.error('Failed to add to cart');
+        }
+    };
+
+    const handleIncrement = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        updateQuantity(product.id, quantity + 1);
+    };
+
+    const handleDecrement = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (quantity <= 1) {
+            removeFromCart(product.id);
+        } else {
+            updateQuantity(product.id, quantity - 1);
         }
     };
 
@@ -736,9 +757,9 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                         {product.name}
                     </h3>
 
-                    {/* Price */}
+                    {/* Price + Cart Controls */}
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex items-center gap-2">
                             {loadingPrices ? (
                                 <div className="h-6 w-20 bg-muted animate-pulse rounded" />
                             ) : (
@@ -746,15 +767,40 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                                     {formatPrice(displayPrice)}
                                 </div>
                             )}
+                            {discountPercentage > 0 && (
+                                <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-success/15 text-success-foreground">
+                                    {discountPercentage}% off
+                                </span>
+                            )}
                         </div>
 
-                        <button
-                            onClick={handleAddToCart}
-                            className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-                            aria-label="Add to cart"
-                        >
-                            <ShoppingCartIcon className="h-4 w-4" />
-                        </button>
+                        {quantity === 0 ? (
+                            <button
+                                onClick={handleAddToCart}
+                                className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                                aria-label="Add to cart"
+                            >
+                                <ShoppingCartIcon className="h-4 w-4" />
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={handleDecrement}
+                                    className="w-7 h-7 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center text-foreground transition-colors"
+                                    aria-label="Decrease quantity"
+                                >
+                                    <Minus className="h-3 w-3" />
+                                </button>
+                                <span className="w-6 text-center text-sm font-semibold text-foreground">{quantity}</span>
+                                <button
+                                    onClick={handleIncrement}
+                                    className="w-7 h-7 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center text-foreground transition-colors"
+                                    aria-label="Increase quantity"
+                                >
+                                    <Plus className="h-3 w-3" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

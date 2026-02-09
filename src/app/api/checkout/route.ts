@@ -9,6 +9,7 @@ import { screenCustomer } from "@/lib/compliance/screening";
 import { generateSMR } from "@/lib/compliance/smr-generator";
 import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
 import { fetchFxRate } from '@/lib/metals-api/metalsApi';
+import { applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
 import {sendTransactionFlaggedAlert} from "@/lib/email/sendComplianceAlert";
 import { createEDDInvestigation } from '@/lib/compliance/edd-service';
 import { auth } from '@clerk/nextjs/server';
@@ -123,9 +124,10 @@ export async function POST(req: NextRequest) {
     }
 
     const quantity = item.quantity;
-    logger.log(`  Product ${lock.product_id.substring(0, 8)}...: ${lock.locked_price_usd} USD × ${quantity} = ${(lock.locked_price_usd * quantity).toFixed(2)} USD ✓`);
+    const { discountedUnitPrice } = applyVolumeDiscount(lock.locked_price_usd, quantity);
+    logger.log(`  Product ${lock.product_id.substring(0, 8)}...: ${lock.locked_price_usd} USD × ${quantity} (${discountedUnitPrice.toFixed(2)} after bulk discount) = ${(discountedUnitPrice * quantity).toFixed(2)} USD ✓`);
 
-    return sum + (lock.locked_price_usd * quantity);
+    return sum + (discountedUnitPrice * quantity);
   }, 0);
 
   const amountInAUD = validLocks.reduce((sum, lock) => {
@@ -137,7 +139,8 @@ export async function POST(req: NextRequest) {
     }
 
     const quantity = item.quantity;
-    return sum + (lock.locked_price_aud * quantity);
+    const { discountedUnitPrice } = applyVolumeDiscount(lock.locked_price_aud, quantity);
+    return sum + (discountedUnitPrice * quantity);
   }, 0);
 
   const fxRate = validLocks[0].fx_rate;

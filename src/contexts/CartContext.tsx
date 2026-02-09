@@ -14,6 +14,7 @@ import {
 } from '@/lib/pricing/pricingTimer';
 import { createLogger } from '@/lib/utils/logger';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
 
 const logger = createLogger('CART_CONTEXT');
 
@@ -31,6 +32,7 @@ interface CartContextType {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: (currentPrices?: Map<string, number>) => number;
+  getCartDiscount: (currentPrices?: Map<string, number>) => number;
   getCartCount: () => number;
   getLockedPriceForProduct: (productId: string) => number | null;
   isLoading: boolean;
@@ -325,7 +327,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       // Priority: passed-in current prices > locked price > database price
       if (currentPrices && currentPrices.has(item.product.id)) {
-        price = currentPrices.get(item.product.id)!;  // Match what's displayed!
+        price = currentPrices.get(item.product.id)!;
       } else {
         const locked = getLockedPrice(item.product.id);
         if (locked) {
@@ -335,7 +337,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      return total + price * item.quantity;
+      const { discountedUnitPrice } = applyVolumeDiscount(price, item.quantity);
+      return total + discountedUnitPrice * item.quantity;
+    }, 0);
+  }, [cart, currency]);
+
+  const getCartDiscount = useCallback((currentPrices?: Map<string, number>) => {
+    return cart.reduce((totalDiscount, item) => {
+      let price: number;
+
+      if (currentPrices && currentPrices.has(item.product.id)) {
+        price = currentPrices.get(item.product.id)!;
+      } else {
+        const locked = getLockedPrice(item.product.id);
+        if (locked) {
+          price = currency === 'AUD' ? locked.priceAUD : locked.priceUSD;
+        } else {
+          price = item.product.price;
+        }
+      }
+
+      const { totalSavings } = applyVolumeDiscount(price, item.quantity);
+      return totalDiscount + totalSavings;
     }, 0);
   }, [cart, currency]);
 
@@ -366,6 +389,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     updateQuantity,
     clearCart,
     getCartTotal,
+    getCartDiscount,
     getCartCount,
     getLockedPriceForProduct,
     isLoading,

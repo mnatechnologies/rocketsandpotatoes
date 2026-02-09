@@ -9,7 +9,7 @@ import { useUser } from '@clerk/nextjs';
 import { useCart } from '@/contexts/CartContext';
 import {lockPrices, startPricingTimer, formatRemainingTime} from '@/lib/pricing/pricingTimer';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
-import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
+import { calculateBulkPricingFromCache, applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { createLogger} from "@/lib/utils/logger";
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -38,6 +38,7 @@ function CartContent() {
     updateQuantity,
     clearCart,
     getCartTotal,
+    getCartDiscount,
     getCartCount,
     isLoading,
     lockPricesOnServer,
@@ -283,6 +284,8 @@ function CartContent() {
                 const currentPrice = currentCartPrices.get(item.product.id) ?? item.product.price;
                 const lockedPrice = getLockedPriceForProduct(item.product.id);
                 const displayPrice = arePricesLocked && lockedPrice ? lockedPrice : currentPrice;
+                const discount = applyVolumeDiscount(displayPrice, item.quantity);
+                const itemSubtotal = discount.discountedUnitPrice * item.quantity;
 
                 return (
                   <div
@@ -313,6 +316,11 @@ function CartContent() {
                           : formatPrice(displayPrice)
                         } {currency}
                       </div>
+                      {discount.discountPercentage > 0 && (
+                        <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded bg-success/15 text-success-foreground">
+                          {discount.discountPercentage}% bulk discount applied
+                        </span>
+                      )}
                     </div>
 
                     <div
@@ -342,8 +350,8 @@ function CartContent() {
 
                       <div className="text-base font-bold text-foreground md:mt-auto">
                         {arePricesLocked && lockedPrice
-                          ? `$${(displayPrice * item.quantity).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : formatPrice(displayPrice * item.quantity)
+                          ? `$${itemSubtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : formatPrice(itemSubtotal)
                         } {currency}
                       </div>
                     </div>
@@ -367,17 +375,32 @@ function CartContent() {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-muted-foreground text-sm">
                     <span>Items ({getCartCount()})</span>
-                    {arePricesLocked
-                      ? `$${getCartTotal().toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      : formatPrice(getCartTotal(currentCartPrices))
-                    } {currency}
+                    <span>
+                      {arePricesLocked
+                        ? `$${(getCartTotal() + getCartDiscount()).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : formatPrice(getCartTotal(currentCartPrices) + getCartDiscount(currentCartPrices))
+                      } {currency}
+                    </span>
                   </div>
+                  {(arePricesLocked ? getCartDiscount() : getCartDiscount(currentCartPrices)) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-success-foreground">Bulk discount</span>
+                      <span className="text-success-foreground font-medium">
+                        -{arePricesLocked
+                          ? `$${getCartDiscount().toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : formatPrice(getCartDiscount(currentCartPrices))
+                        }
+                      </span>
+                    </div>
+                  )}
                   <div className="border-t border-border pt-3 flex justify-between text-lg font-bold text-foreground">
                     <span>Total</span>
-                    {arePricesLocked
-                      ? `$${getCartTotal().toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      : formatPrice(getCartTotal(currentCartPrices))
-                    } {currency}
+                    <span>
+                      {arePricesLocked
+                        ? `$${getCartTotal().toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : formatPrice(getCartTotal(currentCartPrices))
+                      } {currency}
+                    </span>
                   </div>
                 </div>
 

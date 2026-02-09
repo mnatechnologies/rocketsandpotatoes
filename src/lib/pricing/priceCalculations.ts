@@ -21,10 +21,68 @@ const DEFAULT_CONFIG: PricingConfig = {
   base_fee: 10,
   brand_base_fees: {},
   volume_discounts: [
-    {threshold: 100, discount_percentage: 2},
-    {threshold: 500, discount_percentage: 5},
-    {threshold: 1000, discount_percentage: 8},
+    {threshold: 5, discount_percentage: 1},
+    {threshold: 10, discount_percentage: 2},
+    {threshold: 25, discount_percentage: 3},
+    {threshold: 50, discount_percentage: 5},
   ],
+}
+
+export const DEFAULT_VOLUME_DISCOUNT_TIERS = DEFAULT_CONFIG.volume_discounts!;
+
+export interface VolumeDiscountResult {
+  discountPercentage: number;
+  nextTier: { threshold: number; discount_percentage: number } | null;
+}
+
+export interface AppliedVolumeDiscount {
+  discountedUnitPrice: number;
+  discountPercentage: number;
+  savingsPerUnit: number;
+  totalSavings: number;
+}
+
+export function getVolumeDiscount(
+  quantity: number,
+  tiers: PricingConfig['volume_discounts'] = DEFAULT_VOLUME_DISCOUNT_TIERS
+): VolumeDiscountResult {
+  if (!tiers || tiers.length === 0) {
+    return { discountPercentage: 0, nextTier: null };
+  }
+
+  const sorted = [...tiers].sort((a, b) => a.threshold - b.threshold);
+  let discountPercentage = 0;
+  let activeTierIndex = -1;
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (quantity >= sorted[i].threshold) {
+      discountPercentage = sorted[i].discount_percentage;
+      activeTierIndex = i;
+    }
+  }
+
+  const nextTier = activeTierIndex < sorted.length - 1
+    ? sorted[activeTierIndex + 1]
+    : null;
+
+  return { discountPercentage, nextTier };
+}
+
+export function applyVolumeDiscount(
+  unitPrice: number,
+  quantity: number,
+  tiers: PricingConfig['volume_discounts'] = DEFAULT_VOLUME_DISCOUNT_TIERS
+): AppliedVolumeDiscount {
+  const { discountPercentage } = getVolumeDiscount(quantity, tiers);
+  const savingsPerUnit = unitPrice * (discountPercentage / 100);
+  const discountedUnitPrice = unitPrice - savingsPerUnit;
+
+  return {
+    discountedUnitPrice,
+    discountPercentage,
+    savingsPerUnit,
+    totalSavings: savingsPerUnit * quantity,
+  };
 }
 
 // Helper function to get the base fee for a product based on brand
