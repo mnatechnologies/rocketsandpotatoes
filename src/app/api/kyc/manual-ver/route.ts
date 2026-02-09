@@ -1,9 +1,7 @@
-//import { createServerSupabase } from "@/lib/supabase/server";
-
 import {NextResponse, NextRequest} from 'next/server'
 /* eslint-disable */
-import {createClient} from "@supabase/supabase-js";
 import { auth } from '@clerk/nextjs/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 type VerificationMethod =
   | 'stripe_identity'
@@ -23,16 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
   const { customerId, verificationMethod, documents } = await request.json();
 
   // Verify customer belongs to authenticated user
@@ -68,7 +57,7 @@ export async function POST(request: NextRequest) {
     });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to submit verification documents' }, { status: 500 });
   }
 
   return NextResponse.json({

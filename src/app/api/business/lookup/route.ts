@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { lookupByABN, lookupByACN, validateABNFormat, validateACNFormat } from '@/lib/abr/abr-service';
 import { createLogger } from '@/lib/utils/logger';
 
@@ -21,11 +21,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'ABN or ACN required' }, { status: 400 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  const supabase = await createServerSupabase();
 
   try {
     let result;

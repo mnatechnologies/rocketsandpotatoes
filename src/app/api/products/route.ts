@@ -15,7 +15,7 @@ export async function GET() {
     .order('price', { ascending: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }
 
   return NextResponse.json(products);

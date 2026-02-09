@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { requireAdmin } from '@/lib/auth/admin';
-import { fetchFxRate } from '@/lib/metals-api/metalsApi';
+import { fetchFxRateWithFallback } from '@/lib/metals-api/metalsApi';
 
 
 const logger = createLogger('ADMIN_DASHBOARD_API');
@@ -105,14 +105,12 @@ export async function GET(req: NextRequest) {
     }
 
     // Get current FX rate for any USD transactions without amount_aud
-    let usdToAudRate = 1.57; // Fallback
-    try {
-      const fxResult = await fetchFxRate('USD', 'AUD');
-      usdToAudRate = fxResult.rate;
-      logger.log(`Using current FX rate: ${usdToAudRate}`);
-    } catch (error) {
-      logger.error('Failed to fetch FX rate, using fallback:', error);
+    const fxResult = await fetchFxRateWithFallback('USD', 'AUD');
+    const usdToAudRate = fxResult.rate;
+    if (fxResult.isFallback) {
+      logger.warn('Using last-resort FX rate fallback for dashboard totals');
     }
+    logger.log(`Using FX rate: ${usdToAudRate}${fxResult.isFallback ? ' (FALLBACK)' : ''}`);
 
     // Calculate total transaction value in AUD
     const totalTransactionValue = recentTransactions?.reduce((sum, tx) => {

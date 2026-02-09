@@ -11,6 +11,7 @@ import {formatRemainingTime} from "@/lib/pricing/pricingTimer";
 import { createLogger } from '@/lib/utils/logger';
 import {useCurrency} from "@/contexts/CurrencyContext";
 import { toast } from 'sonner';
+import { CheckCircle, Clock, AlertTriangle, Lock } from 'lucide-react';
 
 const logger = createLogger('CHECKOUT_PAGE');
 
@@ -77,7 +78,7 @@ export default function CheckoutPage() {
         border: 'border-green-500/20',
         text: 'text-green-600 dark:text-green-400',
         textBold: 'text-green-600 dark:text-green-400',
-        icon: '✓'
+        icon: <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
       };
     } else if (timerRemaining > 300000) { // 5-10 minutes
       return {
@@ -85,7 +86,7 @@ export default function CheckoutPage() {
         border: 'border-yellow-500/20',
         text: 'text-yellow-600 dark:text-yellow-400',
         textBold: 'text-yellow-600 dark:text-yellow-400',
-        icon: '⏰'
+        icon: <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
       };
     } else { // < 5 minutes
       return {
@@ -93,7 +94,7 @@ export default function CheckoutPage() {
         border: 'border-red-500/20',
         text: 'text-red-600 dark:text-red-400',
         textBold: 'text-red-600 dark:text-red-400',
-        icon: '⚠️'
+        icon: <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
       };
     }
   }, [timerRemaining]);
@@ -187,10 +188,10 @@ export default function CheckoutPage() {
         {/* Always-visible persistent timer */}
         <div className={`mb-4 p-4 ${timerStyle.bg} border ${timerStyle.border} rounded-lg sticky top-20 z-10 shadow-card`}>
           <div className="flex items-center justify-center gap-3">
-            <span className="text-2xl">{timerStyle.icon}</span>
+            {timerStyle.icon}
             <div className="text-center flex-1">
-              <p className={`${timerStyle.textBold} font-semibold`}>
-                🔒 Prices Locked - Expires In: <span className="text-2xl font-mono font-bold">{timeDisplay}</span>
+              <p className={`${timerStyle.textBold} font-semibold flex items-center justify-center gap-1.5`}>
+                <Lock className="h-4 w-4 inline-block" /> Prices Locked - Expires In: <span className="text-2xl font-mono font-bold">{timeDisplay}</span>
               </p>
               <p className={`${timerStyle.text} text-sm mt-1`}>
                 {timerRemaining > 600000

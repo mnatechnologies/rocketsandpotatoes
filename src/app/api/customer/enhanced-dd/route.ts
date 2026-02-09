@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { auth } from '@clerk/nextjs/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 const logger = createLogger('ENHANCED_DD');
 
@@ -11,16 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   try {
     const {
@@ -210,9 +201,8 @@ export async function POST(req: NextRequest) {
       message: 'Enhanced due diligence information saved',
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to save EDD';
     logger.error('Error saving EDD:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save enhanced due diligence information' }, { status: 500 });
   }
 }
 
@@ -223,16 +213,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   const customerId = req.nextUrl.searchParams.get('customerId');
 
@@ -269,8 +250,8 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to retrieve EDD status';
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error('Error retrieving EDD status:', error);
+    return NextResponse.json({ error: 'Failed to retrieve EDD status' }, { status: 500 });
   }
 }
 

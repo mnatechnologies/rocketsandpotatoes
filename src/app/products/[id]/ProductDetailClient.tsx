@@ -13,12 +13,14 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import Breadcrumb, { BreadcrumbItem } from '@/components/Breadcrumb';
 import { toast } from 'sonner';
 import { ShoppingCart, Minus, Plus, Shield, Clock, Award } from 'lucide-react';
+import { generateSlug } from '@/lib/utils/slug';
 
 interface ProductDetailClientProps {
   product: Product;
+  relatedProducts?: Product[];
 }
 
-export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product, relatedProducts = [] }: ProductDetailClientProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { formatPrice, currency } = useCurrency();
@@ -178,11 +180,42 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               )}
             </div>
 
-            {/* Specs */}
-            <div className="grid grid-cols-1 gap-4">
-              <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
-                <div className="text-sm text-muted-foreground">Purity</div>
-                <div className="text-lg font-semibold text-foreground">{product.purity}</div>
+            {/* Specifications */}
+            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+              <h3 className="font-semibold text-foreground text-sm px-5 py-3 border-b border-border bg-muted/30">
+                Specifications
+              </h3>
+              <div className="divide-y divide-border">
+                {metalInfo && (
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <span className="text-sm text-muted-foreground">Metal Type</span>
+                    <span className="text-sm font-medium text-foreground capitalize">{metalInfo.label}</span>
+                  </div>
+                )}
+                {product.weight && (
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <span className="text-sm text-muted-foreground">Weight</span>
+                    <span className="text-sm font-medium text-foreground">{product.weight}</span>
+                  </div>
+                )}
+                {product.purity && (
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <span className="text-sm text-muted-foreground">Purity</span>
+                    <span className="text-sm font-medium text-foreground">{product.purity}</span>
+                  </div>
+                )}
+                {product.form_type && (
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <span className="text-sm text-muted-foreground">Form</span>
+                    <span className="text-sm font-medium text-foreground capitalize">{product.form_type}</span>
+                  </div>
+                )}
+                {product.brand && (
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <span className="text-sm text-muted-foreground">Brand / Refiner</span>
+                    <span className="text-sm font-medium text-foreground">{product.brand}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -298,6 +331,45 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <p className="text-base text-foreground/80 leading-relaxed">
                 {product.description}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Related Products */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-foreground mb-6">You May Also Like</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+              {relatedProducts.map((related) => (
+                <Link
+                  key={related.id}
+                  href={`/products/${generateSlug(related.name)}`}
+                  className="group block"
+                >
+                  <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/30 transition-all duration-200 shadow-card hover:shadow-card-hover hover:-translate-y-0.5">
+                    <div className="relative aspect-square bg-muted/30">
+                      <Image
+                        src={related.image_url || '/anblogo.png'}
+                        alt={related.name}
+                        fill
+                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply dark:mix-blend-normal"
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 text-sm mb-1 min-h-[2.5rem]">
+                        {related.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mb-2 truncate">
+                        {[related.weight, related.purity].filter(Boolean).join(' | ')}
+                      </p>
+                      <div className="text-lg font-bold text-foreground">
+                        {formatPrice(related.price)}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
         )}

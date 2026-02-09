@@ -16,6 +16,41 @@ const supabase = createClient(
   }
 );
 
+// In-memory rate limiter: max 3 submissions per IP per 15 minutes
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX = 3;
+const rateLimitMap = new Map<string, number[]>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = rateLimitMap.get(ip) || [];
+
+  // Remove expired entries
+  const valid = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  rateLimitMap.set(ip, valid);
+
+  if (valid.length >= RATE_LIMIT_MAX) {
+    return true;
+  }
+
+  valid.push(now);
+  rateLimitMap.set(ip, valid);
+  return false;
+}
+
+// Periodically clean up stale entries to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, timestamps] of rateLimitMap) {
+    const valid = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    if (valid.length === 0) {
+      rateLimitMap.delete(ip);
+    } else {
+      rateLimitMap.set(ip, valid);
+    }
+  }
+}, RATE_LIMIT_WINDOW_MS);
+
 interface ContactFormData {
   name: string;
   email: string;
@@ -35,6 +70,19 @@ function escapeHtml(str: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit by IP
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+               req.headers.get('x-real-ip') ||
+               'unknown';
+
+    if (isRateLimited(ip)) {
+      logger.warn('Rate limited contact form submission from:', ip);
+      return NextResponse.json(
+        { error: 'Too many submissions. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
     const body: ContactFormData = await req.json();
     const { name, email, phone, subject, message } = body;
 

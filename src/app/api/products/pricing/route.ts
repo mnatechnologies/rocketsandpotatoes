@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {createClient} from "@supabase/supabase-js";
 import { calculateBulkPricing} from "@/lib/pricing/priceCalculations";
 import { createLogger } from "@/lib/utils/logger";
-import { fetchFxRate } from '@/lib/metals-api/metalsApi';
+import { fetchFxRate, fetchFxRateWithFallback } from '@/lib/metals-api/metalsApi';
 
 
 const logger = createLogger('PRODUCT_PRICING_API');
@@ -54,16 +54,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let fxRate = 1;
-    try {
-      const result = await fetchFxRate('USD', 'AUD');
-      fxRate = result.rate;
-      logger.log('✅ FX rate fetched:', fxRate);
-    } catch (error) {
-      logger.error('Failed to fetch FX rate:', error);
-      fxRate = 1.57; // Fallback only if API fails
-    }
-
+    const fxResult = await fetchFxRate('USD', 'AUD');
+    const fxRate = fxResult.rate;
+    logger.log('✅ FX rate fetched:', fxRate);
 
     // ✅ Calculate live prices (NO FALLBACK!)
     const priceMap = await calculateBulkPricing(products);
@@ -109,7 +102,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: 'Failed to fetch product pricing',
       },
       { status: 500 }
     );
@@ -125,15 +118,12 @@ export async function POST(request: NextRequest) {
     logger.log('POST /api/products/pricing called:', { sessionId, currency, productCount: products?.length });
 
     // ✅ Always fetch FX rate for dual currency storage
-    let fxRate = 1;
-    try {
-      const result = await fetchFxRate('USD', 'AUD');
-      fxRate = result.rate;
-      logger.log('✅ FX rate fetched:', fxRate);
-    } catch (error) {
-      logger.error('Failed to fetch FX rate:', error);
-      fxRate = 1.57; // Fallback only if API fails
+    const fxRateResult = await fetchFxRateWithFallback('USD', 'AUD');
+    const fxRate = fxRateResult.rate;
+    if (fxRateResult.isFallback) {
+      logger.warn('Using last-resort FX rate fallback for price locking');
     }
+    logger.log('✅ FX rate:', fxRate, fxRateResult.isFallback ? '(FALLBACK)' : '');
 
     if (!sessionId) {
       return NextResponse.json(
@@ -266,7 +256,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error('Error locking prices:', error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Internal server error' },
+      { success: false, error: 'Failed to lock prices' },
       { status: 500 }
     );
   }
@@ -298,7 +288,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     logger.error('Error clearing price locks:', error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Internal server error' },
+      { success: false, error: 'Failed to clear price locks' },
       { status: 500 }
     );
   }

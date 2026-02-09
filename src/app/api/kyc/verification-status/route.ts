@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { retrieveVerificationSession, processVerificationResult, stripe } from '@/lib/stripe/identity';
 import { createLogger } from '@/lib/utils/logger';
 import { auth } from '@clerk/nextjs/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 const logger = createLogger('VERIFICATION_STATUS_API');
 
@@ -19,16 +19,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Customer ID required' }, { status: 400 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   // Verify customer belongs to authenticated user
   const { data: customerOwner } = await supabase

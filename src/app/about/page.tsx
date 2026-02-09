@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { CircleDollarSign, Coins, Gem } from 'lucide-react';
 
 export default function AboutPage() {
   return (
@@ -152,21 +153,33 @@ export default function AboutPage() {
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-card border border-border rounded-lg p-6 text-center">
-              <div className="text-4xl mb-3">🥇</div>
+              <div className="flex justify-center mb-3">
+                <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <CircleDollarSign className="h-6 w-6 text-amber-500" />
+                </div>
+              </div>
               <h3 className="text-lg font-semibold text-card-foreground mb-2">Gold</h3>
               <p className="text-sm text-muted-foreground">
                 Investment bars and coins from reputable mints worldwide
               </p>
             </div>
             <div className="bg-card border border-border rounded-lg p-6 text-center">
-              <div className="text-4xl mb-3">🥈</div>
+              <div className="flex justify-center mb-3">
+                <div className="w-12 h-12 rounded-full bg-slate-400/10 flex items-center justify-center">
+                  <Coins className="h-6 w-6 text-slate-400" />
+                </div>
+              </div>
               <h3 className="text-lg font-semibold text-card-foreground mb-2">Silver</h3>
               <p className="text-sm text-muted-foreground">
                 Pure silver bullion in various weights and formats
               </p>
             </div>
             <div className="bg-card border border-border rounded-lg p-6 text-center">
-              <div className="text-4xl mb-3">💎</div>
+              <div className="flex justify-center mb-3">
+                <div className="w-12 h-12 rounded-full bg-cyan-400/10 flex items-center justify-center">
+                  <Gem className="h-6 w-6 text-cyan-400" />
+                </div>
+              </div>
               <h3 className="text-lg font-semibold text-card-foreground mb-2">Platinum & Palladium</h3>
               <p className="text-sm text-muted-foreground">
                 Premium precious metals for diversified portfolios

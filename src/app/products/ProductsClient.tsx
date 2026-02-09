@@ -753,9 +753,17 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
 
                 {/* Product Info */}
                 <div className="p-4">
-                    <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 text-sm mb-2 min-h-[2.5rem]">
+                    <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 text-sm mb-1 min-h-[2.5rem]">
                         {product.name}
                     </h3>
+
+                    {/* Weight, Purity & Brand */}
+                    <p className="text-xs text-muted-foreground mb-2 truncate">
+                        {[product.weight, product.purity].filter(Boolean).join(' | ')}
+                        {product.brand && (
+                            <span className="block text-xs text-muted-foreground/70 mt-0.5">{product.brand}</span>
+                        )}
+                    </p>
 
                     {/* Price + Cart Controls */}
                     <div className="flex items-center justify-between">

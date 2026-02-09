@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from "@supabase/supabase-js";
+import { createServerSupabase } from '@/lib/supabase/server';
 import { createLogger}  from "@/lib/utils/logger";
 import { auth } from '@clerk/nextjs/server';
 
@@ -13,16 +13,7 @@ export async function POST(req: NextRequest) {
 
   const formData = await (req as any).formData();
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   const file = formData.get('file') as File;
   const customerId = formData.get('customerId') as string;

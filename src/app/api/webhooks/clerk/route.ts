@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
       if (error) {
         logger.error('Error: Supabase insert failed', error);
-        return NextResponse.json({ error: 'Failed to create customer', details: error }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 });
       }
 
       logger.log('Customer record created/updated successfully:', data);
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, customer: data });
     } catch (err) {
       logger.error('Error: Exception during processing', err);
-      return NextResponse.json({ error: 'Internal server error', details: err }, { status: 500 });
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
 

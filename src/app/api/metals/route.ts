@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         logger.error('Error fetching metals quotes:', error);
         return NextResponse.json({
             success: false,
-            error: error instanceof Error ? error.message : 'An unknown error occurred'
+            error: 'Failed to fetch metals quotes'
         },
         {status: 500}
         );

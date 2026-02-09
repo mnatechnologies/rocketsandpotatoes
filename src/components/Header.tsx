@@ -11,7 +11,7 @@ import {
   UserButton,
   useUser,
 } from '@clerk/nextjs';
-import { ShoppingCartIcon, ChevronDown } from "lucide-react";
+import { ShoppingCartIcon, ChevronDown, Phone } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import CurrencySelector from "@/components/CurrencySelector";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -212,6 +212,14 @@ export default function Header() {
 
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-2">
+              <a
+                href="tel:+61291234567"
+                className="flex items-center gap-1.5 text-sm font-medium text-foreground/70 hover:text-primary transition-colors mr-1"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                (02) 9123 4567
+              </a>
+              <div className="w-px h-6 bg-border" />
               <ThemeToggle />
               <CurrencySelector />
               <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
@@ -343,6 +351,15 @@ export default function Header() {
                     )}
                   </div>
                 ))}
+
+                {/* Mobile Phone */}
+                <a
+                  href="tel:+61291234567"
+                  className="flex items-center gap-2 text-foreground/80 hover:text-primary transition-colors font-medium py-2.5 px-3 rounded-md hover:bg-muted/50 text-sm"
+                >
+                  <Phone className="h-4 w-4" />
+                  (02) 9123 4567
+                </a>
 
                 {/* Mobile Authentication */}
                 <div className="pt-3 space-y-2 border-t border-border/60 mt-3">

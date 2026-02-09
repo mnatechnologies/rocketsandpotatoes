@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
@@ -8,16 +8,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   const customerId = req.nextUrl.searchParams.get('customerId');
 
@@ -56,7 +47,6 @@ export async function GET(req: NextRequest) {
       investigation: investigation || null,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to check investigation status';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to check investigation status' }, { status: 500 });
   }
 }

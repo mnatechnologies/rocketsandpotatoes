@@ -1,7 +1,7 @@
 import { createUBOVerificationSession } from '@/lib/stripe/identity';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 
 
@@ -9,16 +9,28 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; ownerId: string }> }
 ) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { verification_method } = await req.json();
   const { id } =  await params;
   const { ownerId }  = await params
   const businessId = id;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  const supabase = await createServerSupabase();
+
+  // Verify user has access to this business
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('business_customer_id')
+    .eq('clerk_user_id', userId)
+    .single();
+
+  if (!customer || customer.business_customer_id !== businessId) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  }
 
   if (verification_method === 'stripe_identity') {
     // Create Stripe Identity session with proper metadata

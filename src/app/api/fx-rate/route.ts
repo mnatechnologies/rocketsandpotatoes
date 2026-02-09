@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     logger.error('Error fetching FX rate:', error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to fetch FX rate',
+        error: 'Failed to fetch FX rate',
       },
       { status: 500 }
     );

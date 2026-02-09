@@ -294,6 +294,35 @@ export const fetchFxRate = async (from: string, to: string): Promise<{ rate: num
   }
 }
 
+/**
+ * Wraps fetchFxRate with error handling. Returns the rate and whether it's from
+ * the live API/cache or a last-resort fallback. Callers should check `isFallback`
+ * and decide whether to proceed or error based on their context.
+ *
+ * The LAST_RESORT rate is intentionally conservative (high) so that AUD amounts
+ * are over-estimated rather than under-estimated for compliance purposes.
+ * This value MUST be reviewed periodically — it was set on 2026-02-10.
+ */
+const LAST_RESORT_FX_RATE_USD_AUD = 1.60;
+const LAST_RESORT_FX_RATE_SET_DATE = '2026-02-10';
+
+export const fetchFxRateWithFallback = async (
+  from: string,
+  to: string
+): Promise<{ rate: number; timestamp: string; isFallback: boolean }> => {
+  try {
+    const result = await fetchFxRate(from, to);
+    return { ...result, isFallback: false };
+  } catch (error) {
+    logger.error(`All FX rate sources failed for ${from}/${to}. Using last-resort fallback rate ${LAST_RESORT_FX_RATE_USD_AUD} (set ${LAST_RESORT_FX_RATE_SET_DATE}). THIS MUST BE INVESTIGATED.`);
+    return {
+      rate: LAST_RESORT_FX_RATE_USD_AUD,
+      timestamp: new Date().toISOString(),
+      isFallback: true,
+    };
+  }
+};
+
 
 
 export const getMetalInfo = (symbol: MetalSymbol): MetalInfo => METAL_LOOKUP[symbol];

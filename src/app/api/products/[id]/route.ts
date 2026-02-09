@@ -58,7 +58,7 @@ export async function GET(
     if (error) {
       logger.error('Error fetching product:', error);
       return NextResponse.json(
-        { error: 'Product not found', details: error },
+        { error: 'Product not found' },
         { status: 404 }
       );
     }
@@ -76,7 +76,7 @@ export async function GET(
   } catch (err) {
     logger.error('Exception fetching product:', err);
     return NextResponse.json(
-      { error: 'Internal server error', details: err },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

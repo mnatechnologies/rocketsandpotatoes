@@ -72,11 +72,14 @@ export async function sanctionsScreening(
 async function checkExactMatch(supabase: any, fullName: string) {
   const normalisedName = normalizeName(fullName);
 
+  // Escape LIKE-special characters to prevent PostgREST filter injection
+  const escapedName = normalisedName.replace(/[%_\\]/g, '\\$&');
+
   // Use separate parameterized queries to prevent filter injection
   const { data: nameMatches, error: nameError } = await supabase
     .from('sanctioned_entities')
     .select('*')
-    .ilike('full_name', `%${normalisedName}%`);
+    .ilike('full_name', `%${escapedName}%`);
 
   const { data: aliasMatches, error: aliasError } = await supabase
     .from('sanctioned_entities')

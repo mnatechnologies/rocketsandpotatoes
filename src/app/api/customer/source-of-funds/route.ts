@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { auth } from '@clerk/nextjs/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 const logger = createLogger('SOURCE_OF_FUNDS');
 
@@ -11,16 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   try {
     const { customerId, sourceOfFunds, occupation, employer, isPep, pepRelationship } = await req.json();
@@ -126,7 +117,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     logger.error('Error saving source of funds:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to save source of funds' },
+      { error: 'Failed to save source of funds' },
       { status: 500 }
     );
   }
@@ -139,16 +130,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = await createServerSupabase();
 
   const customerId = req.nextUrl.searchParams.get('customerId');
 
@@ -186,7 +168,7 @@ export async function GET(req: NextRequest) {
 
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || 'Failed to retrieve source of funds' },
+      { error: 'Failed to retrieve source of funds' },
       { status: 500 }
     );
   }

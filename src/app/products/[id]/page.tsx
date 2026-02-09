@@ -55,5 +55,21 @@ export default async function ProductDetailPage({params}: { params: Promise<{ id
     image_url: fullImageUrl
   };
 
-  return <ProductDetailClient product={productWithUrl} />;
+  // Fetch related products from same category
+  const { data: relatedRaw } = await supabase
+    .from('products')
+    .select('*')
+    .eq('category', product.category)
+    .neq('id', product.id)
+    .limit(4);
+
+  const relatedProducts: Product[] = (relatedRaw || []).map((p: Product) => {
+    const trimmed = p.image_url?.trim();
+    const imgUrl = trimmed
+      ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${p.category.toLowerCase()}/${p.form_type ? `${p.form_type}/` : ''}${trimmed}`
+      : '/anblogo.png';
+    return { ...p, image_url: imgUrl };
+  });
+
+  return <ProductDetailClient product={productWithUrl} relatedProducts={relatedProducts} />;
 }

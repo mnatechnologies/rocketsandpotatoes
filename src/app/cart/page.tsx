@@ -404,16 +404,6 @@ function CartContent() {
                   </div>
                 </div>
 
-                {/* Coming Soon Notice */}
-                <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold text-foreground text-sm">Checkout Coming Soon</h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    We are preparing to launch. Our checkout system will be available very soon. Thank you for your patience.
-                  </p>
-                </div>
-
                 <button
                   onClick={handleCheckout}
                   className="cursor-pointer w-full py-3 font-semibold rounded-lg transition-colors mb-3 bg-primary hover:bg-primary/90 text-primary-foreground shadow-gold"

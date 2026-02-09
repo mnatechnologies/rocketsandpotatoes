@@ -1,5 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
 import { createLogger } from '@/lib/utils/logger';
 
@@ -10,6 +11,11 @@ const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { paymentIntentId } = await req.json();
 
     if (!paymentIntentId) {
@@ -23,6 +29,16 @@ export async function POST(req: NextRequest) {
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
+    // Verify the payment intent belongs to the authenticated user
+    if (paymentIntent.metadata?.clerk_user_id !== userId) {
+      logger.warn('Payment intent ownership mismatch:', {
+        requestUserId: userId,
+        intentUserId: paymentIntent.metadata?.clerk_user_id,
+        paymentIntentId,
+      });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       status: paymentIntent.status,
@@ -33,7 +49,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     logger.error('Error retrieving payment intent:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to retrieve payment intent' },
+      { error: 'Failed to retrieve payment intent' },
       { status: 500 }
     );
   }

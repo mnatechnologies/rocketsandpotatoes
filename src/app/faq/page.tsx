@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import FAQAccordion from '@/components/FAQAccordion';
 
 export const metadata = {
   title: 'Frequently Asked Questions | Australian National Bullion',
@@ -143,25 +144,7 @@ export default function FAQPage() {
         </section>
 
         {/* FAQ Sections */}
-        {faqs.map((section) => (
-          <section
-            key={section.category}
-            id={section.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
-            className="mb-12"
-          >
-            <h2 className="text-2xl font-bold text-foreground mb-4">{section.category}</h2>
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="space-y-6">
-                {section.items.map((item, index) => (
-                  <div key={index} className="border-b border-border pb-6 last:border-0 last:pb-0">
-                    <h3 className="text-lg font-semibold text-primary mb-2">{item.question}</h3>
-                    <p className="text-muted-foreground">{item.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        ))}
+        <FAQAccordion sections={faqs} />
 
         {/* Still Have Questions */}
         <section className="mb-12">

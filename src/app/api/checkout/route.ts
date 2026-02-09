@@ -42,6 +42,19 @@ export async function POST(req: NextRequest) {
   
   const { customerId, amount, currency = 'AUD', productDetails, cartItems, sessionId } = await (req as any).json();
 
+  // Verify the authenticated user owns this customer record
+  const { data: customerOwnership, error: ownershipError } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('id', customerId)
+    .eq('clerk_user_id', userId)
+    .single();
+
+  if (ownershipError || !customerOwnership) {
+    logger.warn('Customer ownership verification failed:', { customerId, userId });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
   // 🚀 COMING SOON: Block all checkout attempts gracefully
   // TODO: Remove this IF block when ready to launch
   const COMING_SOON_MODE = true; // Set to false to enable checkout

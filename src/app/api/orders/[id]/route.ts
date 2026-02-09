@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { createServerSupabase } from '@/lib/supabase/server';
-import {createClient} from "@supabase/supabase-js";
+import { createServerSupabase } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
 import { createLogger } from '@/lib/utils/logger';
 import {getComplianceRequirements} from "@/lib/compliance/thresholds";
@@ -18,7 +17,7 @@ export async function GET(
   try {
     // Get authenticated user from Clerk
     const { userId } = await auth();
-    
+
     if (!userId) {
       logger.log('Unauthorized - no userId from Clerk');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,18 +25,7 @@ export async function GET(
 
     logger.log('Authenticated user ID:', userId);
 
-    // const supabase = createServerSupabase();
-    //subject to removal once I actually get createServerSupabase workin with clerk lmao
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const supabase = await createServerSupabase();
 
     // Fetch the transaction/order
     const { data: order, error: orderError } = await supabase
@@ -124,7 +112,7 @@ export async function GET(
   } catch (error: any) {
     logger.error('Error in order fetch:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

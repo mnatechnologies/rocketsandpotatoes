@@ -244,7 +244,6 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       const data = await response.json();
       logger.log('Payment intent created:', data.paymentIntentId);
       setClientSecret(data.clientSecret);
-      logger.log('Client secret:', data.clientSecret);
       setPaymentIntentId(data.paymentIntentId);
     } catch (error) {
       logger.error('Error creating payment intent:', error);
