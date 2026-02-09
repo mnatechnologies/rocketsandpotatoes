@@ -22,24 +22,28 @@ export default function Error({
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full text-center">
         <div className="mb-6 sm:mb-8">
-          <div className="text-5xl sm:text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-            Oops! Something went wrong
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2 tracking-tight">
+            Something went wrong
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mb-6">
-            We encountered an unexpected error. Don&apos;t worry, we&apos;re working on it.
+            We encountered an unexpected error. Please try again.
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 mb-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
+        <div className="bg-card rounded-lg p-4 sm:p-6 mb-6 border border-border">
+          <h2 className="text-sm font-semibold text-muted-foreground mb-2">
             Error Details
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-500 font-mono break-all">
+          <p className="text-sm text-muted-foreground/70 font-mono break-all">
             {error.message || 'Unknown error occurred'}
           </p>
           {error.digest && (
-            <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">
+            <p className="text-xs text-muted-foreground/50 mt-2">
               Error ID: {error.digest}
             </p>
           )}
@@ -48,13 +52,13 @@ export default function Error({
         <div className="space-y-3">
           <button
             onClick={reset}
-            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Try Again
           </button>
           <Link
             href="/"
-            className="block w-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-foreground font-semibold py-3 px-6 rounded-lg border-2 border-primary transition-colors"
+            className="block w-full bg-card hover:bg-muted text-foreground font-semibold py-3 px-6 rounded-lg border border-border transition-colors"
           >
             Return Home
           </Link>

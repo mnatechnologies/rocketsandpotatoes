@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -12,58 +12,68 @@ export default function Hero() {
           alt="Premium bullion and precious metals"
           fill
           priority
-          className="object-cover opacity-60"
+          className="object-cover opacity-50"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center lg:text-left">
-        <div className="max-w-3xl mx-auto lg:mx-0">
-          <div className="space-y-8">
+      <div className="relative z-10 container mx-auto px-4 lg:px-6 text-center lg:text-left">
+        <div className="max-w-2xl mx-auto lg:mx-0">
+          <div className="space-y-6">
             <div className="space-y-4">
-              <h1 className="text-5xl lg:text-7xl font-bold leading-tight text-white">
-                <span className="block">Premium</span>
-                <span className="block gold-shimmer bg-clip-text text-transparent">Bullion Store</span>
-                <span className="block">Australia</span>
+              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-primary/90">
+                AUSTRAC Registered Dealer
+              </p>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-white tracking-tight">
+                <span className="block">Invest in</span>
+                <span className="block gold-shimmer bg-clip-text text-transparent">Precious Metals</span>
+                <span className="block text-white/90">with Confidence</span>
               </h1>
-              <p className="text-xl text-zinc-300 max-w-xl">
-                Secure your wealth with certified precious metals. Live pricing, guaranteed authenticity,
-                and expert guidance for your investment journey.
+              <p className="text-base sm:text-lg text-white/60 max-w-lg leading-relaxed">
+                Secure your wealth with certified precious metals. Live market pricing, guaranteed authenticity,
+                and full regulatory compliance.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Link href="/products" className="inline-flex items-center justify-center px-8 py-4 rounded-md bg-primary text-black dark:text-primary-foreground shadow-gold transition-smooth hover:opacity-95 text-lg font-semibold">
-                Shop Now
-                <svg className="ml-2 h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+              <Link href="/products" className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg bg-primary text-primary-foreground shadow-gold transition-all hover:shadow-premium hover:brightness-110 text-base font-semibold">
+                Browse Products
+                <svg className="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </Link>
-              <Link href="/products?category=Gold" className="inline-flex items-center justify-center px-8 py-4 rounded-md border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-smooth text-lg font-semibold">
-                Buy Gold
+              <Link href="/charts" className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg border border-white/15 bg-white/5 backdrop-blur-sm text-white/90 hover:bg-white/10 hover:border-white/25 transition-all text-base font-semibold">
+                View Live Prices
               </Link>
             </div>
 
-            <div className="grid grid-cols-3 gap-6 pt-8">
+            <div className="grid grid-cols-3 gap-4 sm:gap-6 pt-6 border-t border-white/10">
               <div className="text-center lg:text-left">
                 <div className="flex justify-center lg:justify-start mb-2">
-                  <svg className="h-8 w-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  </div>
                 </div>
-                <h3 className="font-semibold mb-1 text-white">Secure Storage</h3>
-                <p className="text-sm text-zinc-400">Bank-grade security</p>
+                <h3 className="font-semibold text-sm text-white">Secure</h3>
+                <p className="text-xs text-white/40 mt-0.5">Bank-grade security</p>
               </div>
               <div className="text-center lg:text-left">
                 <div className="flex justify-center lg:justify-start mb-2">
-                  <svg className="h-8 w-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                  <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                  </div>
                 </div>
-                <h3 className="font-semibold mb-1 text-white">Live Pricing</h3>
-                <p className="text-sm text-zinc-400">Real-time updates</p>
+                <h3 className="font-semibold text-sm text-white">Live Pricing</h3>
+                <p className="text-xs text-white/40 mt-0.5">Real-time updates</p>
               </div>
               <div className="text-center lg:text-left">
                 <div className="flex justify-center lg:justify-start mb-2">
-                  <svg className="h-8 w-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18"/><path d="M18 3v3"/><path d="M6 3v3"/><path d="M3 9h18"/><path d="M10 13l-3 3 3 3"/><path d="M14 13l3 3-3 3"/></svg>
+                  <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  </div>
                 </div>
-                <h3 className="font-semibold mb-1 text-white">Certified Quality</h3>
-                <p className="text-sm text-zinc-400">Guaranteed authenticity</p>
+                <h3 className="font-semibold text-sm text-white">Certified</h3>
+                <p className="text-xs text-white/40 mt-0.5">Guaranteed authenticity</p>
               </div>
             </div>
           </div>

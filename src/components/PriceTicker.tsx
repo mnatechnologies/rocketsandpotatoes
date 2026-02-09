@@ -47,7 +47,7 @@ export default function PriceTicker() {
   useEffect(() => {
     const interval = setInterval(() => {
       setMarketStatus(getMarketStatus());
-      
+
       // Update refresh countdown
       if (lastUpdated) {
         const nextRefresh = new Date(lastUpdated.getTime() + 5 * 60 * 1000);
@@ -75,13 +75,13 @@ export default function PriceTicker() {
 
   if (isLoading) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-40 bg-zinc-950" data-ticker>
-        <div className="container mx-auto px-4 py-4">
+      <div className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-border" data-ticker>
+        <div className="container mx-auto px-4 py-3">
           <div className="grid grid-cols-5 gap-0">
             {[1,2,3,4,5].map(i => (
-              <div key={i} className="bg-zinc-900 p-4 border-r border-zinc-800 last:border-r-0 animate-pulse">
-                <div className="h-4 w-16 bg-zinc-800 rounded mb-2" />
-                <div className="h-6 w-24 bg-zinc-800 rounded" />
+              <div key={i} className="bg-muted/50 p-3 border-r border-border last:border-r-0 animate-pulse rounded-sm">
+                <div className="h-3 w-14 bg-muted rounded mb-2" />
+                <div className="h-5 w-20 bg-muted rounded" />
               </div>
             ))}
           </div>
@@ -91,7 +91,7 @@ export default function PriceTicker() {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 bg-zinc-950" data-ticker>
+    <div className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-border" data-ticker>
       <div className="container mx-auto px-4">
         {/* 6-Column Grid: 4 metals + timer + fx rate */}
         <div className="grid grid-cols-3 md:grid-cols-6">
@@ -101,20 +101,20 @@ export default function PriceTicker() {
             <Link
               key={price.metal}
               href={`/products?category=${encodeURIComponent(category)}`}
-              className={`bg-zinc-900 p-4 md:p-4 border-zinc-800 border-r transition-colors hover:bg-zinc-800 ${
+              className={`bg-card p-3 md:p-4 border-border/60 border-r transition-colors hover:bg-muted/40 ${
                 index < 3 ? 'border-b md:border-b-0' : ''
               }`}
               aria-label={`View ${category} products`}
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   {price.metal}
                 </span>
                 <div className={`flex items-center ${
-                  price.change >= 0 ? 'text-green-500' : 'text-red-500'
+                  price.change >= 0 ? 'text-success' : 'text-destructive'
                 }`}>
                   <svg
-                    className="h-3.5 w-5"
+                    className="h-3 w-4"
                     viewBox="0 0 24 24"
                     fill="currentColor"
                   >
@@ -126,42 +126,42 @@ export default function PriceTicker() {
                   </svg>
                 </div>
               </div>
-              <div className="text-xl md:text-2xl font-bold text-white tracking-tight">
+              <div className="text-lg md:text-xl font-bold text-foreground tracking-tight">
                 {formatPrice(price.price)}
               </div>
             </Link>
           )})}
 
           {/* 5th Column: Timer */}
-          <div className="bg-zinc-900 p-4 md:p-5 border-zinc-800 border-r border-b md:border-b-0">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+          <div className="bg-card p-3 md:p-4 border-border/60 border-r border-b md:border-b-0">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[11px] font-semibold text-primary/80 uppercase tracking-wider">
                 Next Update
               </span>
-              <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="h-3.5 w-3.5 text-primary/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <div className="text-xl md:text-2xl font-bold text-primary font-mono tracking-tight">
+            <div className="text-lg md:text-xl font-bold text-primary font-mono tracking-tight">
               {nextRefreshCountdown || '5:00'}
             </div>
           </div>
 
           {/* 6th Column: FX Rate */}
-          <div className="bg-zinc-900 p-4 md:p-5 col-span-2 md:col-span-1 border-t md:border-t-0 border-zinc-800">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <div className="bg-card p-3 md:p-4 border-border/60">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 FX Rate
               </span>
-              <svg className="h-4 w-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="h-3.5 w-3.5 text-muted-foreground/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
               </svg>
             </div>
-            <div className="text-xl md:text-2xl font-bold text-white tracking-tight">
+            <div className="text-lg md:text-xl font-bold text-foreground tracking-tight">
               {currency === 'USD' ? exchangeRate.toFixed(2) : (1 / exchangeRate).toFixed(4)}
             </div>
-            <div className="text-xs text-zinc-500 mt-1">
+            <div className="text-[10px] text-muted-foreground mt-0.5">
               {currency === 'USD'
                 ? `1 USD = ${exchangeRate.toFixed(2)} AUD`
                 : `1 AUD = ${(1 / exchangeRate).toFixed(4)} USD`
@@ -170,18 +170,18 @@ export default function PriceTicker() {
           </div>
         </div>
 
-        {/* Status Bar - Bigger font */}
-        <div className="flex items-center justify-between py-3 border-t border-zinc-800 text-sm text-zinc-400">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${marketStatus.isOpen ? 'bg-green-500' : 'bg-orange-500'}`} />
+        {/* Status Bar */}
+        <div className="flex items-center justify-between py-2 border-t border-border/40 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${marketStatus.isOpen ? 'bg-success' : 'bg-orange-500'}`} />
               <span className="font-medium">{marketStatus.isOpen ? 'Markets Open' : 'Markets Closed'}</span>
             </div>
-            <span className="text-zinc-600">•</span>
+            <span className="text-border">|</span>
             <span>{currency}</span>
             {lastUpdated && (
               <>
-                <span className="text-zinc-600">•</span>
+                <span className="text-border">|</span>
                 <span>
                   Updated {lastUpdated.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}
                 </span>

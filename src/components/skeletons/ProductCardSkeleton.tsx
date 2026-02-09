@@ -1,42 +1,18 @@
 export default function ProductCardSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+    <div className="bg-card rounded-lg overflow-hidden border border-border shadow-card animate-pulse">
       {/* Image Skeleton */}
-      <div className="relative h-48 bg-gray-200" />
+      <div className="relative aspect-square bg-muted/50" />
 
       <div className="p-4">
         {/* Title Skeleton */}
-        <div className="h-6 bg-gray-200 rounded mb-3 w-3/4" />
+        <div className="h-4 bg-muted rounded mb-3 w-3/4" />
+        <div className="h-4 bg-muted rounded mb-4 w-1/2" />
 
-        {/* Specs Skeleton */}
-        <div className="space-y-2 mb-4">
-          <div className="flex justify-between">
-            <div className="h-4 bg-gray-200 rounded w-16" />
-            <div className="h-4 bg-gray-200 rounded w-20" />
-          </div>
-          <div className="flex justify-between">
-            <div className="h-4 bg-gray-200 rounded w-16" />
-            <div className="h-4 bg-gray-200 rounded w-16" />
-          </div>
-          <div className="flex justify-between">
-            <div className="h-4 bg-gray-200 rounded w-16" />
-            <div className="h-4 bg-gray-200 rounded w-24" />
-          </div>
-        </div>
-
-        {/* Description Skeleton */}
-        <div className="space-y-2 mb-4">
-          <div className="h-3 bg-gray-200 rounded w-full" />
-          <div className="h-3 bg-gray-200 rounded w-5/6" />
-        </div>
-
-        {/* Button Skeleton */}
-        <div className="h-12 bg-gray-200 rounded mb-4" />
-
-        {/* Price Section Skeleton */}
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="h-8 bg-gray-200 rounded w-24" />
-          <div className="h-8 bg-gray-200 rounded w-16" />
+        {/* Price + Cart Skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="h-5 bg-muted rounded w-20" />
+          <div className="h-8 w-8 bg-muted rounded-lg" />
         </div>
       </div>
     </div>

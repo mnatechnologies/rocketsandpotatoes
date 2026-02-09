@@ -85,10 +85,10 @@ export default function ProductsPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-primary my-4">
+          <h1 className="text-3xl font-bold text-foreground my-4 tracking-tight">
             Precious Metals Products
           </h1>
-          <p className="text-xl text-secondary">
+          <p className="text-base text-muted-foreground">
             Premium bullion from Australia&#39;s most trusted mints
           </p>
         </div>

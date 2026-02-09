@@ -271,16 +271,16 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     return (
       <div className="flex flex-col">
           {/* Sub Navigation Bar */}
-          <div className="bg-secondary border-b-2 border-border -mx-4 px-4 sm:px-6 mb-8 shadow-md">
+          <div className="bg-card border-b border-border -mx-4 px-4 sm:px-6 mb-8 shadow-card">
               <div className="flex items-center gap-1 overflow-x-auto py-3">
                   {subNavItems.map((item) => (
                       <button
                           key={item.category}
                           onClick={() => handleCategoryChange(item.category)}
-                          className={`px-4 py-2 rounded-md text-sm font-semibold whitespace-nowrap transition-colors ${
+                          className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                               selectedCategory === item.category
-                                  ? 'bg-primary text-black  shadow-md'
-                                  : 'text-black hover:text-primary hover:bg-muted'
+                                  ? 'bg-primary text-primary-foreground shadow-sm'
+                                  : 'text-foreground/70 hover:text-foreground hover:bg-muted/50'
                           }`}
                       >
                           {item.name}
@@ -291,13 +291,13 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
               {/* Brand Filter Bar (when brands available) */}
               {brands.length > 0 && (
                   <div className="flex items-center gap-1 pb-2 border-t border-border/50 pt-2 overflow-x-auto">
-                      <span className="text-xs text-black mr-2">Brand:</span>
+                      <span className="text-xs text-muted-foreground mr-2">Brand:</span>
                       <button
                           onClick={() => setSelectedBrands([])}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                               selectedBrands.length === 0
-                                  ? 'bg-primary/20 text-black'
-                                  : 'text-black hover:text-primary'
+                                  ? 'bg-primary/15 text-primary'
+                                  : 'text-foreground/70 hover:text-primary'
                           }`}
                       >
                           All Brands
@@ -308,15 +308,15 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                               onClick={() => toggleBrand(brand as string)}
                               className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                                   selectedBrands.includes(brand as string)
-                                      ? 'bg-primary/20 text-primary'
-                                      : 'text-black hover:text-primary'
+                                      ? 'bg-primary/15 text-primary'
+                                      : 'text-foreground/70 hover:text-primary'
                               }`}
                           >
                               {brand}
                           </button>
                       ))}
                       {brands.length > 10 && (
-                          <span className="text-xs text-black ml-2">+{brands.length - 10} more in filters</span>
+                          <span className="text-xs text-muted-foreground ml-2">+{brands.length - 10} more in filters</span>
                       )}
                   </div>
               )}
@@ -324,13 +324,13 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
               {/* Form Type Sub-nav (when Gold selected) */}
               {selectedCategory === 'Gold' && (
                   <div className="flex items-center gap-1 pb-2 border-t border-border/50 pt-2">
-                      <span className="text-xs text-black mr-2">Type:</span>
+                      <span className="text-xs text-muted-foreground mr-2">Type:</span>
                       <button
                           onClick={() => handleFormTypeChange('all')}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'all'
-                                  ? 'bg-primary text-black'
-                                  : 'text-black hover:text-primary'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-foreground/70 hover:text-primary'
                           }`}
                       >
                           All
@@ -339,8 +339,8 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           onClick={() => handleFormTypeChange('cast')}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'cast'
-                                  ? 'bg-primary text-black'
-                                  : 'text-black hover:text-primary'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-foreground/70 hover:text-primary'
                           }`}
                       >
                           Cast Bars
@@ -349,8 +349,8 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           onClick={() => handleFormTypeChange('minted')}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                               selectedFormType === 'minted'
-                                  ? 'bg-primary text-black'
-                                  : 'text-black hover:text-primary'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-foreground/70 hover:text-primary'
                           }`}
                       >
                           Minted
@@ -361,16 +361,16 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
           <div className="flex gap-8">
               {/* Left Sidebar Filters - Desktop */}
-              <aside className="hidden lg:block w-64 flex-shrink-0">
-                  <div className="sticky top-[160px] space-y-4 bg-secondary p-6 rounded-xl border border-border shadow-md">
+              <aside className="hidden lg:block w-60 flex-shrink-0">
+                  <div className="sticky top-[160px] space-y-4 bg-card p-5 rounded-lg border border-border shadow-card">
                       {/* Search */}
                       <div>
                           <button
                               onClick={() => toggleSection('search')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
                           >
                               Search
-                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.search ? '' : 'rotate-180'}`} />
+                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.search ? '' : 'rotate-180'}`} />
                           </button>
                           {!collapsedSections.search && (
                               <input
@@ -378,7 +378,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                   placeholder="Search products..."
                                   value={searchQuery}
                                   onChange={(e) => setSearchQuery(e.target.value)}
-                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                                  className="w-full px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-ring/50 focus:border-transparent text-sm text-foreground placeholder:text-muted-foreground"
                               />
                           )}
                       </div>
@@ -387,16 +387,16 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       <div>
                           <button
                               onClick={() => toggleSection('sort')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
                           >
                               Sort By
-                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.sort ? '' : 'rotate-180'}`} />
+                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.sort ? '' : 'rotate-180'}`} />
                           </button>
                           {!collapsedSections.sort && (
                               <select
                                   value={sortBy}
                                   onChange={(e) => setSortBy(e.target.value as any)}
-                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                                  className="w-full px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-ring/50 focus:border-transparent text-sm text-foreground"
                               >
                                   <option value="price-asc">Price: Low to High</option>
                                   <option value="price-desc">Price: High to Low</option>
@@ -409,19 +409,19 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       <div>
                           <button
                               onClick={() => toggleSection('categories')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
                           >
                               Categories
-                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.categories ? '' : 'rotate-180'}`} />
+                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.categories ? '' : 'rotate-180'}`} />
                           </button>
                           {!collapsedSections.categories && (
-                              <div className="space-y-1">
+                              <div className="space-y-0.5">
                                   <button
                                       onClick={() => handleCategoryChange('all')}
-                                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                      className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
                                           selectedCategory === 'all'
-                                              ? 'bg-primary text-black font-medium'
-                                              : 'text-black hover:bg-muted'
+                                              ? 'bg-primary text-primary-foreground font-medium'
+                                              : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
                                       }`}
                                   >
                                       All Products
@@ -430,10 +430,10 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                       <button
                                           key={category}
                                           onClick={() => handleCategoryChange(category)}
-                                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                          className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
                                               selectedCategory === category
-                                                  ? 'bg-primary text-black font-medium'
-                                                  : 'text-black hover:bg-muted'
+                                                  ? 'bg-primary text-primary-foreground font-medium'
+                                                  : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
                                           }`}
                                       >
                                           {categoryNames[category] || category}
@@ -448,17 +448,17 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           <div>
                               <button
                                   onClick={() => toggleSection('brand')}
-                                  className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                                  className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
                               >
                                   Brand
-                                  <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.brand ? '' : 'rotate-180'}`} />
+                                  <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.brand ? '' : 'rotate-180'}`} />
                               </button>
                               {!collapsedSections.brand && (
-                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                  <div className="space-y-1 max-h-48 overflow-y-auto">
                                       {brands.map(brand => (
                                           <label
                                               key={brand}
-                                              className="flex items-center gap-2 cursor-pointer hover:bg-muted px-2 py-1 rounded transition-colors"
+                                              className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors"
                                           >
                                               <input
                                                   type="checkbox"
@@ -466,7 +466,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                                   onChange={() => toggleBrand(brand as string)}
                                                   className="rounded border-border text-primary focus:ring-primary"
                                               />
-                                              <span className="text-sm text-black">{brand}</span>
+                                              <span className="text-sm text-foreground/80">{brand}</span>
                                           </label>
                                       ))}
                                   </div>
@@ -478,21 +478,21 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       <div>
                           <button
                               onClick={() => toggleSection('weight')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-black mb-2"
+                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
                           >
                               Weight
-                              <ChevronDown className={`h-4 w-4 transition-transform ${collapsedSections.weight ? '' : 'rotate-180'}`} />
+                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.weight ? '' : 'rotate-180'}`} />
                           </button>
                           {!collapsedSections.weight && (
-                              <div className="space-y-1">
+                              <div className="space-y-0.5">
                                   {weights.map(weight => (
                                       <button
                                           key={weight}
                                           onClick={() => setSelectedWeight(weight as string)}
-                                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                          className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
                                               selectedWeight === weight
-                                                  ? 'bg-primary text-black font-medium'
-                                                  : 'text-black hover:bg-muted'
+                                                  ? 'bg-primary text-primary-foreground font-medium'
+                                                  : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
                                           }`}
                                       >
                                           {weight}
@@ -506,7 +506,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all' || selectedBrands.length > 0 || selectedWeight !== 'All Weights') && (
                           <button
                               onClick={clearFilters}
-                              className="w-full px-3 py-2 text-sm font-medium text-black hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2"
+                              className="w-full px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors flex items-center justify-center gap-2"
                           >
                               <X className="h-4 w-4" />
                               Clear All Filters
@@ -514,7 +514,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       )}
 
                       {/* Results Count */}
-                      <div className="text-sm text-black pt-4 border-t border-border">
+                      <div className="text-xs text-muted-foreground pt-4 border-t border-border">
                           Showing {filteredProducts.length} of {productsWithPricing.length} products
                       </div>
                   </div>
@@ -531,9 +531,9 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
               {/* Mobile Filters Modal */}
               {showMobileFilters && (
-                  <div className="lg:hidden fixed inset-0 z-50 bg-secondary">
-                      <div className="flex items-center justify-between p-4 border-b-2 border-border bg-secondary/80 backdrop-blur-sm">
-                          <h2 className="text-lg font-semibold">Filters</h2>
+                  <div className="lg:hidden fixed inset-0 z-50 bg-background">
+                      <div className="flex items-center justify-between p-4 border-b border-border bg-card">
+                          <h2 className="text-lg font-semibold text-foreground">Filters</h2>
                           <button
                               onClick={() => setShowMobileFilters(false)}
                               className="p-2 hover:bg-muted rounded-lg"
@@ -718,7 +718,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
             href={`/products/${generateSlug(product.name)}`}
             className="group block"
         >
-            <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg shadow-sm">
+            <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/30 transition-all duration-200 shadow-card hover:shadow-card-hover hover:-translate-y-0.5">
                 {/* Product Image */}
                 <div className="relative aspect-square bg-muted/30">
                     <Image

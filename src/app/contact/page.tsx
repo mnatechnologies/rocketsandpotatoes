@@ -56,9 +56,9 @@ export default function ContactPage() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">Contact Us</h1>
-          <p className="text-lg text-muted-foreground">
-            Have questions about our products or services? We&#39;re here to help.
+          <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Contact Us</h1>
+          <p className="text-base text-muted-foreground">
+            Have questions about our products or services? We are here to help.
           </p>
         </div>
 
@@ -113,16 +113,16 @@ export default function ContactPage() {
             <h2 className="text-xl font-semibold text-card-foreground mb-4">Send us a Message</h2>
 
             {status === 'success' && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+              <div className="mb-4 p-4 bg-success/10 border border-success/30 rounded-lg text-success">
                 <p className="font-medium">Message sent successfully!</p>
-                <p className="text-sm">We&#39;ll get back to you within 24 hours.</p>
+                <p className="text-sm text-success/80">We will get back to you within 24 hours.</p>
               </div>
             )}
 
             {status === 'error' && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+              <div className="mb-4 p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive">
                 <p className="font-medium">Failed to send message</p>
-                <p className="text-sm">{errorMessage}</p>
+                <p className="text-sm text-destructive/80">{errorMessage}</p>
               </div>
             )}
 

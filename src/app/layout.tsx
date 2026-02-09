@@ -36,8 +36,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Australian National Bullion",
-  description: "Premium bullion store UI",
+  title: "Australian National Bullion | Premium Precious Metals",
+  description: "Australia's trusted AUSTRAC-registered bullion dealer. Buy gold, silver, platinum and palladium with live market pricing and guaranteed authenticity.",
 };
 
 export default function RootLayout({
