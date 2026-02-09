@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PriceTicker from "@/components/PriceTicker";
+import PriceLockBar from "@/components/PriceLockBar";
 import {MetalPricesProvider} from "@/contexts/MetalPricesContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider} from "@/contexts/CurrencyContext";
@@ -56,6 +57,7 @@ export default function RootLayout({
                   <Toaster position="top-center" richColors closeButton />
                   <PriceTicker />
                   <Header />
+                  <PriceLockBar />
                   {children}
                   <Footer />
                 </CartProvider>

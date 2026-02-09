@@ -161,12 +161,8 @@ function CartContent() {
 
       if (!arePricesLocked) {
         logger.log('[CART] Starting checkout - locking prices and starting timer');
-        startTimer();
         await lockPricesForCheckout();
-
-        toast.success('Prices locked for 15 minutes', {
-          description: 'Complete your purchase within this time',
-        });
+        startTimer();
       } else {
         logger.log('[CART] Prices already locked, proceeding to checkout');
       }

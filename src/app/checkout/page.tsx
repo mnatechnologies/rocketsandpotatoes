@@ -1,17 +1,15 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { CheckoutFlow } from '@/components/CheckoutFlow';
 import { Product } from '@/types/product';
 import { useCart} from '@/contexts/CartContext';
-import {formatRemainingTime} from "@/lib/pricing/pricingTimer";
 import { createLogger } from '@/lib/utils/logger';
 import {useCurrency} from "@/contexts/CurrencyContext";
-import { toast } from 'sonner';
-import { CheckCircle, Clock, AlertTriangle, Lock } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 const logger = createLogger('CHECKOUT_PAGE');
 
@@ -21,16 +19,6 @@ export default function CheckoutPage() {
   const { formatPrice, currency, exchangeRate } = useCurrency();
 
   const { getLockedPriceForProduct, isTimerExpired, timerRemaining, cart, customerId, isLoading: cartLoading, sessionId } = useCart();
-  const [timeDisplay, setTimeDisplay] = useState(formatRemainingTime());
-
-  // Update timer display every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeDisplay(formatRemainingTime());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const getTotalAmount = () => {
     const total = cart.reduce((sum, item) => {
@@ -70,35 +58,6 @@ export default function CheckoutPage() {
     return sorted[0]?.product || null;
   };
 
-  // Memoize timer styling to prevent re-calculations (must be before early returns)
-  const timerStyle = useMemo(() => {
-    if (timerRemaining > 600000) { // > 10 minutes
-      return {
-        bg: 'bg-green-500/10',
-        border: 'border-green-500/20',
-        text: 'text-green-600 dark:text-green-400',
-        textBold: 'text-green-600 dark:text-green-400',
-        icon: <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-      };
-    } else if (timerRemaining > 300000) { // 5-10 minutes
-      return {
-        bg: 'bg-yellow-500/10',
-        border: 'border-yellow-500/20',
-        text: 'text-yellow-600 dark:text-yellow-400',
-        textBold: 'text-yellow-600 dark:text-yellow-400',
-        icon: <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-      };
-    } else { // < 5 minutes
-      return {
-        bg: 'bg-red-500/10',
-        border: 'border-red-500/20',
-        text: 'text-red-600 dark:text-red-400',
-        textBold: 'text-red-600 dark:text-red-400',
-        icon: <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-      };
-    }
-  }, [timerRemaining]);
-
   // Handle redirects after all hooks are called
   useEffect(() => {
     if (!isLoaded) return;
@@ -106,19 +65,11 @@ export default function CheckoutPage() {
       router.push('/sign-in?redirect_url=/checkout');
       return;
     }
-    if (isTimerExpired) {
-      toast.warning('15-Minute Price Lock Expired', {
-        description: 'Returning to cart. Prices will show current market rates. You can checkout again to lock new prices.',
-        duration: 5000,
-      });
-      router.push('/cart?from=checkout');
-      return;
-    }
     if (cart.length === 0 && !cartLoading) {
       router.push('/cart');
       return;
     }
-  }, [user, isLoaded, router, isTimerExpired, cart.length, cartLoading]);
+  }, [user, isLoaded, router, cart.length, cartLoading]);
 
   if ( !isLoaded || cartLoading) {
     return (
@@ -185,24 +136,6 @@ export default function CheckoutPage() {
       <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-primary my-8">Checkout</h1>
 
-        {/* Always-visible persistent timer */}
-        <div className={`mb-4 p-4 ${timerStyle.bg} border ${timerStyle.border} rounded-lg sticky top-20 z-10 shadow-card`}>
-          <div className="flex items-center justify-center gap-3">
-            {timerStyle.icon}
-            <div className="text-center flex-1">
-              <p className={`${timerStyle.textBold} font-semibold flex items-center justify-center gap-1.5`}>
-                <Lock className="h-4 w-4 inline-block" /> Prices Locked - Expires In: <span className="text-2xl font-mono font-bold">{timeDisplay}</span>
-              </p>
-              <p className={`${timerStyle.text} text-sm mt-1`}>
-                {timerRemaining > 600000
-                  ? 'Your prices are locked at checkout rates. Complete your purchase before the timer expires.'
-                  : timerRemaining > 300000
-                  ? 'Complete checkout soon to secure these locked prices.'
-                  : 'Time running out! Complete checkout now or prices will reset to current market rates.'}
-              </p>
-            </div>
-          </div>
-        </div>
         {/* Order Summary */}
         <div className="bg-card rounded-lg shadow-card p-6 mb-6">
           <h2 className="text-2xl font-bold text-foreground mb-4">Order Summary</h2>
@@ -245,22 +178,38 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        {/* Checkout Flow Component */}
-        <div className="bg-card rounded-lg shadow-card p-6">
-          <h2 className="text-2xl font-bold text-foreground mb-6">Payment & Verification</h2>
-          <CheckoutFlow
-            customerId={customerId}
-            amount={getConvertedTotal()}
-            productDetails={mainProduct}
-            cartItems={cart}
-            customerEmail={user?.primaryEmailAddress?.emailAddress}
-            sessionId={sessionId}
-            onSuccess={(orderId) => {
-              logger.log('Payment successful, redirecting to confirmation');
-              router.push(`/order-confirmation?orderId=${orderId}`);
-            }}
-          />
-        </div>
+        {/* Checkout Flow or Expired State */}
+        {isTimerExpired ? (
+          <div className="bg-card rounded-lg shadow-card p-8 text-center border border-amber-500/30">
+            <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-3" />
+            <h2 className="text-xl font-bold text-foreground mb-2">Price Lock Expired</h2>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Your locked prices have expired. Return to your cart to lock in current market prices.
+            </p>
+            <button
+              onClick={() => router.push('/cart')}
+              className="px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors"
+            >
+              Return to Cart
+            </button>
+          </div>
+        ) : (
+          <div className="bg-card rounded-lg shadow-card p-6">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Payment & Verification</h2>
+            <CheckoutFlow
+              customerId={customerId}
+              amount={getConvertedTotal()}
+              productDetails={mainProduct}
+              cartItems={cart}
+              customerEmail={user?.primaryEmailAddress?.emailAddress}
+              sessionId={sessionId}
+              onSuccess={(orderId) => {
+                logger.log('Payment successful, redirecting to confirmation');
+                router.push(`/order-confirmation?orderId=${orderId}`);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
