@@ -8,7 +8,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
-import { ShoppingCartIcon, Filter, X, ChevronDown, Minus, Plus } from "lucide-react";
+import { ShoppingCartIcon, Filter, X, ChevronDown, Minus, Plus, LayoutGrid, List } from "lucide-react";
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useCart } from '@/contexts/CartContext';
 import { DEFAULT_VOLUME_DISCOUNT_TIERS } from '@/lib/pricing/priceCalculations';
@@ -35,6 +35,7 @@ export default function ProductsClient({ products }: ProductsClientProps) {
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
     const [selectedFormType, setSelectedFormType] = useState<string>('all');
     const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [selectedWeight, setSelectedWeight] = useState<string>('All Weights');
     const [collapsedSections, setCollapsedSections] = useState({
         search: false,
@@ -484,12 +485,38 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                       </div>
                   )}
 
+                  {/* View Toggle */}
+                  <div className="flex items-center justify-end mb-4 gap-1">
+                      <button
+                          onClick={() => setViewMode('grid')}
+                          className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                          aria-label="Grid view"
+                      >
+                          <LayoutGrid className="h-4 w-4" />
+                      </button>
+                      <button
+                          onClick={() => setViewMode('list')}
+                          className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                          aria-label="List view"
+                      >
+                          <List className="h-4 w-4" />
+                      </button>
+                  </div>
+
                   {filteredProducts.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
-                          {filteredProducts.map((product) => (
-                              <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} />
-                          ))}
-                      </div>
+                      viewMode === 'grid' ? (
+                          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+                              {filteredProducts.map((product) => (
+                                  <ProductCard key={product.id} product={product} loadingPrices={loadingPrices} />
+                              ))}
+                          </div>
+                      ) : (
+                          <div className="flex flex-col gap-3">
+                              {filteredProducts.map((product) => (
+                                  <ProductListItem key={product.id} product={product} loadingPrices={loadingPrices} />
+                              ))}
+                          </div>
+                      )
                   ) : (
                       <div className="text-center py-16">
                           <div className="text-5xl mb-4">🔍</div>
@@ -650,6 +677,172 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                             </button>
                         ))}
                     </div>
+                </div>
+            </div>
+        </Link>
+    );
+}
+
+function ProductListItem({ product, loadingPrices }: { product: ProductWithDynamicPrice; loadingPrices: boolean }) {
+    const { formatPrice } = useCurrency();
+    const { addToCartById, cart, removeFromCart, updateQuantity } = useCart();
+
+    const displayPrice = product.calculated_price ?? product.price;
+
+    const cartItem = cart.find(item => item.product.id === product.id);
+    const quantity = cartItem?.quantity || 0;
+
+    const handleAddToCart = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const success = await addToCartById(product.id);
+        if (success) {
+            toast.success('Added to cart!', { description: product.name });
+        } else {
+            toast.error('Failed to add to cart');
+        }
+    };
+
+    const handleIncrement = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        updateQuantity(product.id, quantity + 1);
+    };
+
+    const handleDecrement = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (quantity <= 1) {
+            removeFromCart(product.id);
+        } else {
+            updateQuantity(product.id, quantity - 1);
+        }
+    };
+
+    const handlePresetClick = (e: React.MouseEvent, qty: number) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (quantity === 0) {
+            addToCartById(product.id).then((success) => {
+                if (success) {
+                    updateQuantity(product.id, qty);
+                    toast.success(`Added ${qty}x to cart!`, { description: product.name });
+                }
+            });
+        } else {
+            updateQuantity(product.id, qty);
+        }
+    };
+
+    return (
+        <Link
+            href={`/products/${generateSlug(product.name)}`}
+            className="group block"
+        >
+            <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/30 transition-all duration-200 shadow-card hover:shadow-card-hover flex items-center gap-4 p-3 sm:p-4">
+                {/* Product Image */}
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-md overflow-hidden bg-muted/30">
+                    <Image
+                        src={product.image_url || '/anblogo.png'}
+                        alt={product.name}
+                        fill
+                        className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                        sizes="100px"
+                    />
+                </div>
+
+                {/* Product Info */}
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-1">
+                        {product.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {[product.weight, product.purity].filter(Boolean).join(' | ')}
+                    </p>
+                    {product.brand && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{product.brand}</p>
+                    )}
+
+                    {/* Bulk Presets - mobile */}
+                    <div className="flex items-center gap-1 mt-1.5 sm:hidden">
+                        <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
+                        {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
+                            <button
+                                key={tier.threshold}
+                                onClick={(e) => handlePresetClick(e, tier.threshold)}
+                                className={`px-1.5 cursor-pointer py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                    quantity === tier.threshold
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+                                }`}
+                                aria-label={`Set quantity to ${tier.threshold}`}
+                            >
+                                {tier.threshold}x
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Price & Controls */}
+                <div className="flex-shrink-0 flex items-center gap-3 sm:gap-4">
+                    {/* Bulk Presets - desktop */}
+                    <div className="hidden sm:flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
+                        {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
+                            <button
+                                key={tier.threshold}
+                                onClick={(e) => handlePresetClick(e, tier.threshold)}
+                                className={`px-1.5 cursor-pointer py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                    quantity === tier.threshold
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+                                }`}
+                                aria-label={`Set quantity to ${tier.threshold}`}
+                            >
+                                {tier.threshold}x
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Price */}
+                    <div className="text-right">
+                        {loadingPrices ? (
+                            <div className="h-6 w-20 bg-muted animate-pulse rounded" />
+                        ) : (
+                            <div className="text-base sm:text-lg font-bold text-foreground">
+                                {formatPrice(displayPrice)}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Cart Controls */}
+                    {quantity === 0 ? (
+                        <button
+                            onClick={handleAddToCart}
+                            className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                            aria-label="Add to cart"
+                        >
+                            <ShoppingCartIcon className="h-4 w-4" />
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={handleDecrement}
+                                className="w-7 h-7 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center text-foreground transition-colors"
+                                aria-label="Decrease quantity"
+                            >
+                                <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="w-6 text-center text-sm font-semibold text-foreground">{quantity}</span>
+                            <button
+                                onClick={handleIncrement}
+                                className="w-7 h-7 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center text-foreground transition-colors"
+                                aria-label="Increase quantity"
+                            >
+                                <Plus className="h-3 w-3" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </Link>
