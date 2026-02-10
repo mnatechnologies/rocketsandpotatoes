@@ -128,7 +128,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                 src={product.image_url || '/anblogo.png'}
                 alt={product.name}
                 fill
-                className="object-contain p-8 mix-blend-multiply dark:mix-blend-normal"
+                className="object-contain p-8"
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority
               />

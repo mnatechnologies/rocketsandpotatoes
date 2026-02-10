@@ -16,7 +16,10 @@
       "Bash(git -C /home/mark91/rocketsandpotatoes log --format=\"%H %s\" --since=\"2026-02-09\")",
       "Bash(git -C /home/mark91/rocketsandpotatoes log --format=\"%H %s\" --after=\"2026-02-08\")",
       "Bash(git -C /home/mark91/rocketsandpotatoes diff --stat 44acf36..1a873a5)",
-      "Bash(npx next lint:*)"
+      "Bash(npx next lint:*)",
+      "WebFetch(domain:www.abcbullion.com.au)",
+      "Bash(git reset:*)",
+      "Bash(git stash push:*)"
     ]
   },
   "outputStyle": "default"

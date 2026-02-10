@@ -13,7 +13,6 @@ import {
 } from '@clerk/nextjs';
 import { ShoppingCartIcon, ChevronDown, Phone } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import CurrencySelector from "@/components/CurrencySelector";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface DropdownItem {
@@ -83,12 +82,7 @@ export default function Header() {
     const items: NavItem[] = [
       {
         name: "Buy Gold",
-        href: "/products?category=Gold",
-        dropdown: [
-          { name: "All Gold", href: "/products?category=Gold", description: "Browse all gold products" },
-          { name: "Cast Bars", href: "/products?category=Gold&formType=cast", description: "Traditional cast gold bars" },
-          { name: "Minted Bars", href: "/products?category=Gold&formType=minted", description: "Premium minted tablets" },
-        ]
+        href: "/products?category=Gold"
       },
       {
         name: "Buy Silver",
@@ -213,15 +207,14 @@ export default function Header() {
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-2">
               <a
-                href="tel:+61291234567"
+                href="tel:1300783190"
                 className="flex items-center gap-1.5 text-sm font-medium text-foreground/70 hover:text-primary transition-colors mr-1"
               >
                 <Phone className="h-3.5 w-3.5" />
-                (02) 9123 4567
+                1300 783 190
               </a>
               <div className="w-px h-6 bg-border" />
               <ThemeToggle />
-              <CurrencySelector />
               <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
                 <button
                   className="relative cursor-pointer inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-all"
@@ -267,7 +260,6 @@ export default function Header() {
             {/* Mobile Actions */}
             <div className="lg:hidden flex items-center gap-1.5">
               <ThemeToggle />
-              <CurrencySelector />
 
               <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
                 <button
@@ -354,11 +346,11 @@ export default function Header() {
 
                 {/* Mobile Phone */}
                 <a
-                  href="tel:+61291234567"
+                  href="tel:1300783190"
                   className="flex items-center gap-2 text-foreground/80 hover:text-primary transition-colors font-medium py-2.5 px-3 rounded-md hover:bg-muted/50 text-sm"
                 >
                   <Phone className="h-4 w-4" />
-                  (02) 9123 4567
+                  1300 783 190
                 </a>
 
                 {/* Mobile Authentication */}

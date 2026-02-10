@@ -17,7 +17,6 @@ import { generateSlug } from '@/lib/utils/slug';
 
 interface ProductsClientProps {
     products: Product[];
-    categoryNames: Record<string, string>;
 }
 
 interface ProductWithDynamicPrice extends Product {
@@ -26,7 +25,7 @@ interface ProductWithDynamicPrice extends Product {
     spot_price_per_gram?: number;
 }
 
-export default function ProductsClient({ products, categoryNames }: ProductsClientProps) {
+export default function ProductsClient({ products }: ProductsClientProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -36,13 +35,10 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
     const [productsWithPricing, setProductsWithPricing] = useState<ProductWithDynamicPrice[]>(products);
     const [selectedFormType, setSelectedFormType] = useState<string>('all');
     const [showMobileFilters, setShowMobileFilters] = useState(false);
-    const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
     const [selectedWeight, setSelectedWeight] = useState<string>('All Weights');
     const [collapsedSections, setCollapsedSections] = useState({
         search: false,
         sort: false,
-        categories: false,
-        brand: false,
         weight: false,
     });
 
@@ -83,7 +79,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
         const productsWithCalculatedPrices: ProductWithDynamicPrice[] = products.map(product => {
             const priceInfo = priceMap.get(product.id);
-            
+
             if (!priceInfo) {
                 return {
                     ...product,
@@ -104,18 +100,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
 
         setProductsWithPricing(productsWithCalculatedPrices);
     }, [products, metalPrices, pricingConfig, loadingPrices]);
-
-    // Get unique categories from products
-    const categories = useMemo(() => {
-        const cats = new Set(productsWithPricing.map(p => p.category || 'other'));
-        return Array.from(cats);
-    }, [productsWithPricing]);
-
-    // Get unique brands from products
-    const brands = useMemo(() => {
-        const brandSet = new Set(productsWithPricing.map(p => p.brand).filter(Boolean));
-        return Array.from(brandSet).sort();
-    }, [productsWithPricing]);
 
     // Get unique weights from products (dynamically filtered by category and form type)
     const weights = useMemo(() => {
@@ -139,11 +123,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
             filtered = filtered.filter(p => p.form_type === selectedFormType);
         }
 
-        // Apply brand filter
-        if (selectedBrands.length > 0) {
-            filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
-        }
-
         // Extract unique weights from filtered products
         const weightSet = new Set(filtered.map(p => p.weight).filter(Boolean));
         return ['All Weights', ...Array.from(weightSet).sort((a, b) => {
@@ -152,7 +131,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
             const numB = parseFloat(b as string);
             return numA - numB;
         })];
-    }, [productsWithPricing, searchQuery, selectedCategory, selectedFormType, selectedBrands]);
+    }, [productsWithPricing, searchQuery, selectedCategory, selectedFormType]);
 
     // Reset weight filter when available weights change
     useEffect(() => {
@@ -181,11 +160,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
             filtered = filtered.filter(p => p.form_type === selectedFormType);
         }
 
-        // Brand filter
-        if (selectedBrands.length > 0) {
-            filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
-        }
-
         // Weight filter (exact match from database)
         if (selectedWeight !== 'All Weights') {
             filtered = filtered.filter(p => p.weight === selectedWeight);
@@ -208,49 +182,14 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         });
 
         return sorted;
-    }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType, selectedBrands, selectedWeight]);
-
-    const handleCategoryChange = (category: string) => {
-        setSelectedCategory(category);
-        setSelectedFormType('all');
-        
-        // Update URL
-        const params = new URLSearchParams();
-        if (category !== 'all') {
-            params.set('category', category);
-        }
-        router.push(`/products${params.toString() ? `?${params.toString()}` : ''}`);
-    };
-
-    const handleFormTypeChange = (formType: string) => {
-        setSelectedFormType(formType);
-        
-        // Update URL
-        const params = new URLSearchParams();
-        if (selectedCategory !== 'all') {
-            params.set('category', selectedCategory);
-        }
-        if (formType !== 'all') {
-            params.set('formType', formType);
-        }
-        router.push(`/products${params.toString() ? `?${params.toString()}` : ''}`);
-    };
+    }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType, selectedWeight]);
 
     const clearFilters = () => {
         setSearchQuery('');
         setSelectedCategory('all');
         setSelectedFormType('all');
-        setSelectedBrands([]);
         setSelectedWeight('All Weights');
         router.push('/products');
-    };
-
-    const toggleBrand = (brand: string) => {
-        setSelectedBrands(prev =>
-            prev.includes(brand)
-                ? prev.filter(b => b !== brand)
-                : [...prev, brand]
-        );
     };
 
     const toggleSection = (section: keyof typeof collapsedSections) => {
@@ -260,106 +199,8 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
         }));
     };
 
-    // Sub-nav categories
-    const subNavItems = [
-        { name: 'All Products', category: 'all' },
-        { name: 'Gold', category: 'Gold' },
-        { name: 'Silver', category: 'Silver' },
-        { name: 'Platinum', category: 'Platinum' },
-        { name: 'Palladium', category: 'Palladium' },
-    ];
-
     return (
       <div className="flex flex-col">
-          {/* Sub Navigation Bar */}
-          <div className="bg-card border-b border-border -mx-4 px-4 sm:px-6 mb-8 shadow-card">
-              <div className="flex items-center gap-1 overflow-x-auto py-3">
-                  {subNavItems.map((item) => (
-                      <button
-                          key={item.category}
-                          onClick={() => handleCategoryChange(item.category)}
-                          className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                              selectedCategory === item.category
-                                  ? 'bg-primary text-primary-foreground shadow-sm'
-                                  : 'text-foreground/70 hover:text-foreground hover:bg-muted/50'
-                          }`}
-                      >
-                          {item.name}
-                      </button>
-                  ))}
-              </div>
-
-              {/* Brand Filter Bar (when brands available) */}
-              {brands.length > 0 && (
-                  <div className="flex items-center gap-1 pb-2 border-t border-border/50 pt-2 overflow-x-auto">
-                      <span className="text-xs text-muted-foreground mr-2">Brand:</span>
-                      <button
-                          onClick={() => setSelectedBrands([])}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
-                              selectedBrands.length === 0
-                                  ? 'bg-primary/15 text-primary'
-                                  : 'text-foreground/70 hover:text-primary'
-                          }`}
-                      >
-                          All Brands
-                      </button>
-                      {brands.slice(0, 10).map(brand => (
-                          <button
-                              key={brand}
-                              onClick={() => toggleBrand(brand as string)}
-                              className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
-                                  selectedBrands.includes(brand as string)
-                                      ? 'bg-primary/15 text-primary'
-                                      : 'text-foreground/70 hover:text-primary'
-                              }`}
-                          >
-                              {brand}
-                          </button>
-                      ))}
-                      {brands.length > 10 && (
-                          <span className="text-xs text-muted-foreground ml-2">+{brands.length - 10} more in filters</span>
-                      )}
-                  </div>
-              )}
-
-              {/* Form Type Sub-nav (when Gold selected) */}
-              {selectedCategory === 'Gold' && (
-                  <div className="flex items-center gap-1 pb-2 border-t border-border/50 pt-2">
-                      <span className="text-xs text-muted-foreground mr-2">Type:</span>
-                      <button
-                          onClick={() => handleFormTypeChange('all')}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                              selectedFormType === 'all'
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'text-foreground/70 hover:text-primary'
-                          }`}
-                      >
-                          All
-                      </button>
-                      <button
-                          onClick={() => handleFormTypeChange('cast')}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                              selectedFormType === 'cast'
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'text-foreground/70 hover:text-primary'
-                          }`}
-                      >
-                          Cast Bars
-                      </button>
-                      <button
-                          onClick={() => handleFormTypeChange('minted')}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                              selectedFormType === 'minted'
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'text-foreground/70 hover:text-primary'
-                          }`}
-                      >
-                          Minted
-                      </button>
-                  </div>
-              )}
-          </div>
-
           <div className="flex gap-8">
               {/* Left Sidebar Filters - Desktop */}
               <aside className="hidden lg:block w-60 flex-shrink-0">
@@ -406,75 +247,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                           )}
                       </div>
 
-                      {/* Categories */}
-                      <div>
-                          <button
-                              onClick={() => toggleSection('categories')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
-                          >
-                              Categories
-                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.categories ? '' : 'rotate-180'}`} />
-                          </button>
-                          {!collapsedSections.categories && (
-                              <div className="space-y-0.5">
-                                  <button
-                                      onClick={() => handleCategoryChange('all')}
-                                      className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-                                          selectedCategory === 'all'
-                                              ? 'bg-primary text-primary-foreground font-medium'
-                                              : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
-                                      }`}
-                                  >
-                                      All Products
-                                  </button>
-                                  {categories.map(category => (
-                                      <button
-                                          key={category}
-                                          onClick={() => handleCategoryChange(category)}
-                                          className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-                                              selectedCategory === category
-                                                  ? 'bg-primary text-primary-foreground font-medium'
-                                                  : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
-                                          }`}
-                                      >
-                                          {categoryNames[category] || category}
-                                      </button>
-                                  ))}
-                              </div>
-                          )}
-                      </div>
-
-                      {/* Brand Filter */}
-                      {brands.length > 0 && (
-                          <div>
-                              <button
-                                  onClick={() => toggleSection('brand')}
-                                  className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
-                              >
-                                  Brand
-                                  <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.brand ? '' : 'rotate-180'}`} />
-                              </button>
-                              {!collapsedSections.brand && (
-                                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                                      {brands.map(brand => (
-                                          <label
-                                              key={brand}
-                                              className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors"
-                                          >
-                                              <input
-                                                  type="checkbox"
-                                                  checked={selectedBrands.includes(brand as string)}
-                                                  onChange={() => toggleBrand(brand as string)}
-                                                  className="rounded border-border text-primary focus:ring-primary"
-                                              />
-                                              <span className="text-sm text-foreground/80">{brand}</span>
-                                          </label>
-                                      ))}
-                                  </div>
-                              )}
-                          </div>
-                      )}
-
                       {/* Weight Filter */}
                       <div>
                           <button
@@ -504,7 +276,7 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                       </div>
 
                       {/* Clear Filters */}
-                      {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all' || selectedBrands.length > 0 || selectedWeight !== 'All Weights') && (
+                      {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all' || selectedWeight !== 'All Weights') && (
                           <button
                               onClick={clearFilters}
                               className="w-full px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors flex items-center justify-center gap-2"
@@ -568,59 +340,6 @@ export default function ProductsClient({ products, categoryNames }: ProductsClie
                                   <option value="name">Name: A-Z</option>
                               </select>
                           </div>
-
-                          {/* Categories */}
-                          <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Categories</label>
-                              <div className="flex flex-wrap gap-2">
-                                  <button
-                                      onClick={() => handleCategoryChange('all')}
-                                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                                          selectedCategory === 'all'
-                                              ? 'bg-primary text-primary-foreground'
-                                              : 'bg-muted text-foreground'
-                                      }`}
-                                  >
-                                      All
-                                  </button>
-                                  {categories.map(category => (
-                                      <button
-                                          key={category}
-                                          onClick={() => handleCategoryChange(category)}
-                                          className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                                              selectedCategory === category
-                                                  ? 'bg-primary text-primary-foreground'
-                                                  : 'bg-muted text-foreground'
-                                          }`}
-                                      >
-                                          {categoryNames[category] || category}
-                                      </button>
-                                  ))}
-                              </div>
-                          </div>
-
-                          {/* Brand Filter */}
-                          {brands.length > 0 && (
-                              <div>
-                                  <label className="block text-sm font-medium text-foreground mb-2">Brand</label>
-                                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                                      {brands.map(brand => (
-                                          <label
-                                              key={brand}
-                                              className="flex items-center gap-2 cursor-pointer hover:bg-muted px-2 py-1 rounded transition-colors"
-                                          >
-                                              <input
-                                                  type="checkbox"
-                                                  checked={selectedBrands.includes(brand as string)}
-                                                  onChange={() => toggleBrand(brand as string)}
-                                                  className="rounded border-border text-primary focus:ring-primary"
-                                              />
-                                              <span className="text-sm text-foreground">{brand}</span>
-                                          </label>
-                                      ))}
-                                  </div>
-                              </div>
-                          )}
 
                           {/* Weight Filter */}
                           <div>
@@ -746,7 +465,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                         src={product.image_url || '/anblogo.png'}
                         alt={product.name}
                         fill
-                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply dark:mix-blend-normal"
+                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                     />
                 </div>
@@ -757,12 +476,9 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                         {product.name}
                     </h3>
 
-                    {/* Weight, Purity & Brand */}
+                    {/* Weight & Purity */}
                     <p className="text-xs text-muted-foreground mb-2 truncate">
                         {[product.weight, product.purity].filter(Boolean).join(' | ')}
-                        {product.brand && (
-                            <span className="block text-xs text-muted-foreground/70 mt-0.5">{product.brand}</span>
-                        )}
                     </p>
 
                     {/* Price + Cart Controls */}
