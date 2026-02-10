@@ -39,6 +39,7 @@ export default function ProductsClient({ products }: ProductsClientProps) {
     const [collapsedSections, setCollapsedSections] = useState({
         search: false,
         sort: false,
+        categories: false,
         weight: false,
     });
 
@@ -100,6 +101,33 @@ export default function ProductsClient({ products }: ProductsClientProps) {
 
         setProductsWithPricing(productsWithCalculatedPrices);
     }, [products, metalPrices, pricingConfig, loadingPrices]);
+
+    // Get unique categories from products
+    const categories = useMemo(() => {
+        const cats = new Set(productsWithPricing.map(p => p.category || 'other'));
+        return Array.from(cats);
+    }, [productsWithPricing]);
+
+    const categoryNames: Record<string, string> = {
+        Gold: 'Gold',
+        Silver: 'Silver',
+        Platinum: 'Platinum',
+        Palladium: 'Palladium',
+        other: 'Other Products',
+    };
+
+    const handleCategoryChange = (category: string) => {
+        setSelectedCategory(category);
+        setSelectedFormType('all');
+        setSelectedWeight('All Weights');
+
+        // Update URL
+        const params = new URLSearchParams();
+        if (category !== 'all') {
+            params.set('category', category);
+        }
+        router.push(`/products${params.toString() ? `?${params.toString()}` : ''}`);
+    };
 
     // Get unique weights from products (dynamically filtered by category and form type)
     const weights = useMemo(() => {
@@ -247,6 +275,44 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                           )}
                       </div>
 
+                      {/* Categories */}
+                      <div>
+                          <button
+                              onClick={() => toggleSection('categories')}
+                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
+                          >
+                              Categories
+                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.categories ? '' : 'rotate-180'}`} />
+                          </button>
+                          {!collapsedSections.categories && (
+                              <div className="space-y-0.5">
+                                  <button
+                                      onClick={() => handleCategoryChange('all')}
+                                      className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
+                                          selectedCategory === 'all'
+                                              ? 'bg-primary text-primary-foreground font-medium'
+                                              : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
+                                      }`}
+                                  >
+                                      All Products
+                                  </button>
+                                  {categories.map(category => (
+                                      <button
+                                          key={category}
+                                          onClick={() => handleCategoryChange(category)}
+                                          className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
+                                              selectedCategory === category
+                                                  ? 'bg-primary text-primary-foreground font-medium'
+                                                  : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
+                                          }`}
+                                      >
+                                          {categoryNames[category] || category}
+                                      </button>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+
                       {/* Weight Filter */}
                       <div>
                           <button
@@ -339,6 +405,36 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                                   <option value="price-desc">Price: High to Low</option>
                                   <option value="name">Name: A-Z</option>
                               </select>
+                          </div>
+
+                          {/* Categories */}
+                          <div>
+                              <label className="block text-sm font-medium text-foreground mb-2">Categories</label>
+                              <div className="flex flex-wrap gap-2">
+                                  <button
+                                      onClick={() => handleCategoryChange('all')}
+                                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                                          selectedCategory === 'all'
+                                              ? 'bg-primary text-primary-foreground'
+                                              : 'bg-muted text-foreground'
+                                      }`}
+                                  >
+                                      All
+                                  </button>
+                                  {categories.map(category => (
+                                      <button
+                                          key={category}
+                                          onClick={() => handleCategoryChange(category)}
+                                          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                                              selectedCategory === category
+                                                  ? 'bg-primary text-primary-foreground'
+                                                  : 'bg-muted text-foreground'
+                                          }`}
+                                      >
+                                          {categoryNames[category] || category}
+                                      </button>
+                                  ))}
+                              </div>
                           </div>
 
                           {/* Weight Filter */}

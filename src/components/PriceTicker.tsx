@@ -93,8 +93,8 @@ export default function PriceTicker() {
     return (
       <div className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-border" data-ticker>
         <div className="container mx-auto px-4 py-3">
-          <div className="grid grid-cols-5 gap-0">
-            {[1,2,3,4,5].map(i => (
+          <div className="grid grid-cols-6 gap-0">
+            {[1,2,3,4,5,6].map(i => (
               <div key={i} className="bg-muted/50 p-3 border-r border-border last:border-r-0 animate-pulse rounded-sm">
                 <div className="h-3 w-14 bg-muted rounded mb-2" />
                 <div className="h-5 w-20 bg-muted rounded" />
@@ -109,8 +109,8 @@ export default function PriceTicker() {
   return (
     <div className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-border" data-ticker>
       <div className="container mx-auto px-4">
-        {/* 5-Column Grid: 4 metals + timer */}
-        <div className="grid grid-cols-3 md:grid-cols-5">
+        {/* 6-Column Grid: 4 metals + timer + fx rate */}
+        <div className="grid grid-cols-3 md:grid-cols-6">
           {prices.map((price, index) => {
             const category = price.metal.charAt(0).toUpperCase() + price.metal.slice(1);
             return (
@@ -149,7 +149,7 @@ export default function PriceTicker() {
           )})}
 
           {/* 5th Column: Timer */}
-          <div className="bg-card p-3 md:p-4 border-border/60 col-span-2 md:col-span-1 border-t md:border-t-0">
+          <div className="bg-card p-3 md:p-4 border-border/60 border-r border-b md:border-b-0">
             <div className="flex items-center justify-between mb-0.5">
               <span className="text-[11px] font-semibold text-primary/80 uppercase tracking-wider">
                 Next Update
@@ -161,6 +161,27 @@ export default function PriceTicker() {
             </div>
             <div className="text-lg md:text-xl font-bold text-primary font-mono tracking-tight">
               {nextRefreshCountdown || '5:00'}
+            </div>
+          </div>
+
+          {/* 6th Column: FX Rate */}
+          <div className="bg-card p-3 md:p-4 border-border/60">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                FX Rate
+              </span>
+              <svg className="h-3.5 w-3.5 text-muted-foreground/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </div>
+            <div className="text-lg md:text-xl font-bold text-foreground tracking-tight">
+              {currency === 'USD' ? exchangeRate.toFixed(2) : (1 / exchangeRate).toFixed(4)}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {currency === 'USD'
+                ? `1 USD = ${exchangeRate.toFixed(2)} AUD`
+                : `1 AUD = ${(1 / exchangeRate).toFixed(4)} USD`
+              }
             </div>
           </div>
         </div>

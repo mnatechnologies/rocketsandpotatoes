@@ -135,21 +135,21 @@ export default function Header() {
         data-header
       >
         <div className="container mx-auto px-4 lg:px-6">
-          <div className="flex items-center justify-between h-16 lg:h-[4.5rem]">
+          <div className="flex items-center justify-between h-20 lg:h-[5.5rem]">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <Link href="/" className="flex items-center gap-4 hover:opacity-90 transition-opacity">
               <Image
                 src="/anblogo.png"
                 alt="Australian National Bullion Logo"
-                width={48}
-                height={48}
-                className="h-10 lg:h-12 w-auto"
+                width={64}
+                height={64}
+                className="h-14 lg:h-16 w-auto"
               />
               <div className="hidden sm:block">
-                <span className="block text-base lg:text-lg font-bold text-foreground leading-tight tracking-tight">
+                <span className="block text-lg lg:text-xl font-bold text-foreground leading-tight tracking-tight">
                   Australian National
                 </span>
-                <span className="block text-sm lg:text-base font-semibold text-primary leading-tight">
+                <span className="block text-base lg:text-lg font-semibold text-primary leading-tight">
                   Bullion
                 </span>
               </div>
