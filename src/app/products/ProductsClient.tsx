@@ -11,7 +11,7 @@ import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
 import { ShoppingCartIcon, Filter, X, ChevronDown, Minus, Plus } from "lucide-react";
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useCart } from '@/contexts/CartContext';
-import { getVolumeDiscount } from '@/lib/pricing/priceCalculations';
+import { DEFAULT_VOLUME_DISCOUNT_TIERS } from '@/lib/pricing/priceCalculations';
 import { toast } from 'sonner';
 import { generateSlug } from '@/lib/utils/slug';
 
@@ -38,9 +38,9 @@ export default function ProductsClient({ products }: ProductsClientProps) {
     const [selectedWeight, setSelectedWeight] = useState<string>('All Weights');
     const [collapsedSections, setCollapsedSections] = useState({
         search: false,
-        sort: false,
+        sort: true,
         categories: false,
-        weight: false,
+        weight: true,
     });
 
     const { prices: metalPrices, pricingConfig, isLoading: loadingPrices } = useMetalPrices();
@@ -448,7 +448,7 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                                           className={`px-4 py-2 rounded-lg text-sm font-medium ${
                                               selectedWeight === weight
                                                   ? 'bg-primary text-primary-foreground'
-                                                  : 'bg-muted text-foreground dark:text-zinc-200'
+                                                  : 'bg-muted text-foreground'
                                           }`}
                                       >
                                           {weight}
@@ -518,7 +518,6 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
 
     const cartItem = cart.find(item => item.product.id === product.id);
     const quantity = cartItem?.quantity || 0;
-    const { discountPercentage } = getVolumeDiscount(quantity);
 
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -546,6 +545,21 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
             removeFromCart(product.id);
         } else {
             updateQuantity(product.id, quantity - 1);
+        }
+    };
+
+    const handlePresetClick = (e: React.MouseEvent, qty: number) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (quantity === 0) {
+            addToCartById(product.id).then((success) => {
+                if (success) {
+                    updateQuantity(product.id, qty);
+                    toast.success(`Added ${qty}x to cart!`, { description: product.name });
+                }
+            });
+        } else {
+            updateQuantity(product.id, qty);
         }
     };
 
@@ -579,18 +593,13 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
 
                     {/* Price + Cart Controls */}
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div>
                             {loadingPrices ? (
                                 <div className="h-6 w-20 bg-muted animate-pulse rounded" />
                             ) : (
                                 <div className="text-lg font-bold text-foreground">
                                     {formatPrice(displayPrice)}
                                 </div>
-                            )}
-                            {discountPercentage > 0 && (
-                                <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-success/15 text-success-foreground">
-                                    {discountPercentage}% off
-                                </span>
                             )}
                         </div>
 
@@ -621,6 +630,25 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                                 </button>
                             </div>
                         )}
+                    </div>
+
+                    {/* Bulk Purchase Presets */}
+                    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
+                        <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
+                        {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
+                            <button
+                                key={tier.threshold}
+                                onClick={(e) => handlePresetClick(e, tier.threshold)}
+                                className={`px-1.5 cursor-pointer py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                    quantity === tier.threshold
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+                                }`}
+                                aria-label={`Set quantity to ${tier.threshold} for ${tier.discount_percentage}% discount`}
+                            >
+                                {tier.threshold}x
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>

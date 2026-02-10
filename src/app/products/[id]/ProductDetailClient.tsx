@@ -221,7 +221,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
 
             {/* Quantity & Total */}
             <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <span className="font-medium text-foreground">Quantity</span>
                 <div className="flex items-center gap-3">
                   <button
@@ -240,6 +240,26 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                   </button>
                 </div>
               </div>
+
+              {/* Bulk Purchase Presets */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs text-muted-foreground mr-1">Bulk:</span>
+                {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
+                  <button
+                    key={tier.threshold}
+                    onClick={() => setQuantity(tier.threshold)}
+                    className={`px-3 cursor-pointer py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      quantity === tier.threshold
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted border border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {tier.threshold}x
+                    <span className="ml-1 opacity-75">(-{tier.discount_percentage}%)</span>
+                  </button>
+                ))}
+              </div>
+
               {volumeDiscount.discountPercentage > 0 && (
                 <div className="flex items-center justify-between py-2 text-sm">
                   <span className="text-success-foreground font-medium">Bulk discount ({volumeDiscount.discountPercentage}%)</span>
@@ -254,29 +274,6 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <span className="font-medium text-foreground">Total</span>
                 <span className="text-2xl font-bold text-primary">{formatPrice(totalPrice)}</span>
-              </div>
-            </div>
-
-            {/* Bulk Pricing Tiers */}
-            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-              <h3 className="font-semibold text-foreground mb-3 text-sm">Bulk Pricing</h3>
-              <div className="space-y-1.5">
-                {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => {
-                  const isActive = quantity >= tier.threshold;
-                  return (
-                    <div
-                      key={tier.threshold}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
-                        isActive
-                          ? 'bg-success/10 text-success-foreground font-medium'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      <span>{tier.threshold}+ units</span>
-                      <span>{tier.discount_percentage}% off per unit</span>
-                    </div>
-                  );
-                })}
               </div>
             </div>
 

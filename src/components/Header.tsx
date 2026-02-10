@@ -11,7 +11,7 @@ import {
   UserButton,
   useUser,
 } from '@clerk/nextjs';
-import { ShoppingCartIcon, ChevronDown, Phone } from "lucide-react";
+import { ShoppingCartIcon, ChevronDown } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -163,8 +163,8 @@ export default function Header() {
                     <button
                       onClick={() => handleDropdownToggle(item.name)}
                       onMouseEnter={() => setActiveDropdown(item.name)}
-                      className={`flex items-center gap-1 px-3 py-2 text-sm font-medium text-foreground/80 hover:text-foreground transition-colors duration-150 rounded-md hover:bg-muted/50 ${
-                        activeDropdown === item.name ? 'text-foreground bg-muted/50' : ''
+                      className={`flex items-center gap-1 px-3 py-2 text-base font-medium text-foreground hover:text-primary transition-colors duration-150 rounded-md hover:bg-muted/50 ${
+                        activeDropdown === item.name ? 'text-primary bg-muted/50' : ''
                       }`}
                     >
                       {item.name}
@@ -173,7 +173,7 @@ export default function Header() {
                   ) : (
                     <Link
                       href={item.href}
-                      className="px-3 py-2 text-sm font-medium text-foreground/80 hover:text-foreground transition-colors duration-150 rounded-md hover:bg-muted/50"
+                      className="px-3 py-2 text-base font-medium text-foreground hover:text-primary transition-colors duration-150 rounded-md hover:bg-muted/50"
                     >
                       {item.name}
                     </Link>
@@ -206,14 +206,6 @@ export default function Header() {
 
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-2">
-              <a
-                href="tel:1300783190"
-                className="flex items-center gap-1.5 text-sm font-medium text-foreground/70 hover:text-primary transition-colors mr-1"
-              >
-                <Phone className="h-3.5 w-3.5" />
-                1300 783 190
-              </a>
-              <div className="w-px h-6 bg-border" />
               <ThemeToggle />
               <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
                 <button
@@ -309,7 +301,7 @@ export default function Header() {
                       <div>
                         <button
                           onClick={() => handleDropdownToggle(item.name)}
-                          className="w-full flex items-center justify-between text-foreground/80 hover:text-foreground transition-colors duration-150 font-medium py-2.5 px-3 rounded-md hover:bg-muted/50 text-sm"
+                          className="w-full flex items-center justify-between text-foreground hover:text-primary transition-colors duration-150 font-medium py-2.5 px-3 rounded-md hover:bg-muted/50 text-sm"
                         >
                           {item.name}
                           <ChevronDown className={`h-4 w-4 transition-transform ${activeDropdown === item.name ? 'rotate-180' : ''}`} />
@@ -335,7 +327,7 @@ export default function Header() {
                     ) : (
                       <Link
                         href={item.href}
-                        className="block text-foreground/80 hover:text-foreground transition-colors duration-150 font-medium py-2.5 px-3 rounded-md hover:bg-muted/50 text-sm"
+                        className="block text-foreground hover:text-primary transition-colors duration-150 font-medium py-2.5 px-3 rounded-md hover:bg-muted/50 text-sm"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         {item.name}
@@ -343,15 +335,6 @@ export default function Header() {
                     )}
                   </div>
                 ))}
-
-                {/* Mobile Phone */}
-                <a
-                  href="tel:1300783190"
-                  className="flex items-center gap-2 text-foreground/80 hover:text-primary transition-colors font-medium py-2.5 px-3 rounded-md hover:bg-muted/50 text-sm"
-                >
-                  <Phone className="h-4 w-4" />
-                  1300 783 190
-                </a>
 
                 {/* Mobile Authentication */}
                 <div className="pt-3 space-y-2 border-t border-border/60 mt-3">
