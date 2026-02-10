@@ -1,38 +1,30 @@
 import Link from 'next/link';
-import { Shield, TrendingUp, Gem, CircleDollarSign } from 'lucide-react';
+import Image from 'next/image';
 
 const CATEGORIES = [
   {
     name: 'Gold',
     href: '/products?category=Gold',
     description: 'Investment-grade gold bars and coins',
-    icon: CircleDollarSign,
-    gradient: 'from-amber-500/20 to-yellow-600/10',
-    iconColor: 'text-amber-500',
+    image: '/metals/katie-harp-Em96eDRJPD8-unsplash.jpg',
   },
   {
     name: 'Silver',
     href: '/products?category=Silver',
     description: 'Silver bullion, coins and bars',
-    icon: Shield,
-    gradient: 'from-slate-400/20 to-gray-500/10',
-    iconColor: 'text-slate-400',
+    image: '/metals/katie-harp-TnQE5X48FMA-unsplash.jpg',
   },
   {
     name: 'Platinum',
     href: '/products?category=Platinum',
     description: 'Rare platinum bars and coins',
-    icon: Gem,
-    gradient: 'from-cyan-400/20 to-teal-500/10',
-    iconColor: 'text-cyan-400',
+    image: '/metals/platinum and palladium texture.....jpg',
   },
   {
     name: 'Palladium',
     href: '/products?category=Palladium',
     description: 'Premium palladium products',
-    icon: TrendingUp,
-    gradient: 'from-violet-400/20 to-purple-500/10',
-    iconColor: 'text-violet-400',
+    image: '/metals/_palladium texture.jpg',
   },
 ];
 
@@ -50,31 +42,43 @@ export default function CategoryTiles() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-          {CATEGORIES.map((cat) => {
-            const Icon = cat.icon;
-            return (
-              <Link
-                key={cat.name}
-                href={cat.href}
-                className="group block"
-              >
-                <div className={`relative overflow-hidden rounded-xl border border-border bg-card p-6 lg:p-8 shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5`}>
-                  <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-50 group-hover:opacity-80 transition-opacity`} />
-                  <div className="relative">
-                    <div className={`w-12 h-12 rounded-lg bg-card border border-border flex items-center justify-center mb-4 ${cat.iconColor}`}>
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <h3 className="text-lg font-bold text-foreground mb-1">
-                      {cat.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {cat.description}
-                    </p>
-                  </div>
+          {CATEGORIES.map((cat) => (
+            <Link
+              key={cat.name}
+              href={cat.href}
+              className="group block"
+            >
+              <div className="relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden rounded-[var(--radius)] border border-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
+                {/* Background texture image */}
+                <Image
+                  src={cat.image}
+                  alt={`${cat.name} texture`}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                />
+
+                {/* Gradient overlay for legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent transition-opacity duration-300 group-hover:from-black/70 group-hover:via-black/15" />
+
+                {/* Subtle top vignette for depth */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none" />
+
+                {/* Text content pinned to bottom */}
+                <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 lg:p-6">
+                  <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight mb-0.5">
+                    {cat.name}
+                  </h3>
+                  <p className="text-sm text-white/70 leading-snug">
+                    {cat.description}
+                  </p>
                 </div>
-              </Link>
-            );
-          })}
+
+                {/* Hover border glow */}
+                <div className="absolute inset-0 rounded-[var(--radius)] ring-1 ring-white/0 group-hover:ring-white/10 transition-all duration-300 pointer-events-none" />
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
     </section>
