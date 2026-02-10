@@ -97,6 +97,10 @@ export default function Header() {
         href: "/products?category=Palladium"
       },
       {
+        name: "All Products",
+        href: "/products"
+      },
+      {
         name: "Resources",
         href: "#",
         dropdown: [
@@ -105,7 +109,7 @@ export default function Header() {
           { name: "Contact", href: "/contact", description: "Get in touch with us" },
           { name: "FAQ", href: "/faq", description: "Frequently asked questions" },
         ]
-      },
+      }
     ];
 
     if (isAdmin) {

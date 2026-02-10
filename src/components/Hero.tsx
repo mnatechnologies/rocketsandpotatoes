@@ -339,7 +339,7 @@ export default function Hero() {
       ))}
 
       {/* ---- Slide content ---- */}
-      <div className="relative z-10 container mx-auto px-4 lg:px-6 text-center lg:text-left">
+      <div className="relative z-10 container mx-auto px-4 lg:px-6 pb-16 sm:pb-20 text-center lg:text-left">
         <div className="max-w-2xl mx-auto lg:mx-0">
           {SLIDES.map((slide, i) => {
             const isActive = i === current;
@@ -445,10 +445,10 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* ---- Arrow controls ---- */}
+      {/* ---- Arrow controls (hidden on mobile, visible sm+) ---- */}
       <button
         onClick={goPrev}
-        className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+        className="absolute left-5 top-1/2 -translate-y-1/2 z-20 hidden sm:flex w-11 h-11 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm items-center justify-center text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
         aria-label="Previous slide"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -457,7 +457,7 @@ export default function Hero() {
       </button>
       <button
         onClick={goNext}
-        className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+        className="absolute right-5 top-1/2 -translate-y-1/2 z-20 hidden sm:flex w-11 h-11 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm items-center justify-center text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
         aria-label="Next slide"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -465,32 +465,55 @@ export default function Hero() {
         </svg>
       </button>
 
-      {/* ---- Dot navigation ---- */}
-      <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5" role="tablist" aria-label="Slide navigation">
-        {SLIDES.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i)}
-            className={`relative h-2 rounded-full transition-all duration-500 cursor-pointer ${
-              i === current ? "w-8 bg-primary" : "w-2 bg-white/30 hover:bg-white/50"
-            }`}
-            role="tab"
-            aria-selected={i === current}
-            aria-label={`Go to slide ${i + 1}`}
-          >
-            {/* Auto-advance progress indicator on active dot */}
-            {i === current && !isHovered && (
-              <span
-                className="absolute inset-0 rounded-full bg-primary/60 origin-left"
-                style={{
-                  animation: `hero-dot-progress ${SLIDE_INTERVAL}ms linear forwards`,
-                }}
-                /* key forces re-mount on slide change so animation restarts */
-                key={`progress-${current}`}
-              />
-            )}
-          </button>
-        ))}
+      {/* ---- Bottom bar: arrows (mobile) + dots ---- */}
+      <div className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4" role="tablist" aria-label="Slide navigation">
+        {/* Mobile prev arrow */}
+        <button
+          onClick={goPrev}
+          className="sm:hidden w-8 h-8 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+          aria-label="Previous slide"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
+        {/* Dots */}
+        <div className="flex items-center gap-2.5">
+          {SLIDES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              className={`relative h-2 rounded-full transition-all duration-500 cursor-pointer ${
+                i === current ? "w-8 bg-primary" : "w-2 bg-white/30 hover:bg-white/50"
+              }`}
+              role="tab"
+              aria-selected={i === current}
+              aria-label={`Go to slide ${i + 1}`}
+            >
+              {i === current && !isHovered && (
+                <span
+                  className="absolute inset-0 rounded-full bg-primary/60 origin-left"
+                  style={{
+                    animation: `hero-dot-progress ${SLIDE_INTERVAL}ms linear forwards`,
+                  }}
+                  key={`progress-${current}`}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile next arrow */}
+        <button
+          onClick={goNext}
+          className="sm:hidden w-8 h-8 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+          aria-label="Next slide"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
       </div>
     </section>
   );
