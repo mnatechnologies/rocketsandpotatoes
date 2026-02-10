@@ -56,6 +56,12 @@
   --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-price: all 0.15s ease-out;
 
+  /* Ticker - deep warm brown */
+  --ticker-bg: 30 25% 8%;
+  --ticker-border: 35 30% 18%;
+  --ticker-foreground: 40 6% 90%;
+  --ticker-muted: 35 10% 58%;
+
   /* Sidebar */
   --sidebar-background: 220 14% 8%;
   --sidebar-foreground: 40 6% 88%;
@@ -97,6 +103,12 @@
 
   --success-foreground: 220 16% 12%;
   --destructive-foreground: 220 16% 12%;
+
+  /* Ticker - warm dark tone (lighter than dark mode, still dark) */
+  --ticker-bg: 32 20% 18%;
+  --ticker-border: 35 25% 28%;
+  --ticker-foreground: 40 6% 90%;
+  --ticker-muted: 35 10% 62%;
 
   --shadow-card: 0 1px 4px 0 hsl(220 10% 50% / 0.1), 0 1px 2px -1px hsl(220 10% 50% / 0.08);
   --shadow-card-hover: 0 6px 16px -3px hsl(220 10% 50% / 0.15), 0 3px 6px -2px hsl(220 10% 50% / 0.08);
@@ -144,6 +156,12 @@
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Ticker */
+  --color-ticker-bg: hsl(var(--ticker-bg));
+  --color-ticker-border: hsl(var(--ticker-border));
+  --color-ticker-foreground: hsl(var(--ticker-foreground));
+  --color-ticker-muted: hsl(var(--ticker-muted));
 
   /* Radius tokens */
   --radius-lg: var(--radius);
@@ -241,11 +259,11 @@
   display: none;
 }
 
-/* Header positioning fallback */
-nav[data-header] {
-  top: 56px;
+/* Ticker positioning fallback (sits below header) */
+div[data-ticker] {
+  top: 80px;
 }
 
-nav {
+div[data-ticker] {
   transition: top 0.1s ease-out;
 }

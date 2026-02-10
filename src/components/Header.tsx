@@ -30,7 +30,6 @@ interface NavItem {
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [tickerHeight, setTickerHeight] = useState(100);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { getCartCount } = useCart();
@@ -53,7 +52,6 @@ export default function Header() {
     const observer = new ResizeObserver(() => {
       const newTickerHeight = tickerEl.offsetHeight;
       const newHeaderHeight = headerEl.offsetHeight;
-      setTickerHeight(newTickerHeight);
       document.documentElement.style.setProperty('--header-total-height', `${newTickerHeight + newHeaderHeight}px`);
     });
 
@@ -128,14 +126,11 @@ export default function Header() {
       {/* Main Header */}
       <nav
         ref={dropdownRef}
-        className={`fixed left-0 right-0 z-30 border-b border-border/60 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-40 border-b border-border/60 transition-all duration-300 ${
           isScrolled
             ? 'bg-background/95 backdrop-blur-xl shadow-md'
             : 'bg-background/80 backdrop-blur-md'
         }`}
-        style={{
-          top: `${tickerHeight}px`,
-        }}
         data-header
       >
         <div className="container mx-auto px-4 lg:px-6">

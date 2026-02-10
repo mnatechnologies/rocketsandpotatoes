@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -36,6 +36,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const playfairDisplay = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Australian National Bullion | Premium Precious Metals",
   description: "Australia's trusted AUSTRAC-registered bullion dealer. Buy gold, silver, platinum and palladium with live market pricing and guaranteed authenticity.",
@@ -49,14 +55,14 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <body className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} antialiased`}>
           <ThemeProvider>
             <MetalPricesProvider>
               <CurrencyProvider>
                 <CartProvider>
                   <Toaster position="top-center" richColors closeButton />
-                  <PriceTicker />
                   <Header />
+                  <PriceTicker />
                   <PriceLockBar />
                   {children}
                   <Footer />
