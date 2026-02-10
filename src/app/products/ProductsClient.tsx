@@ -230,10 +230,28 @@ export default function ProductsClient({ products }: ProductsClientProps) {
 
     return (
       <div className="flex flex-col">
+          {/* View Toggle */}
+          <div className="flex items-center justify-end mb-4 gap-1">
+              <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                  aria-label="Grid view"
+              >
+                  <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                  aria-label="List view"
+              >
+                  <List className="h-4 w-4" />
+              </button>
+          </div>
+
           <div className="flex gap-8">
               {/* Left Sidebar Filters - Desktop */}
               <aside className="hidden lg:block w-60 flex-shrink-0">
-                  <div className="sticky top-[160px] space-y-4 bg-card p-5 rounded-lg border border-border shadow-card">
+                  <div className="space-y-4 bg-card p-5 rounded-lg border border-border shadow-card">
                       {/* Search */}
                       <div>
                           <button
@@ -484,24 +502,6 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                           <p className="text-blue-800 dark:text-blue-200">Loading live prices...</p>
                       </div>
                   )}
-
-                  {/* View Toggle */}
-                  <div className="flex items-center justify-end mb-4 gap-1">
-                      <button
-                          onClick={() => setViewMode('grid')}
-                          className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-                          aria-label="Grid view"
-                      >
-                          <LayoutGrid className="h-4 w-4" />
-                      </button>
-                      <button
-                          onClick={() => setViewMode('list')}
-                          className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-                          aria-label="List view"
-                      >
-                          <List className="h-4 w-4" />
-                      </button>
-                  </div>
 
                   {filteredProducts.length > 0 ? (
                       viewMode === 'grid' ? (
