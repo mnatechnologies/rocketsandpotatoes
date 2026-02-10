@@ -28,6 +28,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
 
   const [quantity, setQuantity] = useState(1);
   const [livePrice, setLivePrice] = useState<number>(product.price);
+  const [relatedPrices, setRelatedPrices] = useState<Map<string, number>>(new Map());
   const [addingToCart, setAddingToCart] = useState(false);
 
   // Calculate product price when metal prices change
@@ -40,22 +41,31 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
       metalPrices.map(price => [price.symbol, price.price])
     );
 
-    // Transform pricingConfig to match the expected format
     const config = {
       markup_percentage: pricingConfig.markup_percentage,
       base_fee: pricingConfig.default_base_fee,
       brand_base_fees: pricingConfig.brand_base_fees,
     };
 
-    const priceMap = calculateBulkPricingFromCache([product], metalPriceMap, config);
-    const priceInfo = priceMap.get(product.id);
+    const allProducts = [product, ...relatedProducts];
+    const priceMap = calculateBulkPricingFromCache(allProducts, metalPriceMap, config);
 
+    const priceInfo = priceMap.get(product.id);
     if (priceInfo) {
       setLivePrice(priceInfo.calculatedPrice);
     } else {
       setLivePrice(product.price);
     }
-  }, [product, metalPrices, pricingConfig, loadingPrices]);
+
+    const newRelatedPrices = new Map<string, number>();
+    for (const related of relatedProducts) {
+      const relatedInfo = priceMap.get(related.id);
+      if (relatedInfo) {
+        newRelatedPrices.set(related.id, relatedInfo.calculatedPrice);
+      }
+    }
+    setRelatedPrices(newRelatedPrices);
+  }, [product, relatedProducts, metalPrices, pricingConfig, loadingPrices]);
 
   const handleAddToCart = async () => {
     setAddingToCart(true);
@@ -361,7 +371,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                         {[related.weight, related.purity].filter(Boolean).join(' | ')}
                       </p>
                       <div className="text-lg font-bold text-foreground">
-                        {formatPrice(related.price)}
+                        {formatPrice(relatedPrices.get(related.id) ?? related.price)}
                       </div>
                     </div>
                   </div>
