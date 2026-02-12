@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { ChevronDown, Phone, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 interface TickerPrice {
   metal: string;
@@ -15,41 +15,13 @@ interface TickerPrice {
   changePercent: number;
 }
 
-function getMarketStatus() {
-  const now = new Date();
-  const utcDay = now.getUTCDay();
-  const utcHour = now.getUTCHours();
-
-  if (utcDay === 6) return { isOpen: false };
-  if (utcDay === 5 && utcHour >= 22) return { isOpen: false };
-  if (utcDay === 0 && utcHour < 23) return { isOpen: false };
-
-  return { isOpen: true };
-}
-
 const TROY_OZ_TO_GRAMS = 31.1035;
 
 export default function PriceTicker() {
   const { prices: contextPrices, isLoading, lastUpdated } = useMetalPrices();
-  const { currency, setCurrency, exchangeRate, convertPrice, fxRate, fxTimestamp, isLoading: fxLoading } = useCurrency();
-  const [marketStatus, setMarketStatus] = useState(getMarketStatus());
+  const { currency, exchangeRate, convertPrice } = useCurrency();
   const [nextRefreshCountdown, setNextRefreshCountdown] = useState('');
-  const [currencyOpen, setCurrencyOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(80);
-  const currencyRef = useRef<HTMLDivElement>(null);
-
-  // Close currency dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (currencyRef.current && !currencyRef.current.contains(event.target as Node)) {
-        setCurrencyOpen(false);
-      }
-    }
-    if (currencyOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [currencyOpen]);
 
   // Observe header height to position ticker below it
   useEffect(() => {
@@ -77,8 +49,6 @@ export default function PriceTicker() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMarketStatus(getMarketStatus());
-
       // Update refresh countdown
       if (lastUpdated) {
         const nextRefresh = new Date(lastUpdated.getTime() + 5 * 60 * 1000);
@@ -97,17 +67,13 @@ export default function PriceTicker() {
   }, [lastUpdated]);
 
   const formatPrice = (value: number) =>
-    new Intl.NumberFormat("en-AU", {
-      style: "currency",
-      currency: currency,
+    '$' + new Intl.NumberFormat("en-AU", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
 
   const formatGramPrice = (value: number) =>
-    new Intl.NumberFormat("en-AU", {
-      style: "currency",
-      currency: currency,
+    '$' + new Intl.NumberFormat("en-AU", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value / TROY_OZ_TO_GRAMS);
@@ -168,10 +134,10 @@ export default function PriceTicker() {
                 </div>
               </div>
               <div className="text-lg md:text-xl font-semibold text-ticker-foreground tracking-tight leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
-                {formatPrice(price.price)} <span className="text-[9px] md:text-[10px] font-medium text-ticker-muted">/ oz</span>
+                {currency} {formatPrice(price.price)} <span className="text-[9px] md:text-[10px] font-medium text-ticker-muted">/ oz</span>
               </div>
-              <div className="text-xs md:text-sm text-ticker-muted tracking-tight leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
-                {formatGramPrice(price.price)} <span className="text-[9px] md:text-[10px] font-medium">/ g</span>
+              <div className="text-sm md:text-base font-semibold tracking-tight leading-tight bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+                {currency} {formatGramPrice(price.price)} <span className="text-[9px] md:text-[10px] font-medium">/ g</span>
               </div>
             </Link>
           )})}
@@ -230,68 +196,6 @@ export default function PriceTicker() {
               Charts & History
             </span>
           </Link>
-        </div>
-
-        {/* Status bar: market status, phone, currency toggle */}
-        <div className="flex items-center justify-between py-1.5 border-t border-ticker-border/40 text-[10px] text-ticker-muted">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${marketStatus.isOpen ? 'bg-success' : 'bg-orange-500'}`} />
-              <span className="font-medium">{marketStatus.isOpen ? 'Markets Open' : 'Markets Closed'}</span>
-            </div>
-            <a href="tel:1300783190" className="flex items-center gap-1 text-ticker-muted hover:text-ticker-foreground transition-colors">
-              <Phone className="h-2.5 w-2.5" />
-              <span className="font-medium">1300 783 190</span>
-            </a>
-          </div>
-          <div className="relative" ref={currencyRef}>
-            <button
-              onClick={() => setCurrencyOpen(!currencyOpen)}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-ticker-foreground bg-white/10 border border-ticker-border rounded hover:bg-white/15 transition-colors"
-            >
-              <span>{currency}</span>
-              <ChevronDown className={`w-2.5 h-2.5 transition-transform ${currencyOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {currencyOpen && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded shadow-lg z-50">
-                <div className="py-1">
-                  <button
-                    onClick={() => { setCurrency('USD'); setCurrencyOpen(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-muted ${
-                      currency === 'USD' ? 'bg-muted text-primary font-medium' : 'text-foreground'
-                    }`}
-                  >
-                    USD - US Dollar
-                  </button>
-                  <button
-                    onClick={() => { setCurrency('AUD'); setCurrencyOpen(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-muted ${
-                      currency === 'AUD' ? 'bg-muted text-primary font-medium' : 'text-foreground'
-                    }`}
-                  >
-                    AUD - Australian Dollar
-                  </button>
-                </div>
-                {currency === 'AUD' && (
-                  <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-                    {fxLoading ? (
-                      <span>Loading rate...</span>
-                    ) : (
-                      <>
-                        <div>1 USD = {fxRate.toFixed(4)} AUD</div>
-                        {fxTimestamp && (
-                          <div className="text-muted-foreground/70">
-                            Updated: {fxTimestamp.toLocaleTimeString()}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>

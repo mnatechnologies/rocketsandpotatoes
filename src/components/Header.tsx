@@ -13,6 +13,7 @@ import {
 } from '@clerk/nextjs';
 import { ShoppingCartIcon, ChevronDown } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface DropdownItem {
@@ -35,6 +36,7 @@ export default function Header() {
   const { getCartCount } = useCart();
   const cartCount = getCartCount();
   const { user } = useUser();
+  const { currency, setCurrency } = useCurrency();
 
   const isAdmin = user?.publicMetadata?.role === 'admin';
 
@@ -104,9 +106,12 @@ export default function Header() {
         dropdown: [
           { name: "Charts", href: "/charts", description: "Live & historical metal prices" },
           { name: "About", href: "/about", description: "Learn about our company" },
-          { name: "Contact", href: "/contact", description: "Get in touch with us" },
           { name: "FAQ", href: "/faq", description: "Frequently asked questions" },
         ]
+      },
+      {
+        name: "Contact",
+        href: "/contact"
       }
     ];
 
@@ -205,6 +210,15 @@ export default function Header() {
 
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-2">
+              <button
+                onClick={() => setCurrency(currency === 'AUD' ? 'USD' : 'AUD')}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-md border border-border hover:bg-muted/50 transition-colors text-foreground/80 hover:text-foreground"
+                aria-label={`Switch to ${currency === 'AUD' ? 'USD' : 'AUD'}`}
+              >
+                <span className={currency === 'AUD' ? 'text-primary' : 'text-muted-foreground'}>AUD</span>
+                <span className="text-muted-foreground">/</span>
+                <span className={currency === 'USD' ? 'text-primary' : 'text-muted-foreground'}>USD</span>
+              </button>
               <ThemeToggle />
               <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
                 <button
@@ -250,6 +264,15 @@ export default function Header() {
 
             {/* Mobile Actions */}
             <div className="lg:hidden flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrency(currency === 'AUD' ? 'USD' : 'AUD')}
+                className="flex items-center gap-0.5 px-2 py-1.5 text-[10px] font-semibold rounded-md border border-border hover:bg-muted/50 transition-colors"
+                aria-label={`Switch to ${currency === 'AUD' ? 'USD' : 'AUD'}`}
+              >
+                <span className={currency === 'AUD' ? 'text-primary' : 'text-muted-foreground'}>AUD</span>
+                <span className="text-muted-foreground">/</span>
+                <span className={currency === 'USD' ? 'text-primary' : 'text-muted-foreground'}>USD</span>
+              </button>
               <ThemeToggle />
 
               <Link href={'/cart'} aria-label={`Shopping cart with ${cartCount} items`}>
