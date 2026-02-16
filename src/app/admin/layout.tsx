@@ -18,6 +18,7 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/reports': 'Reports & Analytics',
   '/admin/audit-logs': 'Audit Logs',
   '/admin/pricing': 'Pricing Configuration',
+  '/admin/integrations': 'Integrations',
 };
 
 function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
@@ -120,6 +121,13 @@ export default function AdminLayout({
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Pricing
+              </Link>
+              <span className="text-muted-foreground hidden sm:inline">•</span>
+              <Link
+                href="/admin/integrations"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
+              >
+                Integrations
               </Link>
               <span className="text-muted-foreground hidden sm:inline">•</span>
               <Link

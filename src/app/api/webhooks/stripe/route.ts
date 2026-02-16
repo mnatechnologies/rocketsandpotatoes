@@ -228,6 +228,16 @@ export async function POST(req: NextRequest) {
       //     }
       //   }
       //
+
+        // Sync to Xero (non-blocking - failures logged, never break webhook)
+        try {
+          const { syncToXero } = await import('@/lib/xero/sync');
+          await syncToXero(existingTransaction.id, supabase);
+          logger.log('Xero sync completed for transaction:', existingTransaction.id);
+        } catch (xeroError) {
+          logger.error('Xero sync failed (non-blocking):', xeroError);
+        }
+
         break;
        }
 
