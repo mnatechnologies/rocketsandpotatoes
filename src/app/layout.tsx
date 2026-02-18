@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Playfair_Display } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -40,6 +40,12 @@ const playfairDisplay = Playfair_Display({
   weight: ["400", "500", "600", "700"],
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Australian National Bullion | Premium Precious Metals",
   description: "Australia's trusted AUSTRAC-registered bullion dealer. Buy gold, silver, platinum and palladium with live market pricing and guaranteed authenticity.",
@@ -53,7 +59,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`${aptosSemiBold.variable} ${playfairDisplay.variable} antialiased`}>
+        <body className={`${aptosSemiBold.variable} ${playfairDisplay.variable} ${inter.variable} antialiased`}>
           <ThemeProvider>
             <MetalPricesProvider>
               <CurrencyProvider>

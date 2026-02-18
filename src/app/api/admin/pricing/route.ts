@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     // Fetch pricing config (there should only be one row)
     const { data, error } = await supabase
       .from('pricing_config')
-      .select('markup_percentage, default_base_fee, brand_base_fees')
+      .select('markup_percentage, default_base_fee_percentage, brand_base_fee_percentages')
       .single();
 
     if (error) {
@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
         success: true,
         data: {
           markup_percentage: 10,
-          default_base_fee: 10,
-          brand_base_fees: {},
+          default_base_fee_percentage: 2,
+          brand_base_fee_percentages: {},
         }
       });
     }
@@ -55,7 +55,7 @@ export async function PUT(req: NextRequest) {
     const userId = authCheck.userId;
 
     const body = await req.json();
-    const { markup_percentage, default_base_fee, brand_base_fees } = body;
+    const { markup_percentage, default_base_fee_percentage, brand_base_fee_percentages } = body;
 
     // Validate inputs
     if (markup_percentage !== undefined) {
@@ -67,28 +67,28 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    if (default_base_fee !== undefined) {
-      if (typeof default_base_fee !== 'number' || default_base_fee < 0) {
+    if (default_base_fee_percentage !== undefined) {
+      if (typeof default_base_fee_percentage !== 'number' || default_base_fee_percentage < 0 || default_base_fee_percentage > 100) {
         return NextResponse.json(
-          { error: 'Invalid default_base_fee: must be a positive number' },
+          { error: 'Invalid default_base_fee_percentage: must be between 0 and 100' },
           { status: 400 }
         );
       }
     }
 
-    if (brand_base_fees !== undefined) {
-      if (typeof brand_base_fees !== 'object' || Array.isArray(brand_base_fees)) {
+    if (brand_base_fee_percentages !== undefined) {
+      if (typeof brand_base_fee_percentages !== 'object' || Array.isArray(brand_base_fee_percentages)) {
         return NextResponse.json(
-          { error: 'Invalid brand_base_fees: must be an object' },
+          { error: 'Invalid brand_base_fee_percentages: must be an object' },
           { status: 400 }
         );
       }
 
-      // Validate all brand fee values are positive numbers
-      for (const [brand, fee] of Object.entries(brand_base_fees)) {
-        if (typeof fee !== 'number' || (fee as number) < 0) {
+      // Validate all brand fee percentages are valid
+      for (const [brand, fee] of Object.entries(brand_base_fee_percentages)) {
+        if (typeof fee !== 'number' || (fee as number) < 0 || (fee as number) > 100) {
           return NextResponse.json(
-            { error: `Invalid fee for brand "${brand}": must be a positive number` },
+            { error: `Invalid fee percentage for brand "${brand}": must be between 0 and 100` },
             { status: 400 }
           );
         }
@@ -101,8 +101,8 @@ export async function PUT(req: NextRequest) {
     };
 
     if (markup_percentage !== undefined) updateData.markup_percentage = markup_percentage;
-    if (default_base_fee !== undefined) updateData.default_base_fee = default_base_fee;
-    if (brand_base_fees !== undefined) updateData.brand_base_fees = brand_base_fees;
+    if (default_base_fee_percentage !== undefined) updateData.default_base_fee_percentage = default_base_fee_percentage;
+    if (brand_base_fee_percentages !== undefined) updateData.brand_base_fee_percentages = brand_base_fee_percentages;
 
     // Get the single pricing config row (there should only be one)
     const { data: existing } = await supabase

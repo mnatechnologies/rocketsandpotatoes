@@ -37,14 +37,40 @@ export default function ProductsClient({ products }: ProductsClientProps) {
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [selectedWeight, setSelectedWeight] = useState<string>('All Weights');
-    const [collapsedSections, setCollapsedSections] = useState({
-        search: false,
-        sort: true,
+    const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+    const BRAND_OPTIONS = ['Ainslie', 'Perth Mint', 'ABC Bullion', 'PAMP'];
+    const FILTER_CATEGORIES = ['Gold', 'Silver', 'Platinum', 'Palladium', 'Coins'] as const;
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
         categories: false,
+        type: true,
+        brand: true,
         weight: true,
+        sort: true,
     });
 
+    const toggleSection = (section: string) => {
+        setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
     const { prices: metalPrices, pricingConfig, isLoading: loadingPrices } = useMetalPrices();
+
+    const formTypeLabels: Record<string, string> = {
+        cast: 'Cast Bars',
+        minted: 'Minted Tablets',
+        coin: 'Coins',
+    };
+
+    // Determine available form types for the selected category (contextual Type filter)
+    const availableFormTypes = useMemo(() => {
+        if (selectedCategory === 'all' || selectedCategory === 'Coins') return [];
+        const categoryProducts = productsWithPricing.filter(p =>
+            (p.category || 'other') === selectedCategory
+        );
+        const formTypes = [...new Set(categoryProducts.map(p => p.form_type).filter(Boolean))] as string[];
+        return formTypes;
+    }, [productsWithPricing, selectedCategory]);
+
+    const showTypeFilter = availableFormTypes.length > 1;
 
     // Read URL query parameters
     useEffect(() => {
@@ -73,8 +99,8 @@ export default function ProductsClient({ products }: ProductsClientProps) {
         // Transform pricingConfig to match the expected format
         const config = {
             markup_percentage: pricingConfig.markup_percentage,
-            base_fee: pricingConfig.default_base_fee,
-            brand_base_fees: pricingConfig.brand_base_fees,
+            base_fee_percentage: pricingConfig.default_base_fee_percentage,
+            brand_base_fee_percentages: pricingConfig.brand_base_fee_percentages,
         };
 
         const priceMap = calculateBulkPricingFromCache(products, metalPriceMap, config);
@@ -114,7 +140,7 @@ export default function ProductsClient({ products }: ProductsClientProps) {
         Silver: 'Silver',
         Platinum: 'Platinum',
         Palladium: 'Palladium',
-        other: 'Other Products',
+        Coins: 'Coins',
     };
 
     const handleCategoryChange = (category: string) => {
@@ -144,11 +170,15 @@ export default function ProductsClient({ products }: ProductsClientProps) {
 
         // Apply category filter
         if (selectedCategory !== 'all') {
-            filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
+            if (selectedCategory === 'Coins') {
+                filtered = filtered.filter(product => product.form_type === 'coin');
+            } else {
+                filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
+            }
         }
 
-        // Apply form type filter (for Gold)
-        if (selectedCategory === 'Gold' && selectedFormType !== 'all') {
+        // Apply form type filter (contextual - any category with multiple types)
+        if (selectedCategory !== 'all' && selectedCategory !== 'Coins' && selectedFormType !== 'all') {
             filtered = filtered.filter(p => p.form_type === selectedFormType);
         }
 
@@ -182,11 +212,22 @@ export default function ProductsClient({ products }: ProductsClientProps) {
         }
 
         if (selectedCategory !== 'all') {
-            filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
+            if (selectedCategory === 'Coins') {
+                filtered = filtered.filter(product => product.form_type === 'coin');
+            } else {
+                filtered = filtered.filter(product => (product.category || 'other') === selectedCategory);
+            }
         }
 
         if (selectedCategory === 'Gold' && selectedFormType !== 'all') {
             filtered = filtered.filter(p => p.form_type === selectedFormType);
+        }
+
+        // Brand filter (multi-select)
+        if (selectedBrands.length > 0) {
+            filtered = filtered.filter(product =>
+                product.brand && selectedBrands.includes(product.brand)
+            );
         }
 
         // Weight filter (exact match from database)
@@ -211,22 +252,17 @@ export default function ProductsClient({ products }: ProductsClientProps) {
         });
 
         return sorted;
-    }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType, selectedWeight]);
+    }, [productsWithPricing, searchQuery, selectedCategory, sortBy, selectedFormType, selectedWeight, selectedBrands]);
 
     const clearFilters = () => {
         setSearchQuery('');
         setSelectedCategory('all');
         setSelectedFormType('all');
         setSelectedWeight('All Weights');
+        setSelectedBrands([]);
         router.push('/products');
     };
 
-    const toggleSection = (section: keyof typeof collapsedSections) => {
-        setCollapsedSections(prev => ({
-            ...prev,
-            [section]: !prev[section]
-        }));
-    };
 
     return (
       <div className="flex flex-col">
@@ -250,42 +286,175 @@ export default function ProductsClient({ products }: ProductsClientProps) {
 
           <div className="flex gap-8">
               {/* Left Sidebar Filters - Desktop */}
-              <aside className="hidden lg:block w-60 flex-shrink-0">
-                  <div className="space-y-4 bg-card p-5 rounded-lg border border-border shadow-card">
+              <aside className="hidden lg:block w-64 flex-shrink-0">
+                  <div className="bg-filter-bg p-4 rounded-lg border border-filter-border shadow-card">
                       {/* Search */}
-                      <div>
+                      <div className="mb-4">
+                          <input
+                              type="text"
+                              placeholder="Search products..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-ring/50 focus:border-transparent text-sm text-foreground placeholder:text-muted-foreground"
+                          />
+                      </div>
+
+                      {/* Category Blocks with Inline Sub-filters */}
+                      <div className="space-y-1.5">
+                          {/* All Products Block */}
                           <button
-                              onClick={() => toggleSection('search')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
+                              onClick={() => handleCategoryChange('all')}
+                              className={`w-full px-4 py-3 text-sm font-semibold transition-colors text-left ${
+                                  selectedCategory === 'all'
+                                      ? 'bg-filter-active-bg text-filter-active-text'
+                                      : 'text-filter-text hover:bg-filter-hover-bg hover:text-filter-heading'
+                              }`}
                           >
-                              Search
-                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.search ? '' : 'rotate-180'}`} />
+                              All Products
                           </button>
-                          {!collapsedSections.search && (
-                              <input
-                                  type="text"
-                                  placeholder="Search products..."
-                                  value={searchQuery}
-                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                  className="w-full px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-ring/50 focus:border-transparent text-sm text-foreground placeholder:text-muted-foreground"
-                              />
-                          )}
+
+                          {/* Category Blocks - each with inline accordion sub-filters */}
+                          {FILTER_CATEGORIES.map(category => (
+                              <div key={category}>
+                                  {/* Category Block */}
+                                  <button
+                                      onClick={() => handleCategoryChange(category)}
+                                      className={`w-full px-4 py-3 text-sm font-semibold transition-colors text-left ${
+                                          selectedCategory === category
+                                              ? 'bg-filter-active-bg text-filter-active-text'
+                                              : 'text-filter-text hover:bg-filter-hover-bg hover:text-filter-heading'
+                                      }`}
+                                  >
+                                      {categoryNames[category] || category}
+                                  </button>
+
+                                  {/* Inline Sub-filters - appear directly below selected category */}
+                                  {selectedCategory === category && (
+                                      <div className="ml-3 mr-1 mt-1.5 mb-1 pl-3 border-l-2 border-filter-active-bg/40 space-y-1">
+                                          {/* Type sub-filter (contextual) */}
+                                          {showTypeFilter && (
+                                              <div>
+                                                  <button
+                                                      onClick={() => toggleSection('type')}
+                                                      className="w-full flex items-center justify-between text-xs font-semibold text-filter-heading py-1.5 uppercase tracking-wide"
+                                                  >
+                                                      Type
+                                                      <ChevronDown className={`h-3.5 w-3.5 transition-transform text-filter-text-muted ${collapsedSections.type ? '' : 'rotate-180'}`} />
+                                                  </button>
+                                                  {!collapsedSections.type && (
+                                                      <div className="space-y-0.5 pb-1">
+                                                          <button
+                                                              onClick={() => setSelectedFormType('all')}
+                                                              className={`w-full text-left px-2.5 py-1 text-xs transition-colors ${
+                                                                  selectedFormType === 'all'
+                                                                      ? 'bg-filter-active-bg text-filter-active-text font-medium'
+                                                                      : 'text-filter-text-muted hover:bg-filter-hover-bg hover:text-filter-text'
+                                                              }`}
+                                                          >
+                                                              All Types
+                                                          </button>
+                                                          {availableFormTypes.map(type => (
+                                                              <button
+                                                                  key={type}
+                                                                  onClick={() => setSelectedFormType(type)}
+                                                                  className={`w-full text-left px-2.5 py-1 text-xs transition-colors ${
+                                                                      selectedFormType === type
+                                                                          ? 'bg-filter-active-bg text-filter-active-text font-medium'
+                                                                          : 'text-filter-text-muted hover:bg-filter-hover-bg hover:text-filter-text'
+                                                                  }`}
+                                                              >
+                                                                  {formTypeLabels[type] || type}
+                                                              </button>
+                                                          ))}
+                                                      </div>
+                                                  )}
+                                              </div>
+                                          )}
+
+                                          {/* Brand sub-filter */}
+                                          <div>
+                                              <button
+                                                  onClick={() => toggleSection('brand')}
+                                                  className="w-full flex items-center justify-between text-xs font-semibold text-filter-heading py-1.5 uppercase tracking-wide"
+                                              >
+                                                  Brand
+                                                  <ChevronDown className={`h-3.5 w-3.5 transition-transform text-filter-text-muted ${collapsedSections.brand ? '' : 'rotate-180'}`} />
+                                              </button>
+                                              {!collapsedSections.brand && (
+                                                  <div className="space-y-0.5 pb-1">
+                                                      {BRAND_OPTIONS.map(brand => (
+                                                          <label
+                                                              key={brand}
+                                                              className="flex items-center gap-2 px-2.5 py-1 text-xs cursor-pointer hover:bg-filter-hover-bg transition-colors"
+                                                          >
+                                                              <input
+                                                                  type="checkbox"
+                                                                  checked={selectedBrands.includes(brand)}
+                                                                  onChange={(e) => {
+                                                                      if (e.target.checked) {
+                                                                          setSelectedBrands([...selectedBrands, brand]);
+                                                                      } else {
+                                                                          setSelectedBrands(selectedBrands.filter(b => b !== brand));
+                                                                      }
+                                                                  }}
+                                                                  className="rounded border-border text-filter-active-bg focus:ring-ring/50 h-3 w-3"
+                                                              />
+                                                              <span className={selectedBrands.includes(brand) ? 'text-filter-heading font-medium' : 'text-filter-text-muted'}>
+                                                                  {brand}
+                                                              </span>
+                                                          </label>
+                                                      ))}
+                                                  </div>
+                                              )}
+                                          </div>
+
+                                          {/* Weight sub-filter */}
+                                          <div>
+                                              <button
+                                                  onClick={() => toggleSection('weight')}
+                                                  className="w-full flex items-center justify-between text-xs font-semibold text-filter-heading py-1.5 uppercase tracking-wide"
+                                              >
+                                                  Weight
+                                                  <ChevronDown className={`h-3.5 w-3.5 transition-transform text-filter-text-muted ${collapsedSections.weight ? '' : 'rotate-180'}`} />
+                                              </button>
+                                              {!collapsedSections.weight && (
+                                                  <div className="flex flex-wrap gap-1 pb-1">
+                                                      {weights.map(weight => (
+                                                          <button
+                                                              key={weight}
+                                                              onClick={() => setSelectedWeight(weight as string)}
+                                                              className={`px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                                                                  selectedWeight === weight
+                                                                      ? 'bg-filter-active-bg text-filter-active-text'
+                                                                      : 'text-filter-text-muted hover:bg-filter-hover-bg hover:text-filter-text'
+                                                              }`}
+                                                          >
+                                                              {weight}
+                                                          </button>
+                                                      ))}
+                                                  </div>
+                                              )}
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          ))}
                       </div>
 
                       {/* Sort */}
-                      <div>
+                      <div className="pt-3 mt-3 border-t border-filter-border">
                           <button
                               onClick={() => toggleSection('sort')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
+                              className="w-full flex items-center justify-between text-sm font-semibold text-filter-heading py-1.5"
                           >
                               Sort By
-                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.sort ? '' : 'rotate-180'}`} />
+                              <ChevronDown className={`h-4 w-4 transition-transform text-filter-text-muted ${collapsedSections.sort ? '' : 'rotate-180'}`} />
                           </button>
                           {!collapsedSections.sort && (
                               <select
                                   value={sortBy}
                                   onChange={(e) => setSortBy(e.target.value as any)}
-                                  className="w-full px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-ring/50 focus:border-transparent text-sm text-foreground"
+                                  className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-ring/50 focus:border-transparent text-sm text-foreground"
                               >
                                   <option value="price-asc">Price: Low to High</option>
                                   <option value="price-desc">Price: High to Low</option>
@@ -294,77 +463,11 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                           )}
                       </div>
 
-                      {/* Categories */}
-                      <div>
-                          <button
-                              onClick={() => toggleSection('categories')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
-                          >
-                              Categories
-                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.categories ? '' : 'rotate-180'}`} />
-                          </button>
-                          {!collapsedSections.categories && (
-                              <div className="space-y-0.5">
-                                  <button
-                                      onClick={() => handleCategoryChange('all')}
-                                      className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-                                          selectedCategory === 'all'
-                                              ? 'bg-primary text-primary-foreground font-medium'
-                                              : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
-                                      }`}
-                                  >
-                                      All Products
-                                  </button>
-                                  {categories.map(category => (
-                                      <button
-                                          key={category}
-                                          onClick={() => handleCategoryChange(category)}
-                                          className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-                                              selectedCategory === category
-                                                  ? 'bg-primary text-primary-foreground font-medium'
-                                                  : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
-                                          }`}
-                                      >
-                                          {categoryNames[category] || category}
-                                      </button>
-                                  ))}
-                              </div>
-                          )}
-                      </div>
-
-                      {/* Weight Filter */}
-                      <div>
-                          <button
-                              onClick={() => toggleSection('weight')}
-                              className="w-full flex items-center justify-between text-sm font-semibold text-foreground mb-2"
-                          >
-                              Weight
-                              <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${collapsedSections.weight ? '' : 'rotate-180'}`} />
-                          </button>
-                          {!collapsedSections.weight && (
-                              <div className="space-y-0.5">
-                                  {weights.map(weight => (
-                                      <button
-                                          key={weight}
-                                          onClick={() => setSelectedWeight(weight as string)}
-                                          className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-                                              selectedWeight === weight
-                                                  ? 'bg-primary text-primary-foreground font-medium'
-                                                  : 'text-foreground/70 hover:bg-muted/50 hover:text-foreground'
-                                          }`}
-                                      >
-                                          {weight}
-                                      </button>
-                                  ))}
-                              </div>
-                          )}
-                      </div>
-
                       {/* Clear Filters */}
-                      {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all' || selectedWeight !== 'All Weights') && (
+                      {(searchQuery || selectedCategory !== 'all' || selectedFormType !== 'all' || selectedWeight !== 'All Weights' || selectedBrands.length > 0) && (
                           <button
                               onClick={clearFilters}
-                              className="w-full px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors flex items-center justify-center gap-2"
+                              className="w-full px-3 py-2 mt-3 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors flex items-center justify-center gap-2"
                           >
                               <X className="h-4 w-4" />
                               Clear All Filters
@@ -372,7 +475,7 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                       )}
 
                       {/* Results Count */}
-                      <div className="text-xs text-muted-foreground pt-4 border-t border-border">
+                      <div className="text-xs text-filter-text-muted pt-3 mt-3 border-t border-filter-border">
                           Showing {filteredProducts.length} of {productsWithPricing.length} products
                       </div>
                   </div>
@@ -389,104 +492,192 @@ export default function ProductsClient({ products }: ProductsClientProps) {
 
               {/* Mobile Filters Modal */}
               {showMobileFilters && (
-                  <div className="lg:hidden fixed inset-0 z-50 bg-background">
-                      <div className="flex items-center justify-between p-4 border-b border-border bg-card">
-                          <h2 className="text-lg font-semibold text-foreground">Filters</h2>
+                  <div className="lg:hidden fixed inset-0 z-50 bg-filter-bg">
+                      <div className="flex items-center justify-between p-4 border-b border-filter-border">
+                          <h2 className="text-lg font-semibold text-filter-heading">Filters</h2>
                           <button
                               onClick={() => setShowMobileFilters(false)}
-                              className="p-2 hover:bg-muted rounded-lg"
+                              className="p-2 hover:bg-filter-hover-bg text-filter-text"
                           >
                               <X className="h-5 w-5" />
                           </button>
                       </div>
-                      <div className="p-4 space-y-6 overflow-y-auto max-h-[calc(100vh-140px)]">
+                      <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(100vh-140px)]">
                           {/* Search */}
                           <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Search</label>
                               <input
                                   type="text"
                                   placeholder="Search products..."
                                   value={searchQuery}
                                   onChange={(e) => setSearchQuery(e.target.value)}
-                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                                  className="w-full px-3 py-2.5 bg-background border border-filter-border text-sm text-foreground placeholder:text-filter-text-muted"
                               />
                           </div>
 
+                          {/* Category Blocks with Inline Sub-filters */}
+                          <div className="space-y-2">
+                              {/* All Products Block */}
+                              <button
+                                  onClick={() => handleCategoryChange('all')}
+                                  className={`w-full px-4 py-3.5 text-sm font-semibold transition-colors text-left ${
+                                      selectedCategory === 'all'
+                                          ? 'bg-filter-active-bg text-filter-active-text'
+                                          : 'text-filter-text hover:bg-filter-hover-bg hover:text-filter-heading'
+                                  }`}
+                              >
+                                  All Products
+                              </button>
+
+                              {/* Category Blocks with inline accordion sub-filters */}
+                              {FILTER_CATEGORIES.map(category => (
+                                  <div key={category}>
+                                      {/* Category Block */}
+                                      <button
+                                          onClick={() => handleCategoryChange(category)}
+                                          className={`w-full px-4 py-3.5 text-sm font-semibold transition-colors text-left ${
+                                              selectedCategory === category
+                                                  ? 'bg-filter-active-bg text-filter-active-text'
+                                                  : 'text-filter-text hover:bg-filter-hover-bg hover:text-filter-heading'
+                                          }`}
+                                      >
+                                          {categoryNames[category] || category}
+                                      </button>
+
+                                      {/* Inline Sub-filters - appear directly below selected category */}
+                                      {selectedCategory === category && (
+                                          <div className="ml-3 mr-1 mt-2 mb-1 pl-3 border-l-2 border-filter-active-bg/40 space-y-2">
+                                              {/* Type sub-filter (contextual) */}
+                                              {showTypeFilter && (
+                                                  <div>
+                                                      <button
+                                                          onClick={() => toggleSection('type')}
+                                                          className="w-full flex items-center justify-between text-xs font-semibold text-filter-heading py-1.5 uppercase tracking-wide"
+                                                      >
+                                                          Type
+                                                          <ChevronDown className={`h-3.5 w-3.5 transition-transform text-filter-text-muted ${collapsedSections.type ? '' : 'rotate-180'}`} />
+                                                      </button>
+                                                      {!collapsedSections.type && (
+                                                          <div className="flex flex-wrap gap-1.5 pb-1">
+                                                              <button
+                                                                  onClick={() => setSelectedFormType('all')}
+                                                                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                                                                      selectedFormType === 'all'
+                                                                          ? 'bg-filter-active-bg text-filter-active-text'
+                                                                          : 'text-filter-text-muted hover:bg-filter-hover-bg hover:text-filter-text'
+                                                                  }`}
+                                                              >
+                                                                  All Types
+                                                              </button>
+                                                              {availableFormTypes.map(type => (
+                                                                  <button
+                                                                      key={type}
+                                                                      onClick={() => setSelectedFormType(type)}
+                                                                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                                                                          selectedFormType === type
+                                                                              ? 'bg-filter-active-bg text-filter-active-text'
+                                                                              : 'text-filter-text-muted hover:bg-filter-hover-bg hover:text-filter-text'
+                                                                      }`}
+                                                                  >
+                                                                      {formTypeLabels[type] || type}
+                                                                  </button>
+                                                              ))}
+                                                          </div>
+                                                      )}
+                                                  </div>
+                                              )}
+
+                                              {/* Brand sub-filter */}
+                                              <div>
+                                                  <button
+                                                      onClick={() => toggleSection('brand')}
+                                                      className="w-full flex items-center justify-between text-xs font-semibold text-filter-heading py-1.5 uppercase tracking-wide"
+                                                  >
+                                                      Brand
+                                                      <ChevronDown className={`h-3.5 w-3.5 transition-transform text-filter-text-muted ${collapsedSections.brand ? '' : 'rotate-180'}`} />
+                                                  </button>
+                                                  {!collapsedSections.brand && (
+                                                      <div className="flex flex-wrap gap-1.5 pb-1">
+                                                          {BRAND_OPTIONS.map(brand => (
+                                                              <button
+                                                                  key={brand}
+                                                                  onClick={() => {
+                                                                      if (selectedBrands.includes(brand)) {
+                                                                          setSelectedBrands(selectedBrands.filter(b => b !== brand));
+                                                                      } else {
+                                                                          setSelectedBrands([...selectedBrands, brand]);
+                                                                      }
+                                                                  }}
+                                                                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                                                                      selectedBrands.includes(brand)
+                                                                          ? 'bg-filter-active-bg text-filter-active-text'
+                                                                          : 'text-filter-text-muted hover:bg-filter-hover-bg hover:text-filter-text'
+                                                                  }`}
+                                                              >
+                                                                  {brand}
+                                                              </button>
+                                                          ))}
+                                                      </div>
+                                                  )}
+                                              </div>
+
+                                              {/* Weight sub-filter */}
+                                              <div>
+                                                  <button
+                                                      onClick={() => toggleSection('weight')}
+                                                      className="w-full flex items-center justify-between text-xs font-semibold text-filter-heading py-1.5 uppercase tracking-wide"
+                                                  >
+                                                      Weight
+                                                      <ChevronDown className={`h-3.5 w-3.5 transition-transform text-filter-text-muted ${collapsedSections.weight ? '' : 'rotate-180'}`} />
+                                                  </button>
+                                                  {!collapsedSections.weight && (
+                                                      <div className="flex flex-wrap gap-1.5 pb-1">
+                                                          {weights.map(weight => (
+                                                              <button
+                                                                  key={weight}
+                                                                  onClick={() => setSelectedWeight(weight as string)}
+                                                                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                                                                      selectedWeight === weight
+                                                                          ? 'bg-filter-active-bg text-filter-active-text'
+                                                                          : 'text-filter-text-muted hover:bg-filter-hover-bg hover:text-filter-text'
+                                                                  }`}
+                                                              >
+                                                                  {weight}
+                                                              </button>
+                                                          ))}
+                                                      </div>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      )}
+                                  </div>
+                              ))}
+                          </div>
+
                           {/* Sort */}
-                          <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Sort By</label>
+                          <div className="pt-2 border-t border-filter-border">
+                              <label className="block text-sm font-medium text-filter-heading mb-2">Sort By</label>
                               <select
                                   value={sortBy}
                                   onChange={(e) => setSortBy(e.target.value as any)}
-                                  className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                                  className="w-full px-3 py-2.5 bg-background border border-filter-border text-sm text-foreground"
                               >
                                   <option value="price-asc">Price: Low to High</option>
                                   <option value="price-desc">Price: High to Low</option>
                                   <option value="name">Name: A-Z</option>
                               </select>
                           </div>
-
-                          {/* Categories */}
-                          <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Categories</label>
-                              <div className="flex flex-wrap gap-2">
-                                  <button
-                                      onClick={() => handleCategoryChange('all')}
-                                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                                          selectedCategory === 'all'
-                                              ? 'bg-primary text-primary-foreground'
-                                              : 'bg-muted text-foreground'
-                                      }`}
-                                  >
-                                      All
-                                  </button>
-                                  {categories.map(category => (
-                                      <button
-                                          key={category}
-                                          onClick={() => handleCategoryChange(category)}
-                                          className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                                              selectedCategory === category
-                                                  ? 'bg-primary text-primary-foreground'
-                                                  : 'bg-muted text-foreground'
-                                          }`}
-                                      >
-                                          {categoryNames[category] || category}
-                                      </button>
-                                  ))}
-                              </div>
-                          </div>
-
-                          {/* Weight Filter */}
-                          <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Weight</label>
-                              <div className="flex flex-wrap gap-2">
-                                  {weights.map(weight => (
-                                      <button
-                                          key={weight}
-                                          onClick={() => setSelectedWeight(weight as string)}
-                                          className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                                              selectedWeight === weight
-                                                  ? 'bg-primary text-primary-foreground'
-                                                  : 'bg-muted text-foreground'
-                                          }`}
-                                      >
-                                          {weight}
-                                      </button>
-                                  ))}
-                              </div>
-                          </div>
                       </div>
-                      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-background">
+                      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-filter-border bg-filter-bg">
                           <div className="flex gap-3">
                               <button
                                   onClick={clearFilters}
-                                  className="flex-1 px-4 py-3 border border-border rounded-lg font-medium"
+                                  className="flex-1 px-4 py-3 border border-filter-border text-filter-text font-medium"
                               >
                                   Clear All
                               </button>
                               <button
                                   onClick={() => setShowMobileFilters(false)}
-                                  className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium"
+                                  className="flex-1 px-4 py-3 bg-filter-active-bg text-filter-active-text font-medium"
                               >
                                   Show {filteredProducts.length} Products
                               </button>
@@ -595,9 +786,9 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
             href={`/products/${generateSlug(product.name)}`}
             className="group block"
         >
-            <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/30 transition-all duration-200 shadow-card hover:shadow-card-hover hover:-translate-y-0.5">
+            <div className="overflow-hidden transition-all duration-200 hover:-translate-y-0.5">
                 {/* Product Image */}
-                <div className="relative aspect-square bg-muted/30">
+                <div className="relative aspect-square">
                     <Image
                         src={product.image_url || '/anblogo.png'}
                         alt={product.name}
@@ -739,7 +930,7 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
             href={`/products/${generateSlug(product.name)}`}
             className="group block"
         >
-            <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/30 transition-all duration-200 shadow-card hover:shadow-card-hover flex items-center gap-4 p-3 sm:p-4">
+            <div className="overflow-hidden transition-all duration-200 flex items-center gap-4 p-3 sm:p-4 border-b border-border/30">
                 {/* Product Image */}
                 <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-md overflow-hidden bg-muted/30">
                     <Image

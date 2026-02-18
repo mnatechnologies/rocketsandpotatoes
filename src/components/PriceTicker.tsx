@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getMetalInfo, type MetalSymbol } from "@/lib/metals-api/metalsApi";
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface TickerPrice {
   metal: string;
@@ -22,6 +22,7 @@ export default function PriceTicker() {
   const { currency, exchangeRate, convertPrice } = useCurrency();
   const [nextRefreshCountdown, setNextRefreshCountdown] = useState('');
   const [headerHeight, setHeaderHeight] = useState(80);
+  const [tickerCollapsed, setTickerCollapsed] = useState(false);
 
   // Observe header height to position ticker below it
   useEffect(() => {
@@ -98,9 +99,31 @@ export default function PriceTicker() {
   return (
     <div className="fixed left-0 right-0 z-30 bg-ticker-bg border-b border-ticker-border" style={{ top: `${headerHeight}px` }} data-ticker>
       <div className="container mx-auto px-4">
-        {/* Desktop: 7 columns (4 metals + timer + FX rate + Live Pricing) */}
-        {/* Mobile: 3 cols x 2 rows (4 metals + timer + FX/Live merged) */}
-        <div className="grid grid-cols-3 md:grid-cols-7">
+        {/* Mobile collapsed view — auto-scrolling marquee */}
+        {tickerCollapsed && (
+          <button
+            onClick={() => setTickerCollapsed(false)}
+            className="md:hidden flex items-center w-full py-2 overflow-hidden"
+          >
+            <div className="flex-1 overflow-hidden" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+              <div className="flex animate-ticker-scroll w-max gap-6">
+                {/* Duplicate prices for seamless loop */}
+                {[...prices, ...prices].map((price, i) => (
+                  <span key={`${price.metal}-${i}`} className="text-[11px] text-ticker-foreground font-medium whitespace-nowrap">
+                    <span className="text-ticker-muted">{price.metal}</span> {currency} {formatPrice(price.price)}
+                    <span className={`ml-1 ${price.change >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {price.change >= 0 ? '+' : ''}{price.changePercent.toFixed(2)}%
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <ChevronDown className="h-4 w-4 text-ticker-muted flex-shrink-0 ml-2" />
+          </button>
+        )}
+
+        {/* Full ticker — always shown on desktop, togglable on mobile */}
+        <div className={`${tickerCollapsed ? 'hidden md:grid' : 'grid'} grid-cols-3 md:grid-cols-7`}>
           {/* 4 Metal Price Columns */}
           {prices.map((price, index) => {
             const category = price.metal.charAt(0).toUpperCase() + price.metal.slice(1);
@@ -108,7 +131,7 @@ export default function PriceTicker() {
             <Link
               key={price.metal}
               href={`/products?category=${encodeURIComponent(category)}`}
-              className={`px-3 py-2 md:py-2.5 border-ticker-border/40 border-r transition-colors hover:brightness-110 ${
+              className={`px-3 py-2.5 md:py-5 border-ticker-border/40 border-r transition-colors hover:brightness-110 ${
                 index < 3 ? 'border-b md:border-b-0' : ''
               }`}
               aria-label={`View ${category} products`}
@@ -133,10 +156,10 @@ export default function PriceTicker() {
                   </svg>
                 </div>
               </div>
-              <div className="text-lg md:text-xl font-semibold text-ticker-foreground tracking-tight leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+              <div className="text-base md:text-xl font-semibold text-ticker-foreground tracking-tight leading-tight" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 {currency} {formatPrice(price.price)} <span className="text-[9px] md:text-[10px] font-medium text-ticker-muted">/ oz</span>
               </div>
-              <div className="text-sm md:text-base font-semibold tracking-tight leading-tight bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+              <div className="mt-1.5 md:mt-2.5 text-xs md:text-base font-semibold tracking-tight leading-tight bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 {currency} {formatGramPrice(price.price)} <span className="text-[9px] md:text-[10px] font-medium">/ g</span>
               </div>
             </Link>
@@ -145,7 +168,7 @@ export default function PriceTicker() {
           {/* 5th Column: Timer */}
           <div className="px-3 py-2 md:py-2.5 border-ticker-border/40 border-r border-b md:border-b-0">
             <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[10px] md:text-[11px] font-semibold text-ticker-muted uppercase tracking-wider" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+              <span className="text-[10px] md:text-[11px] font-semibold text-ticker-muted uppercase tracking-wider" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 Next Update
               </span>
               <svg className="h-3 w-3 md:h-3.5 md:w-3.5 text-red-500/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -153,7 +176,7 @@ export default function PriceTicker() {
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <div className="text-2xl md:text-3xl font-bold text-red-500 tracking-tight leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+            <div className="text-2xl md:text-3xl font-bold text-red-500 tracking-tight leading-tight" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
               {nextRefreshCountdown || '5:00'}
             </div>
           </div>
@@ -161,14 +184,14 @@ export default function PriceTicker() {
           {/* 6th Column: FX Rate (on mobile, includes Live Pricing link) */}
           <div className="px-3 py-2 md:py-2.5 md:border-r border-ticker-border/40">
             <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[10px] md:text-[11px] font-semibold text-ticker-muted uppercase tracking-wider" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+              <span className="text-[10px] md:text-[11px] font-semibold text-ticker-muted uppercase tracking-wider" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 FX Rate
               </span>
               <svg className="h-3 w-3 md:h-3.5 md:w-3.5 text-ticker-muted/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
               </svg>
             </div>
-            <div className="text-lg md:text-xl font-semibold text-ticker-foreground tracking-tight leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+            <div className="text-lg md:text-xl font-semibold text-ticker-foreground tracking-tight leading-tight" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
               {currency === 'USD' ? exchangeRate.toFixed(2) : (1 / exchangeRate).toFixed(4)}
             </div>
             {/* Live Pricing link - mobile only (desktop has its own column) */}
@@ -188,15 +211,25 @@ export default function PriceTicker() {
           >
             <div className="flex items-center gap-1.5 mb-0.5">
               <TrendingUp className="h-3.5 w-3.5 text-primary" />
-              <span className="text-[11px] font-semibold text-primary uppercase tracking-wider" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+              <span className="text-[11px] font-semibold text-primary uppercase tracking-wider" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 Live Pricing
               </span>
             </div>
-            <span className="text-base font-semibold text-ticker-muted tracking-tight leading-tight" style={{ fontFamily: 'var(--font-playfair), serif' }}>
+            <span className="text-base font-semibold text-ticker-muted tracking-tight leading-tight" style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
               Charts & History
             </span>
           </Link>
         </div>
+
+        {/* Mobile collapse toggle */}
+        {!tickerCollapsed && (
+          <button
+            onClick={() => setTickerCollapsed(true)}
+            className="md:hidden flex items-center justify-center w-full py-1 border-t border-ticker-border/30"
+          >
+            <ChevronUp className="h-3.5 w-3.5 text-ticker-muted" />
+          </button>
+        )}
       </div>
     </div>
   );

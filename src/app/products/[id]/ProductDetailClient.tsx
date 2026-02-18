@@ -43,8 +43,8 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
 
     const config = {
       markup_percentage: pricingConfig.markup_percentage,
-      base_fee: pricingConfig.default_base_fee,
-      brand_base_fees: pricingConfig.brand_base_fees,
+      base_fee_percentage: pricingConfig.default_base_fee_percentage,
+      brand_base_fee_percentages: pricingConfig.brand_base_fee_percentages,
     };
 
     const allProducts = [product, ...relatedProducts];

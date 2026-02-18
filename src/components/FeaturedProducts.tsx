@@ -31,9 +31,9 @@ export default function FeaturedProducts({ products }: FeaturedProductsProps) {
               href={`/products/${generateSlug(product.name)}`}
               className="group block"
             >
-              <div className="bg-card rounded-lg overflow-hidden border border-border shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5">
+              <div className="overflow-hidden transition-all duration-200 hover:-translate-y-0.5">
                 {/* Product Image */}
-                <div className="relative aspect-square bg-muted/30">
+                <div className="relative aspect-square">
                   <Image
                     src={product.image_url || '/anblogo.png'}
                     alt={product.name}

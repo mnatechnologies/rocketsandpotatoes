@@ -71,6 +71,16 @@
   --sidebar-accent-foreground: 40 6% 88%;
   --sidebar-border: 220 12% 16%;
   --sidebar-ring: 43 65% 52%;
+
+  /* Filter sidebar — matches ticker palette */
+  --filter-bg: 30 25% 8%;
+  --filter-heading: 43 65% 52%;
+  --filter-text: 40 6% 75%;
+  --filter-text-muted: 40 6% 55%;
+  --filter-active-bg: 43 75% 56%;
+  --filter-active-text: 220 16% 8%;
+  --filter-hover-bg: 43 50% 40% / 0.15;
+  --filter-border: 35 30% 18%;
 }
 
 /* Light mode overrides */
@@ -112,6 +122,16 @@
 
   --shadow-card: 0 1px 4px 0 hsl(220 10% 50% / 0.1), 0 1px 2px -1px hsl(220 10% 50% / 0.08);
   --shadow-card-hover: 0 6px 16px -3px hsl(220 10% 50% / 0.15), 0 3px 6px -2px hsl(220 10% 50% / 0.08);
+
+  /* Filter sidebar — matches ticker dark palette in both modes */
+  --filter-bg: 32 20% 18%;
+  --filter-heading: 40 6% 90%;
+  --filter-text: 40 6% 75%;
+  --filter-text-muted: 40 6% 55%;
+  --filter-active-bg: 43 75% 46%;
+  --filter-active-text: 0 0% 100%;
+  --filter-hover-bg: 43 60% 50% / 0.15;
+  --filter-border: 35 25% 28%;
 }
 
 /* Tailwind v4 theme mappings */
@@ -162,6 +182,16 @@
   --color-ticker-border: hsl(var(--ticker-border));
   --color-ticker-foreground: hsl(var(--ticker-foreground));
   --color-ticker-muted: hsl(var(--ticker-muted));
+
+  /* Filter */
+  --color-filter-bg: hsl(var(--filter-bg));
+  --color-filter-heading: hsl(var(--filter-heading));
+  --color-filter-text: hsl(var(--filter-text));
+  --color-filter-text-muted: hsl(var(--filter-text-muted));
+  --color-filter-active-bg: hsl(var(--filter-active-bg));
+  --color-filter-active-text: hsl(var(--filter-active-text));
+  --color-filter-hover-bg: hsl(var(--filter-hover-bg));
+  --color-filter-border: hsl(var(--filter-border));
 
   /* Radius tokens */
   --radius-lg: var(--radius);
@@ -234,6 +264,15 @@
   @keyframes hero-dot-progress {
     from { transform: scaleX(0); }
     to { transform: scaleX(1); }
+  }
+
+  /* Ticker marquee scroll */
+  @keyframes ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-ticker-scroll {
+    animation: ticker-scroll 15s linear infinite;
   }
 }
 
