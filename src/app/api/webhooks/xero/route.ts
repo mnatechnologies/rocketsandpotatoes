@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createLogger } from '@/lib/utils/logger';
-import { createServiceSupabase } from '@/lib/xero/client';
-import { handleXeroItemWebhook } from '@/lib/xero/inventory';
 
 const logger = createLogger('XERO_WEBHOOK');
+
+// Xero webhooks support CONTACT, INVOICE, and SUBSCRIPTION event categories only.
+// No ITEM events are available. This endpoint handles intent-to-receive validation
+// and logs received events for future use (e.g., invoice status changes).
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get('x-xero-signature');
@@ -45,14 +47,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  // Process events without blocking the response
-  // Use a fire-and-forget pattern but log errors
-  try {
-    const supabase = createServiceSupabase();
-    await handleXeroItemWebhook(payload, supabase);
-  } catch (err: any) {
-    logger.error('Error processing Xero webhook events:', err);
-    // Still return 200 to prevent Xero from retrying
+  // Log received events for visibility
+  for (const event of payload.events) {
+    logger.log('Xero webhook event:', {
+      category: event.eventCategory,
+      type: event.eventType,
+      resourceId: event.resourceId,
+      tenantId: event.tenantId,
+    });
   }
 
   return NextResponse.json({ received: true });
