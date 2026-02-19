@@ -55,15 +55,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  // 🚀 COMING SOON: Block all checkout attempts gracefully
-  // TODO: Remove this IF block when ready to launch
-  const COMING_SOON_MODE = true; // Set to false to enable checkout
-  if (COMING_SOON_MODE) {
-    logger.log('Checkout blocked - Coming Soon mode active');
+  // Sales halt check — block checkout if global or per-metal halt is active
+  const metalTypesInCart: string[] = [
+    ...new Set(
+      (cartItems || [])
+        .map((item: { metal_type?: string }) => item.metal_type)
+        .filter(Boolean) as string[]
+    ),
+  ];
+
+  const { data: haltRows, error: haltError } = await supabase
+    .from('sales_halt')
+    .select('metal_type, is_halted')
+    .in('metal_type', ['ALL', ...metalTypesInCart]);
+
+  if (haltError) {
+    logger.error('Failed to check sales halt status:', haltError);
+    return NextResponse.json(
+      { error: 'Unable to verify sales availability. Please try again.' },
+      { status: 500 }
+    );
+  }
+
+  const isHalted = (haltRows || []).some((row) => row.is_halted);
+  if (isHalted) {
+    const haltedMetals = (haltRows || [])
+      .filter((row) => row.is_halted)
+      .map((row) => row.metal_type);
+    logger.log('Checkout blocked - sales halted for:', haltedMetals);
     return NextResponse.json(
       {
-        status: 'coming_soon',
-        message: 'Checkout is coming soon. We are preparing to launch.',
+        status: 'sales_halted',
+        message: 'Sales are temporarily unavailable. Please try again later.',
       },
       { status: 200 }
     );

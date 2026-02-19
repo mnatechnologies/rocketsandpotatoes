@@ -15,8 +15,8 @@ interface MetalPrice {
 
 interface PricingConfig {
   markup_percentage: number;
-  default_base_fee: number;
-  brand_base_fees?: Record<string, number>;
+  default_base_fee_percentage: number;
+  brand_base_fee_percentages?: Record<string, number>;
 }
 
 interface MetalPricesContextType {
@@ -98,16 +98,16 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
         if (configResult.success && configResult.data) {
           setPricingConfig({
             markup_percentage: configResult.data.markup_percentage,
-            default_base_fee: configResult.data.default_base_fee,
-            brand_base_fees: configResult.data.brand_base_fees || {},
+            default_base_fee_percentage: configResult.data.default_base_fee_percentage,
+            brand_base_fee_percentages: configResult.data.brand_base_fee_percentages || {},
           });
         }
       } else {
         // Use defaults if pricing config fetch fails
         setPricingConfig({
           markup_percentage: 10,
-          default_base_fee: 10,
-          brand_base_fees: {},
+          default_base_fee_percentage: 2,
+          brand_base_fee_percentages: {},
         });
       }
     } catch (err) {
@@ -115,8 +115,8 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
       // Set default pricing config on error
       setPricingConfig({
         markup_percentage: 10,
-        default_base_fee: 10,
-        brand_base_fees: {},
+        default_base_fee_percentage: 2,
+        brand_base_fee_percentages: {},
       });
     } finally {
       setIsLoading(false);

@@ -15,18 +15,19 @@ export interface Product {
     stock: boolean;
     image_url: string;
     metal_type: MetalSymbol;
-    form_type?: 'cast' | 'minted' | null;
+    form_type?: 'cast' | 'minted' | 'coin' | null;
     brand?: string;
     created_at?: string;
     updated_at?: string;
     slug?: string; // Computed slug for URL generation
+    sales_halted?: boolean;
   }
 
 export interface PricingConfig {
     id: string;
     markup_percentage: number;
-    default_base_fee: number;
-    brand_base_fees: Record<string, number>;
+    default_base_fee_percentage: number;
+    brand_base_fee_percentages: Record<string, number>;
     updated_at: string;
     created_at: string;
   }

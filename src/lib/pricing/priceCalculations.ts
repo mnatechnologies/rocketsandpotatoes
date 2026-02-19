@@ -7,9 +7,8 @@ const logger = createLogger('PRICING');
 
 interface PricingConfig {
   markup_percentage: number;
-  base_fee: number;
-  brand_base_fees?: Record<string, number>;
-  //unsure what else may be added here
+  base_fee_percentage: number;
+  brand_base_fee_percentages?: Record<string, number>;
   volume_discounts?: {
     threshold: number;
     discount_percentage: number;
@@ -18,8 +17,8 @@ interface PricingConfig {
 
 const DEFAULT_CONFIG: PricingConfig = {
   markup_percentage: 10,
-  base_fee: 10,
-  brand_base_fees: {},
+  base_fee_percentage: 2,
+  brand_base_fee_percentages: {},
   volume_discounts: [
     {threshold: 5, discount_percentage: 1},
     {threshold: 10, discount_percentage: 2},
@@ -85,12 +84,12 @@ export function applyVolumeDiscount(
   };
 }
 
-// Helper function to get the base fee for a product based on brand
-function getBaseFee(config: PricingConfig, brand?: string): number {
-  if (brand && config.brand_base_fees && config.brand_base_fees[brand] !== undefined) {
-    return config.brand_base_fees[brand];
+// Helper function to get the base fee percentage for a product based on brand
+function getBaseFeePercentage(config: PricingConfig, brand?: string): number {
+  if (brand && config.brand_base_fee_percentages && config.brand_base_fee_percentages[brand] !== undefined) {
+    return config.brand_base_fee_percentages[brand];
   }
-  return config.base_fee;
+  return config.base_fee_percentage;
 }
 
 export interface ProductWithPricing {
@@ -219,8 +218,9 @@ export async function calculateBulkPricing(
       const spotCost = spotPricePerGram * product.weight_grams;
       const cfg = config || DEFAULT_CONFIG;
       const markupAmount = spotCost * (cfg.markup_percentage / 100);
-      const baseFee = getBaseFee(cfg, product.original.brand);
-      const calculatedPrice = spotCost + markupAmount + baseFee;
+      const baseFeePercentage = getBaseFeePercentage(cfg, product.original.brand);
+      const baseFeeAmount = spotCost * (baseFeePercentage / 100);
+      const calculatedPrice = spotCost + markupAmount + baseFeeAmount;
 
       priceMap.set(product.id, Math.round(calculatedPrice * 100) / 100);
     } catch (error) {
@@ -287,8 +287,9 @@ export function calculateBulkPricingFromCache(
       const spotCost = spotPricePerGram * product.weight_grams;
       const cfg = config || DEFAULT_CONFIG;
       const markupAmount = spotCost * (cfg.markup_percentage / 100);
-      const baseFee = getBaseFee(cfg, product.original.brand);
-      const calculatedPrice = spotCost + markupAmount + baseFee;
+      const baseFeePercentage = getBaseFeePercentage(cfg, product.original.brand);
+      const baseFeeAmount = spotCost * (baseFeePercentage / 100);
+      const calculatedPrice = spotCost + markupAmount + baseFeeAmount;
 
       priceMap.set(product.id, {
         calculatedPrice: Math.round(calculatedPrice * 100) / 100,

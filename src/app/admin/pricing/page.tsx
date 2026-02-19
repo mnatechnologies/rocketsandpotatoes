@@ -8,8 +8,8 @@ import { Loader2, Save, Plus, Trash2 } from 'lucide-react';
 interface PricingConfig {
   id: string;
   markup_percentage: number;
-  default_base_fee: number;
-  brand_base_fees: Record<string, number>;
+  default_base_fee_percentage: number;
+  brand_base_fee_percentages: Record<string, number>;
   updated_at: string;
   created_at: string;
 }
@@ -22,12 +22,12 @@ export default function AdminPricingPage() {
 
   // Form state
   const [markupPercentage, setMarkupPercentage] = useState<number>(10);
-  const [defaultBaseFee, setDefaultBaseFee] = useState<number>(10);
+  const [defaultBaseFeePercentage, setDefaultBaseFeePercentage] = useState<number>(2);
   const [brandFees, setBrandFees] = useState<Record<string, number>>({});
 
   // New brand entry state
   const [newBrandName, setNewBrandName] = useState('');
-  const [newBrandFee, setNewBrandFee] = useState<number>(10);
+  const [newBrandFee, setNewBrandFee] = useState<number>(2);
 
   useEffect(() => {
     fetchPricingConfig();
@@ -47,8 +47,8 @@ export default function AdminPricingPage() {
       if (result.success && result.data) {
         setConfig(result.data);
         setMarkupPercentage(result.data.markup_percentage);
-        setDefaultBaseFee(result.data.default_base_fee);
-        setBrandFees(result.data.brand_base_fees || {});
+        setDefaultBaseFeePercentage(result.data.default_base_fee_percentage);
+        setBrandFees(result.data.brand_base_fee_percentages || {});
       }
     } catch (error) {
       console.error('Error fetching pricing config:', error);
@@ -67,8 +67,8 @@ export default function AdminPricingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           markup_percentage: markupPercentage,
-          default_base_fee: defaultBaseFee,
-          brand_base_fees: brandFees,
+          default_base_fee_percentage: defaultBaseFeePercentage,
+          brand_base_fee_percentages: brandFees,
         }),
       });
 
@@ -97,8 +97,8 @@ export default function AdminPricingPage() {
       return;
     }
 
-    if (newBrandFee < 0) {
-      toast.error('Base fee must be a positive number');
+    if (newBrandFee < 0 || newBrandFee > 100) {
+      toast.error('Base fee percentage must be between 0 and 100');
       return;
     }
 
@@ -113,7 +113,7 @@ export default function AdminPricingPage() {
     });
 
     setNewBrandName('');
-    setNewBrandFee(10);
+    setNewBrandFee(2);
     toast.success(`Added brand: ${newBrandName}`);
   };
 
@@ -144,7 +144,7 @@ export default function AdminPricingPage() {
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">Pricing Configuration</h1>
         <p className="text-muted-foreground">
-          Manage global pricing settings including markup percentage and base fees
+          Manage global pricing settings including markup and base fee percentages
         </p>
       </div>
 
@@ -163,44 +163,46 @@ export default function AdminPricingPage() {
           <input
             type="number"
             min="0"
+            max="100"
             step="0.1"
             value={markupPercentage}
             onChange={(e) => setMarkupPercentage(parseFloat(e.target.value))}
             className="w-full max-w-xs px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <p className="text-xs text-muted-foreground">
-            Current: {markupPercentage}% (e.g., $100 spot cost = ${(100 * (1 + markupPercentage / 100)).toFixed(2)} markup cost)
+            Current: {markupPercentage}% (e.g., $100 spot cost = ${(100 * (1 + markupPercentage / 100)).toFixed(2)} after markup)
           </p>
         </div>
 
-        {/* Default Base Fee */}
+        {/* Default Base Fee Percentage */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground">
-            Default Base Fee ($)
+            Default Base Fee (%)
           </label>
           <p className="text-xs text-muted-foreground mb-2">
-            Flat fee added to all products (unless overridden by brand-specific fee)
+            Percentage fee applied to spot cost for all products (unless overridden by brand-specific fee)
           </p>
           <input
             type="number"
             min="0"
-            step="0.01"
-            value={defaultBaseFee}
-            onChange={(e) => setDefaultBaseFee(parseFloat(e.target.value))}
+            max="100"
+            step="0.1"
+            value={defaultBaseFeePercentage}
+            onChange={(e) => setDefaultBaseFeePercentage(parseFloat(e.target.value))}
             className="w-full max-w-xs px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <p className="text-xs text-muted-foreground">
-            This fee is added to the final price after markup
+            Current: {defaultBaseFeePercentage}% (e.g., $1,000 spot cost = ${(1000 * defaultBaseFeePercentage / 100).toFixed(2)} base fee)
           </p>
         </div>
       </div>
 
-      {/* Brand-Specific Base Fees */}
+      {/* Brand-Specific Base Fee Percentages */}
       <div className="bg-card rounded-xl border border-border shadow-sm p-6 space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-foreground mb-1">Brand-Specific Base Fees</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-1">Brand-Specific Base Fee Percentages</h2>
           <p className="text-sm text-muted-foreground">
-            Override the default base fee for specific brands
+            Override the default base fee percentage for specific brands
           </p>
         </div>
 
@@ -221,8 +223,9 @@ export default function AdminPricingPage() {
               <input
                 type="number"
                 min="0"
-                step="0.01"
-                placeholder="Base fee"
+                max="100"
+                step="0.1"
+                placeholder="Fee %"
                 value={newBrandFee}
                 onChange={(e) => setNewBrandFee(parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
@@ -243,7 +246,7 @@ export default function AdminPricingPage() {
           <div className="space-y-2">
             <div className="grid grid-cols-[1fr_150px_60px] gap-3 text-xs font-semibold text-muted-foreground px-3 pb-2 border-b border-border">
               <div>Brand Name</div>
-              <div>Base Fee</div>
+              <div>Base Fee %</div>
               <div></div>
             </div>
             {Object.entries(brandFees).map(([brand, fee]) => (
@@ -256,7 +259,8 @@ export default function AdminPricingPage() {
                   <input
                     type="number"
                     min="0"
-                    step="0.01"
+                    max="100"
+                    step="0.1"
                     value={fee}
                     onChange={(e) => handleUpdateBrandFee(brand, parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
@@ -276,7 +280,7 @@ export default function AdminPricingPage() {
           </div>
         ) : (
           <div className="text-center py-8 text-sm text-muted-foreground">
-            No brand-specific fees configured. Add one above to override the default base fee for specific brands.
+            No brand-specific fee percentages configured. Add one above to override the default base fee percentage for specific brands.
           </div>
         )}
       </div>

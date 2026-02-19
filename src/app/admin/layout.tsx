@@ -19,6 +19,7 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/audit-logs': 'Audit Logs',
   '/admin/pricing': 'Pricing Configuration',
   '/admin/integrations': 'Integrations',
+  '/admin/sales-control': 'Sales Control',
 };
 
 function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
