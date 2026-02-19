@@ -733,6 +733,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
     const { addToCartById, cart, removeFromCart, updateQuantity } = useCart();
 
     const displayPrice = product.calculated_price ?? product.price;
+    const isHalted = product.sales_halted === true;
 
     const cartItem = cart.find(item => item.product.id === product.id);
     const quantity = cartItem?.quantity || 0;
@@ -740,6 +741,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         const success = await addToCartById(product.id);
         if (success) {
             toast.success('Added to cart!', {
@@ -753,12 +755,14 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
     const handleIncrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         updateQuantity(product.id, quantity + 1);
     };
 
     const handleDecrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         if (quantity <= 1) {
             removeFromCart(product.id);
         } else {
@@ -769,6 +773,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
     const handlePresetClick = (e: React.MouseEvent, qty: number) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         if (quantity === 0) {
             addToCartById(product.id).then((success) => {
                 if (success) {
@@ -793,9 +798,14 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                         src={product.image_url || '/anblogo.png'}
                         alt={product.name}
                         fill
-                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+                        className={`object-contain p-4 group-hover:scale-105 transition-transform duration-300 ${isHalted ? 'opacity-60' : ''}`}
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                     />
+                    {isHalted && (
+                        <div className="absolute top-2 left-2 bg-muted/90 text-muted-foreground text-[10px] font-medium px-2 py-1 rounded">
+                            Temporarily unavailable
+                        </div>
+                    )}
                 </div>
 
                 {/* Product Info */}
@@ -815,13 +825,21 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                             {loadingPrices ? (
                                 <div className="h-6 w-20 bg-muted animate-pulse rounded" />
                             ) : (
-                                <div className="text-lg font-bold text-foreground">
+                                <div className={`text-lg font-bold ${isHalted ? 'text-muted-foreground' : 'text-foreground'}`}>
                                     {formatPrice(displayPrice)}
                                 </div>
                             )}
                         </div>
 
-                        {quantity === 0 ? (
+                        {isHalted ? (
+                            <button
+                                disabled
+                                className="p-2 rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
+                                aria-label="Add to cart (unavailable)"
+                            >
+                                <ShoppingCartIcon className="h-4 w-4" />
+                            </button>
+                        ) : quantity === 0 ? (
                             <button
                                 onClick={handleAddToCart}
                                 className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
@@ -851,17 +869,18 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                     </div>
 
                     {/* Bulk Purchase Presets */}
-                    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
+                    <div className={`flex items-center gap-1 mt-2 pt-2 border-t border-border/50 ${isHalted ? 'opacity-40 pointer-events-none' : ''}`}>
                         <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
                         {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
                             <button
                                 key={tier.threshold}
                                 onClick={(e) => handlePresetClick(e, tier.threshold)}
+                                disabled={isHalted}
                                 className={`px-1.5 cursor-pointer py-0.5 rounded text-[10px] font-medium transition-colors ${
                                     quantity === tier.threshold
                                         ? 'bg-primary text-primary-foreground'
                                         : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
-                                }`}
+                                } ${isHalted ? 'cursor-not-allowed' : ''}`}
                                 aria-label={`Set quantity to ${tier.threshold} for ${tier.discount_percentage}% discount`}
                             >
                                 {tier.threshold}x
@@ -879,6 +898,7 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
     const { addToCartById, cart, removeFromCart, updateQuantity } = useCart();
 
     const displayPrice = product.calculated_price ?? product.price;
+    const isHalted = product.sales_halted === true;
 
     const cartItem = cart.find(item => item.product.id === product.id);
     const quantity = cartItem?.quantity || 0;
@@ -886,6 +906,7 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         const success = await addToCartById(product.id);
         if (success) {
             toast.success('Added to cart!', { description: product.name });
@@ -897,12 +918,14 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
     const handleIncrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         updateQuantity(product.id, quantity + 1);
     };
 
     const handleDecrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         if (quantity <= 1) {
             removeFromCart(product.id);
         } else {
@@ -913,6 +936,7 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
     const handlePresetClick = (e: React.MouseEvent, qty: number) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isHalted) return;
         if (quantity === 0) {
             addToCartById(product.id).then((success) => {
                 if (success) {
@@ -937,16 +961,28 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                         src={product.image_url || '/anblogo.png'}
                         alt={product.name}
                         fill
-                        className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                        className={`object-contain p-2 group-hover:scale-105 transition-transform duration-300 ${isHalted ? 'opacity-60' : ''}`}
                         sizes="100px"
                     />
+                    {isHalted && (
+                        <div className="absolute bottom-1 left-1 bg-muted/90 text-muted-foreground text-[9px] font-medium px-1.5 py-0.5 rounded">
+                            Unavailable
+                        </div>
+                    )}
                 </div>
 
                 {/* Product Info */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-1">
-                        {product.name}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-foreground group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-1">
+                            {product.name}
+                        </h3>
+                        {isHalted && (
+                            <span className="hidden sm:inline-block text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded flex-shrink-0">
+                                Temporarily unavailable
+                            </span>
+                        )}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {[product.weight, product.purity].filter(Boolean).join(' | ')}
                     </p>
@@ -955,17 +991,18 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                     )}
 
                     {/* Bulk Presets - mobile */}
-                    <div className="flex items-center gap-1 mt-1.5 sm:hidden">
+                    <div className={`flex items-center gap-1 mt-1.5 sm:hidden ${isHalted ? 'opacity-40 pointer-events-none' : ''}`}>
                         <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
                         {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
                             <button
                                 key={tier.threshold}
                                 onClick={(e) => handlePresetClick(e, tier.threshold)}
+                                disabled={isHalted}
                                 className={`px-1.5 cursor-pointer py-0.5 rounded text-[10px] font-medium transition-colors ${
                                     quantity === tier.threshold
                                         ? 'bg-primary text-primary-foreground'
                                         : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
-                                }`}
+                                } ${isHalted ? 'cursor-not-allowed' : ''}`}
                                 aria-label={`Set quantity to ${tier.threshold}`}
                             >
                                 {tier.threshold}x
@@ -977,17 +1014,18 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                 {/* Price & Controls */}
                 <div className="flex-shrink-0 flex items-center gap-3 sm:gap-4">
                     {/* Bulk Presets - desktop */}
-                    <div className="hidden sm:flex items-center gap-1">
+                    <div className={`hidden sm:flex items-center gap-1 ${isHalted ? 'opacity-40 pointer-events-none' : ''}`}>
                         <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
                         {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
                             <button
                                 key={tier.threshold}
                                 onClick={(e) => handlePresetClick(e, tier.threshold)}
+                                disabled={isHalted}
                                 className={`px-1.5 cursor-pointer py-0.5 rounded text-[10px] font-medium transition-colors ${
                                     quantity === tier.threshold
                                         ? 'bg-primary text-primary-foreground'
                                         : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
-                                }`}
+                                } ${isHalted ? 'cursor-not-allowed' : ''}`}
                                 aria-label={`Set quantity to ${tier.threshold}`}
                             >
                                 {tier.threshold}x
@@ -1000,14 +1038,22 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                         {loadingPrices ? (
                             <div className="h-6 w-20 bg-muted animate-pulse rounded" />
                         ) : (
-                            <div className="text-base sm:text-lg font-bold text-foreground">
+                            <div className={`text-base sm:text-lg font-bold ${isHalted ? 'text-muted-foreground' : 'text-foreground'}`}>
                                 {formatPrice(displayPrice)}
                             </div>
                         )}
                     </div>
 
                     {/* Cart Controls */}
-                    {quantity === 0 ? (
+                    {isHalted ? (
+                        <button
+                            disabled
+                            className="p-2 rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
+                            aria-label="Add to cart (unavailable)"
+                        >
+                            <ShoppingCartIcon className="h-4 w-4" />
+                        </button>
+                    ) : quantity === 0 ? (
                         <button
                             onClick={handleAddToCart}
                             className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"

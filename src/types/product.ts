@@ -20,6 +20,7 @@ export interface Product {
     created_at?: string;
     updated_at?: string;
     slug?: string; // Computed slug for URL generation
+    sales_halted?: boolean;
   }
 
 export interface PricingConfig {

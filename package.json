@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.940.0",
+    "@aws-sdk/client-sns": "^3.993.0",
     "@clerk/nextjs": "^6.33.7",
     "@icons-pack/react-simple-icons": "^13.8.0",
     "@ngrok/ngrok": "^1.5.2",

@@ -15,6 +15,7 @@ import {
 import { createLogger } from '@/lib/utils/logger';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
+import { toast } from 'sonner';
 
 const logger = createLogger('CART_CONTEXT');
 
@@ -209,6 +210,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [sessionId, customerId]);
 
   const addToCart = useCallback(async (product: Product, quantity: number = 1) => {
+    if (product.sales_halted) {
+      toast.error('This product is temporarily unavailable');
+      return;
+    }
+
     const timerActive = isTimerActive();
     const isNewProduct = !cart.some((item) => item.product.id === product.id);
 
@@ -251,17 +257,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw new Error('Product not found');
       }
       const product: Product = await response.json();
-  
+
+      if (product.sales_halted) {
+        toast.error('This product is temporarily unavailable');
+        return false;
+      }
+
       const trimmedImageUrl = product.image_url?.trim();
       const fullImageUrl = trimmedImageUrl
         ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
         : '/anblogo.png';
-  
+
       const productWithUrl: Product = {
         ...product,
         image_url: fullImageUrl
       };
-  
+
       addToCart(productWithUrl, 1);
       return true;
     } catch (error) {
