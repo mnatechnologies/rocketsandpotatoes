@@ -1,4 +1,4 @@
-const SUPABASE_STORAGE_URL = 'https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images';
+const SUPABASE_STORAGE_URL = 'https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/ABC_Bullion_Photos' ;
 
 export function getProductImageUrl(imagePath: string | null | undefined, fallback = '/anblogo.png'): string {
   const trimmed = imagePath?.trim();
