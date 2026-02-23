@@ -161,6 +161,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                 className="object-contain p-8"
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority
+                unoptimized
               />
               {!product.stock && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -211,6 +212,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                       fill
                       className="object-contain p-1"
                       sizes="80px"
+                      unoptimized
                     />
                   </button>
                 ))}
@@ -429,6 +431,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                         fill
                         className="object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply dark:mix-blend-normal"
                         sizes="(max-width: 768px) 50vw, 25vw"
+                        unoptimized
                       />
                     </div>
                     <div className="p-4">
