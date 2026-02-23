@@ -14,8 +14,9 @@ export interface Product {
     rating: number;
     stock: boolean;
     image_url: string;
+    images?: string[];
     metal_type: MetalSymbol;
-    form_type?: 'cast' | 'minted' | 'coin' | null;
+    form_type?: 'cast' | 'minted' | 'coin' | 'pool' | null;
     brand?: string;
     created_at?: string;
     updated_at?: string;
