@@ -4,7 +4,7 @@ import ProductDetailClient from './ProductDetailClient';
 import { Product } from '@/types/product';
 import { createLogger } from '@/lib/utils/logger'
 import { isUUID, generateSlug } from '@/lib/utils/slug';
-import { getProductImageUrl } from '@/lib/utils/imageUrl';
+import { getProductImageUrl, parseImages } from '@/lib/utils/imageUrl';
 
 const logger = createLogger('PRODUCT_PAGE')
 
@@ -49,7 +49,7 @@ export default async function ProductDetailPage({params}: { params: Promise<{ id
   const productWithUrl: Product = {
     ...product,
     image_url: getProductImageUrl(product.image_url),
-    images: product.images?.map((img: string) => getProductImageUrl(img)) || [],
+    images: parseImages(product.images).map((img: string) => getProductImageUrl(img)),
   };
 
   // Fetch related products from same category
