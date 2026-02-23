@@ -4,6 +4,7 @@ import FeaturedProductsWrapper from "@/components/FeaturedProductsWrapper";
 import TextSection from "@/components/TextSection";
 import CategoryTiles from "@/components/CategoryTiles";
 import TrustBar from "@/components/TrustBar";
+import { getProductImageUrl } from '@/lib/utils/imageUrl';
 
 export default async function Home() {
   const supabase = await createServerSupabase();
@@ -56,17 +57,10 @@ export default async function Home() {
   })() : [];
 
   // Transform products with image URLs
-  const featuredProducts = products?.map(product => {
-    const trimmedImageUrl = product.image_url?.trim();
-    const imageUrl = trimmedImageUrl
-     ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
-      : null;
-
-    return {
-      ...product,
-      image_url: imageUrl
-    };
-  }) || [];
+  const featuredProducts = products?.map(product => ({
+    ...product,
+    image_url: getProductImageUrl(product.image_url)
+  })) || [];
 
   return (
     <div className="min-h-screen">

@@ -4,6 +4,7 @@ import {createClient} from "@supabase/supabase-js";
 import { calculateBulkPricing} from "@/lib/pricing/priceCalculations";
 import { createLogger } from "@/lib/utils/logger";
 import { fetchFxRate, fetchFxRateWithFallback } from '@/lib/metals-api/metalsApi';
+import { getProductImageUrl } from '@/lib/utils/imageUrl';
 
 
 const logger = createLogger('PRODUCT_PRICING_API');
@@ -71,10 +72,7 @@ export async function GET(request: NextRequest) {
         throw new Error(`Unable to calculate live price for ${product.name}. Please try again.`);
       }
 
-      const trimmedImageUrl = product.image_url?.trim();
-      const fullImageUrl = trimmedImageUrl
-        ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
-        : null;
+      const fullImageUrl = getProductImageUrl(product.image_url, '');
 
       return {
         id: product.id,

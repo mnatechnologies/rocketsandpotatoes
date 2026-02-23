@@ -16,6 +16,7 @@ import { createLogger } from '@/lib/utils/logger';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
 import { toast } from 'sonner';
+import { getProductImageUrl } from '@/lib/utils/imageUrl';
 
 const logger = createLogger('CART_CONTEXT');
 
@@ -263,14 +264,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const trimmedImageUrl = product.image_url?.trim();
-      const fullImageUrl = trimmedImageUrl
-        ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`
-        : '/anblogo.png';
-
       const productWithUrl: Product = {
         ...product,
-        image_url: fullImageUrl
+        image_url: getProductImageUrl(product.image_url),
       };
 
       addToCart(productWithUrl, 1);

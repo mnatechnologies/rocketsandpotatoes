@@ -12,7 +12,7 @@ import { getMetalInfo, type MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { useCurrency } from "@/contexts/CurrencyContext";
 import Breadcrumb, { BreadcrumbItem } from '@/components/Breadcrumb';
 import { toast } from 'sonner';
-import { ShoppingCart, Minus, Plus, Shield, Clock, Award } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, Shield, Clock, Award, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateSlug } from '@/lib/utils/slug';
 
 interface ProductDetailClientProps {
@@ -30,6 +30,25 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
   const [livePrice, setLivePrice] = useState<number>(product.price);
   const [relatedPrices, setRelatedPrices] = useState<Map<string, number>>(new Map());
   const [addingToCart, setAddingToCart] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  // Build the full image list: primary image + additional images from the images array
+  const allImages = (() => {
+    const imgs: string[] = [];
+    if (product.image_url && product.image_url !== '/anblogo.png') {
+      imgs.push(product.image_url);
+    }
+    if (product.images && product.images.length > 0) {
+      for (const img of product.images) {
+        if (img && !imgs.includes(img)) {
+          imgs.push(img);
+        }
+      }
+    }
+    return imgs.length > 0 ? imgs : ['/anblogo.png'];
+  })();
+
+  const hasMultipleImages = allImages.length > 1;
 
   // Calculate product price when metal prices change
   useEffect(() => {
@@ -131,12 +150,13 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-8">
-          {/* Left: Product Image */}
-          <div className="space-y-4">
-            <div className="relative aspect-square bg-card rounded-2xl overflow-hidden border border-border">
+          {/* Left: Product Image Gallery */}
+          <div className="space-y-3">
+            {/* Main Image */}
+            <div className="relative aspect-square bg-card rounded-2xl overflow-hidden border border-border group">
               <Image
-                src={product.image_url || '/anblogo.png'}
-                alt={product.name}
+                src={allImages[selectedImageIndex]}
+                alt={`${product.name} - Image ${selectedImageIndex + 1}`}
                 fill
                 className="object-contain p-8"
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -147,7 +167,55 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                   <span className="text-white text-xl font-bold">Out of Stock</span>
                 </div>
               )}
+              {/* Navigation Arrows */}
+              {hasMultipleImages && (
+                <>
+                  <button
+                    onClick={() => setSelectedImageIndex(i => i === 0 ? allImages.length - 1 : i - 1)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setSelectedImageIndex(i => i === allImages.length - 1 ? 0 : i + 1)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  {/* Image Counter */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 border border-border rounded-full px-3 py-1 text-xs font-medium text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                    {selectedImageIndex + 1} / {allImages.length}
+                  </div>
+                </>
+              )}
             </div>
+
+            {/* Thumbnail Strip */}
+            {hasMultipleImages && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allImages.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                      index === selectedImageIndex
+                        ? 'border-primary ring-1 ring-primary/30'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${product.name} - Thumbnail ${index + 1}`}
+                      fill
+                      className="object-contain p-1"
+                      sizes="80px"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right: Product Info */}

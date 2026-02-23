@@ -20,12 +20,12 @@ export default function ProductsPage() {
         const data = await response.json();
 
         // Transform with image URLs
-        const productsWithUrls = data.map((product:  { category: string; image_url: string; form_type: string; }) => {
-          const trimmedImageUrl = product.image_url?.trim();
-          const imageUrl = trimmedImageUrl
-          ? `https://vlvejjyyvzrepccgmsvo.supabase.co/storage/v1/object/public/Images/${product.category.toLowerCase()}/${product.form_type ?`${product.form_type}/` : ''}${trimmedImageUrl}`            : null;
-          return { ...product, image_url: imageUrl };
-        });
+        const { getProductImageUrl } = await import('@/lib/utils/imageUrl');
+        const productsWithUrls = data.map((product: { image_url: string; images?: string[] }) => ({
+          ...product,
+          image_url: getProductImageUrl(product.image_url),
+          images: product.images?.map((img: string) => getProductImageUrl(img)) || [],
+        }));
 
         setProducts(productsWithUrls);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
