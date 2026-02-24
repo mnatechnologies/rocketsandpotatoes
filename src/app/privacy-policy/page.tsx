@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
       <div className="bg-gradient-to-b from-primary/10 to-background py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-foreground mb-2">Privacy Policy</h1>
-          <p className="text-muted-foreground">Last updated: December 2025</p>
+          <p className="text-muted-foreground">Last updated: February 2026</p>
         </div>
       </div>
 
@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-foreground mb-4">1. Introduction</h2>
           <p className="text-muted-foreground mb-4">
-            Australian National Bullion (ABN: XX XXX XXX XXX, AUSTRAC Registration: 100888166) is committed to
+            Australian National Bullion (ABN: 14 683 863 443, AUSTRAC Registration: 100888166) is committed to
             protecting your privacy and handling your personal information in accordance with the Privacy Act 1988
             (Cth) and the Australian Privacy Principles (APPs).
           </p>
@@ -199,9 +199,13 @@ export default function PrivacyPolicyPage() {
             <li>Analyse website traffic and usage patterns</li>
             <li>Improve our services</li>
           </ul>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             You can control cookies through your browser settings, though disabling cookies may affect
             website functionality.
+          </p>
+          <p className="text-muted-foreground">
+            For a detailed breakdown of the cookies we use, please see our{' '}
+            <a href="/cookie-policy" className="text-primary hover:underline font-medium">Cookie Policy</a>.
           </p>
         </section>
 

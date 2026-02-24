@@ -74,7 +74,7 @@ export default function ReturnsRefundsPage() {
                 <div>
                   <h4 className="font-semibold text-card-foreground">Faulty or Incorrect Items</h4>
                   <p className="text-muted-foreground text-sm">
-                    Returns are accepted for items that are damaged, defective, or incorrectly shipped.
+                    Returns are accepted for items that are damaged, defective, or incorrectly supplied.
                   </p>
                 </div>
               </div>
@@ -92,8 +92,8 @@ export default function ReturnsRefundsPage() {
               <div className="bg-muted/50 border border-border rounded-lg p-4">
                 <h3 className="font-semibold text-card-foreground mb-2">Damaged Products</h3>
                 <p className="text-muted-foreground text-sm">
-                  If your items arrive damaged during shipping, we will arrange a return and provide a full refund
-                  or replacement at your choice. Damage must be reported within 48 hours of delivery.
+                  If your items are found to be damaged at the time of collection, we will arrange a replacement or provide a full refund
+                  at your choice. Damage must be reported within 48 hours of collection.
                 </p>
               </div>
 
@@ -108,16 +108,16 @@ export default function ReturnsRefundsPage() {
               <div className="bg-muted/50 border border-border rounded-lg p-4">
                 <h3 className="font-semibold text-card-foreground mb-2">Incorrect Items</h3>
                 <p className="text-muted-foreground text-sm">
-                  If we ship you the wrong product, we will cover return shipping and send the correct item
-                  immediately, or provide a full refund if the correct item is unavailable.
+                  If you receive the wrong product at collection, we will arrange for the correct item
+                  to be made available for pickup, or provide a full refund if the correct item is unavailable.
                 </p>
               </div>
 
               <div className="bg-muted/50 border border-border rounded-lg p-4">
                 <h3 className="font-semibold text-card-foreground mb-2">Missing Items</h3>
                 <p className="text-muted-foreground text-sm">
-                  If items are missing from your order, contact us immediately. We will investigate and ship
-                  the missing items or provide a refund for any items not received.
+                  If items are missing from your order, contact us immediately. We will investigate and arrange
+                  collection of the missing items or provide a refund for any items not received.
                 </p>
               </div>
             </div>
@@ -145,8 +145,7 @@ export default function ReturnsRefundsPage() {
                 <div>
                   <h4 className="font-semibold text-card-foreground">Document the Issue</h4>
                   <p className="text-muted-foreground text-sm">
-                    Take clear photos of any damage or defects. For damaged shipments, also photograph the packaging.
-                    This helps us process your return quickly.
+                    Take clear photos of any damage or defects. This helps us process your return quickly.
                   </p>
                 </div>
               </div>
@@ -154,9 +153,9 @@ export default function ReturnsRefundsPage() {
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 text-primary font-bold">3</div>
                 <div>
-                  <h4 className="font-semibold text-card-foreground">Ship Securely</h4>
+                  <h4 className="font-semibold text-card-foreground">Return the Item</h4>
                   <p className="text-muted-foreground text-sm">
-                    For approved returns, we will provide a prepaid shipping label. Pack items in original packaging
+                    For approved returns, bring the item back to our Sydney office by appointment. Items should be in original packaging
                     if possible. All seals and certificates must be intact.
                   </p>
                 </div>
@@ -184,7 +183,7 @@ export default function ReturnsRefundsPage() {
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>Be in original, unopened condition where applicable</li>
               <li>Have all original seals, packaging, and certificates intact</li>
-              <li>Be returned within 14 days of delivery (for quality issues)</li>
+              <li>Be returned within 14 days of collection (for quality issues)</li>
               <li>Include the RMA number provided by our team</li>
               <li>Not show signs of tampering, cleaning, or alteration</li>
             </ul>
@@ -239,7 +238,7 @@ export default function ReturnsRefundsPage() {
                 <strong className="text-card-foreground">Email:</strong> returns@australiannationalbullion.com.au
               </p>
               <p className="text-muted-foreground">
-                <strong className="text-card-foreground">Phone:</strong> 1300 XXX XXX
+                <strong className="text-card-foreground">Phone:</strong> 1300 783 190
               </p>
             </div>
           </div>

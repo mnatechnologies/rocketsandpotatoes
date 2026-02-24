@@ -21,7 +21,7 @@ const faqs: { category: string; items: FAQItem[] }[] = [
       },
       {
         question: 'How does the price lock system work?',
-        answer: 'When you add items to your cart, we lock the price for approximately 10 minutes. If you don\'t complete checkout within this time, prices will be updated to reflect current market rates.',
+        answer: 'When you add items to your cart, we lock the price for approximately 15 minutes. If you don\'t complete checkout within this time, prices will be updated to reflect current market rates.',
       },
       {
         question: 'Can I cancel my order after placing it?',
@@ -55,23 +55,23 @@ const faqs: { category: string; items: FAQItem[] }[] = [
     ],
   },
   {
-    category: 'Shipping & Delivery',
+    category: 'Collection & Pickup',
     items: [
       {
-        question: 'How long does delivery take?',
-        answer: 'Delivery timeframes depend on your location and chosen shipping method. Standard delivery within Australia typically takes 3-7 business days after your order is processed and cleared.',
+        question: 'How do I collect my order?',
+        answer: 'All orders are collected in person from our Sydney CBD office by appointment. Once your order is processed and cleared, we will contact you to schedule a convenient pickup time during business hours (Monday–Friday, 9AM–5PM AEST).',
       },
       {
-        question: 'Is my shipment insured?',
-        answer: 'Yes, all shipments are fully insured for their complete value from the moment they leave our facility until delivery is confirmed with your signature.',
+        question: 'What do I need to bring for collection?',
+        answer: 'You must bring a valid photo ID (the same one used for identity verification) and your order confirmation email. For business accounts, an authorised representative with appropriate identification is required.',
       },
       {
-        question: 'Do you ship internationally?',
-        answer: 'Currently, we only ship to Australian addresses. International shipping may be available in the future.',
+        question: 'Can someone else collect my order?',
+        answer: 'Yes, with prior arrangement. You must provide written authorisation including the third party\'s full name and a copy of their photo ID. The authorised person must present matching identification at collection.',
       },
       {
-        question: 'What if I\'m not home for delivery?',
-        answer: 'All deliveries require an adult signature. If you\'re not available, the courier will attempt redelivery or leave a card with instructions for collection from a secure location.',
+        question: 'Do you offer shipping or delivery?',
+        answer: 'Currently, all orders are available for in-person collection only from our Sydney office. We do not offer shipping or delivery at this time.',
       },
     ],
   },
@@ -89,6 +89,10 @@ const faqs: { category: string; items: FAQItem[] }[] = [
       {
         question: 'What is the difference between spot price and retail price?',
         answer: 'The spot price is the current market price for raw precious metals. Retail prices include premiums for manufacturing, distribution, and dealer margins. Coins typically have higher premiums than bars due to their collectible nature and minting costs.',
+      },
+      {
+        question: 'Is bullion GST-free?',
+        answer: 'Investment-grade gold (99.5%+ purity), silver (99.9%+ purity), and platinum (99%+ purity) are GST-free under the A New Tax System (Goods and Services Tax) Act 1999. Palladium products may attract GST. Refer to our Terms & Conditions for further details.',
       },
     ],
   },

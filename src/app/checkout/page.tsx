@@ -10,6 +10,7 @@ import { useCart} from '@/contexts/CartContext';
 import { createLogger } from '@/lib/utils/logger';
 import {useCurrency} from "@/contexts/CurrencyContext";
 import { AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
 
 const logger = createLogger('CHECKOUT_PAGE');
 
@@ -19,6 +20,7 @@ export default function CheckoutPage() {
   const { formatPrice, currency, exchangeRate } = useCurrency();
 
   const { getLockedPriceForProduct, isTimerExpired, timerRemaining, cart, customerId, isLoading: cartLoading, sessionId } = useCart();
+  const [noReturnsAcknowledged, setNoReturnsAcknowledged] = useState(false);
 
   const getTotalAmount = () => {
     const total = cart.reduce((sum, item) => {
@@ -178,6 +180,43 @@ export default function CheckoutPage() {
           </p>
         </div>
 
+        {/* No Returns Notice + Acknowledgment */}
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6">
+          <h3 className="font-semibold text-amber-600 dark:text-amber-400 mb-2">No Returns Policy</h3>
+          <p className="text-sm text-amber-600 dark:text-amber-400 mb-3">
+            Bullion purchases are final. No refunds or exchanges for change of mind.
+            Returns are only accepted for defective, damaged, or incorrectly supplied items reported within 14 days.{' '}
+            <a href="/returns-refunds" className="underline hover:no-underline font-medium">
+              View our Returns & Refunds Policy
+            </a>
+          </p>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={noReturnsAcknowledged}
+              onChange={(e) => setNoReturnsAcknowledged(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-amber-500/50 accent-amber-600"
+            />
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              I acknowledge that bullion purchases are final and cannot be returned for change of mind.
+            </span>
+          </label>
+        </div>
+
+        {/* Pickup Only Notice */}
+        <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Pickup Only</strong> — All orders are collected in person from our Sydney CBD office by appointment.{' '}
+              <a href="/pickup-information" className="text-primary hover:underline">View pickup details</a>
+            </p>
+          </div>
+        </div>
+
         {/* Checkout Flow or Expired State */}
         {isTimerExpired ? (
           <div className="bg-card rounded-lg shadow-card p-8 text-center border border-amber-500/30">
@@ -192,6 +231,13 @@ export default function CheckoutPage() {
             >
               Return to Cart
             </button>
+          </div>
+        ) : !noReturnsAcknowledged ? (
+          <div className="bg-card rounded-lg shadow-card p-8 text-center border border-border">
+            <h2 className="text-xl font-bold text-foreground mb-2">Acknowledgment Required</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Please acknowledge the no-returns policy above before proceeding to payment.
+            </p>
           </div>
         ) : (
           <div className="bg-card rounded-lg shadow-card p-6">

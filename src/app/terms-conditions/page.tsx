@@ -12,7 +12,7 @@ export default function TermsConditionsPage() {
       <div className="bg-gradient-to-b from-primary/10 to-background py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-foreground mb-2">Terms & Conditions</h1>
-          <p className="text-muted-foreground">Last updated: December 2025</p>
+          <p className="text-muted-foreground">Last updated: February 2026</p>
         </div>
       </div>
 
@@ -27,7 +27,7 @@ export default function TermsConditionsPage() {
             and services. By accessing our website or placing an order, you agree to be bound by these Terms.
           </p>
           <p className="text-muted-foreground">
-            Australian National Bullion (ABN: XX XXX XXX XXX) is registered with AUSTRAC (Registration Number: 100888166)
+            Australian National Bullion (ABN: 14 683 863 443) is registered with AUSTRAC (Registration Number: 100888166)
             as a bullion dealer under the Anti-Money Laundering and Counter-Terrorism Financing Act 2006.
           </p>
         </section>
@@ -68,7 +68,7 @@ export default function TermsConditionsPage() {
               <h3 className="text-lg font-semibold text-card-foreground mb-2">4.1 Price Lock System</h3>
               <p className="text-muted-foreground">
                 Precious metal prices fluctuate constantly based on global markets. When you add items to your cart,
-                we lock the price for a limited time (typically 10 minutes). If the lock expires before checkout
+                we lock the price for a limited time (typically 15 minutes). If the lock expires before checkout
                 completion, you will need to refresh for updated pricing.
               </p>
             </div>
@@ -108,9 +108,33 @@ export default function TermsConditionsPage() {
           </div>
         </section>
 
+        {/* GST */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-foreground mb-4">5. Goods and Services Tax (GST)</h2>
+          <div className="bg-card border border-border rounded-lg p-6 mb-6">
+            <p className="text-muted-foreground mb-4">
+              Under the <em>A New Tax System (Goods and Services Tax) Act 1999</em>, investment-grade precious metals
+              that meet the following purity thresholds are GST-free:
+            </p>
+            <ul className="list-disc pl-6 text-muted-foreground space-y-1">
+              <li><strong className="text-card-foreground">Gold:</strong> 99.5% purity or higher</li>
+              <li><strong className="text-card-foreground">Silver:</strong> 99.9% purity or higher</li>
+              <li><strong className="text-card-foreground">Platinum:</strong> 99.0% purity or higher</li>
+            </ul>
+          </div>
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-6">
+            <p className="text-muted-foreground text-sm">
+              <strong className="text-foreground">Important:</strong> Palladium products and items that do not meet the
+              above purity thresholds may attract GST at the prevailing rate. GST-inclusive pricing will be clearly
+              indicated on affected product listings. If you are unsure whether a product is GST-free, please contact us
+              before purchasing.
+            </p>
+          </div>
+        </section>
+
         {/* Compliance */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">5. Regulatory Compliance</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">6. Regulatory Compliance</h2>
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold text-foreground mb-2">5.1 Identity Verification (KYC)</h3>
@@ -153,7 +177,7 @@ export default function TermsConditionsPage() {
 
         {/* Order Processing */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">6. Order Processing</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">7. Order Processing</h2>
 
           <div className="space-y-6">
             <div className="bg-card border border-border rounded-lg p-6">
@@ -192,7 +216,7 @@ export default function TermsConditionsPage() {
 
         {/* Pickup */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">7. Collection</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">8. Collection</h2>
           <div className="bg-card border border-border rounded-lg p-6">
             <p className="text-muted-foreground mb-4">
               All orders are available for pickup from our secure Sydney location. When collecting your order:
@@ -209,7 +233,7 @@ export default function TermsConditionsPage() {
 
         {/* Returns */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">8. Returns and Refunds</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">9. Returns and Refunds</h2>
           <p className="text-muted-foreground mb-4">
             Due to the nature of precious metals and price volatility:
           </p>
@@ -226,7 +250,7 @@ export default function TermsConditionsPage() {
 
         {/* Limitation of Liability */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">9. Limitation of Liability</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">10. Limitation of Liability</h2>
           <p className="text-muted-foreground mb-4">
             To the maximum extent permitted by law:
           </p>
@@ -241,7 +265,7 @@ export default function TermsConditionsPage() {
 
         {/* Intellectual Property */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">10. Intellectual Property</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">11. Intellectual Property</h2>
           <p className="text-muted-foreground">
             All content on this website, including text, images, logos, and design elements, is the property of
             Australian National Bullion and is protected by copyright and trademark laws. You may not reproduce,
@@ -251,7 +275,7 @@ export default function TermsConditionsPage() {
 
         {/* Governing Law */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">11. Governing Law</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">12. Governing Law</h2>
           <p className="text-muted-foreground">
             These Terms are governed by the laws of New South Wales, Australia. Any disputes arising from these
             Terms or your use of our services will be subject to the exclusive jurisdiction of the courts of
@@ -261,7 +285,7 @@ export default function TermsConditionsPage() {
 
         {/* Changes */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">12. Changes to Terms</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">13. Changes to Terms</h2>
           <p className="text-muted-foreground">
             We reserve the right to modify these Terms at any time. Changes will be effective immediately upon
             posting to our website. Your continued use of our services constitutes acceptance of any changes.
@@ -270,7 +294,7 @@ export default function TermsConditionsPage() {
 
         {/* Contact */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">13. Contact Information</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">14. Contact Information</h2>
           <p className="text-muted-foreground mb-4">
             For questions about these Terms, please contact us:
           </p>

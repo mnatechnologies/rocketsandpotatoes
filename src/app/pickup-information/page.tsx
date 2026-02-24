@@ -24,8 +24,8 @@ export default function PickupInformationPage() {
           <h2 className="text-2xl font-bold text-foreground mb-4">In-Person Collection</h2>
           <div className="bg-card border border-border rounded-lg p-6">
             <p className="text-muted-foreground mb-4">
-              Prefer to collect your precious metals in person? We offer secure pickup from our Sydney location
-              for customers who want to avoid shipping or simply prefer face-to-face transactions.
+              All orders are collected in person from our secure Sydney CBD office. We operate a pickup-only
+              model to ensure the highest level of security for your precious metals purchases.
             </p>
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
               <p className="text-primary text-sm">
@@ -44,10 +44,10 @@ export default function PickupInformationPage() {
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 text-primary font-bold">1</div>
                 <div>
-                  <h4 className="font-semibold text-card-foreground">Select Pickup at Checkout</h4>
+                  <h4 className="font-semibold text-card-foreground">Place Your Order</h4>
                   <p className="text-muted-foreground text-sm">
-                    When completing your order, choose "Pickup" as your delivery method instead of shipping.
-                    This option saves on delivery fees for local customers.
+                    Complete your order through our website. All orders are fulfilled via in-person collection
+                    from our Sydney CBD office.
                   </p>
                 </div>
               </div>
@@ -195,7 +195,7 @@ export default function PickupInformationPage() {
                 <strong className="text-card-foreground">Email:</strong> pickups@australiannationalbullion.com.au
               </p>
               <p className="text-muted-foreground">
-                <strong className="text-card-foreground">Phone:</strong> 1300 XXX XXX
+                <strong className="text-card-foreground">Phone:</strong> 1300 783 190
               </p>
             </div>
           </div>

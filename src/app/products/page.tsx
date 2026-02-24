@@ -51,6 +51,9 @@ export default function ProductsPage() {
             <p className="text-base text-muted-foreground">
               Premium bullion from Australia&#39;s most trusted mints
             </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              All prices are indicative and updated in real-time from market feeds. Final price is locked at checkout for 15 minutes.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, index) => (
@@ -82,6 +85,9 @@ export default function ProductsPage() {
           </h1>
           <p className="text-base text-muted-foreground">
             Premium bullion from Australia&#39;s most trusted mints
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            All prices are indicative and updated in real-time from market feeds. Final price is locked at checkout for 15 minutes.
           </p>
         </div>
         <Suspense fallback={<div className="text-center">Loading filters...</div>}>

@@ -11,6 +11,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider} from "@/contexts/CurrencyContext";
 import { Toaster } from 'sonner';
 import { ThemeProvider } from "@/contexts/Themecontext";
+import CookieConsent from "@/components/CookieConsent";
 //  MIGRATION SUPABASE ALTER CUSTOMERS DOCUMENT ADD CERT FIELDS DONE
 // ORDER CONFIRMATION TOTAL AMOUNT NOT MATCHING DONE
 //ADDRESS OPTIONAL NAME ON SIGN UP DONE
@@ -70,6 +71,7 @@ export default function RootLayout({
                   <PriceLockBar />
                   {children}
                   <Footer />
+                  <CookieConsent />
                 </CartProvider>
               </CurrencyProvider>
             </MetalPricesProvider>

@@ -121,6 +121,16 @@ export default function Footer() {
                   Security & Insurance
                 </Link>
               </li>
+              <li>
+                <Link href="/cookie-policy" className="text-muted-foreground hover:text-primary transition-colors">
+                  Cookie Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/accessibility" className="text-muted-foreground hover:text-primary transition-colors">
+                  Accessibility
+                </Link>
+              </li>
             </ul>
             <div className="mt-5 pt-5 border-t border-border">
               <p className="text-xs text-muted-foreground">
@@ -161,6 +171,12 @@ export default function Footer() {
                   Quay Quarter Tower
                   Sydney, NSW 2000
                 </span>
+              </li>
+              <li className="flex items-start gap-2.5 mt-1">
+                <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-muted-foreground text-xs">Pickup Only — By Appointment</span>
               </li>
             </ul>
 

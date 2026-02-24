@@ -17,6 +17,9 @@ export default function ChartsPage() {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Track live spot prices and analyze historical trends for Gold, Silver, Platinum, and Palladium.
           </p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Prices sourced from third-party market data providers. For indicative purposes only — not financial advice.
+          </p>
         </div>
 
         <MetalPriceChart />

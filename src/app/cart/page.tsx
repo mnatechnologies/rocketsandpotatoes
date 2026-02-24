@@ -425,7 +425,11 @@ function CartContent() {
                   </p>
                   <p className="flex items-center gap-2">
                     <svg className="w-3.5 h-3.5 text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    Secure pickup location
+                    In-person collection — Sydney CBD
+                  </p>
+                  <p className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+                    All orders are collected in person from our Sydney CBD office by appointment.{' '}
+                    <a href="/pickup-information" className="text-primary hover:underline">Details</a>
                   </p>
                   {loadingPrices && (
                     <p className="mt-2 text-primary text-xs">Updating prices...</p>

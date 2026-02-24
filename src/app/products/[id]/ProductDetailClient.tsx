@@ -12,7 +12,7 @@ import { getMetalInfo, type MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { useCurrency } from "@/contexts/CurrencyContext";
 import Breadcrumb, { BreadcrumbItem } from '@/components/Breadcrumb';
 import { toast } from 'sonner';
-import { ShoppingCart, Minus, Plus, Shield, Clock, Award, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, Shield, Clock, Award, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { generateSlug } from '@/lib/utils/slug';
 
 interface ProductDetailClientProps {
@@ -165,7 +165,9 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
               />
               {!product.stock && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <span className="text-white text-xl font-bold">Out of Stock</span>
+                  <span className="text-white text-xl font-bold">
+                    {product.brand === 'PAMP Suisse' ? 'Contact to Order' : 'Out of Stock'}
+                  </span>
                 </div>
               )}
               {/* Navigation Arrows */}
@@ -231,10 +233,36 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                 <span className={`inline-flex items-center rounded-full border px-3 py-1 text-base font-semibold tracking-tight ${
                   product.stock
                     ? 'border-success/30 bg-success/10 text-success-foreground dark:border-success/40 dark:bg-success/20 dark:text-success-foreground'
-                    : 'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20 dark:text-destructive-foreground'
+                    : product.brand === 'PAMP Suisse'
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                      : 'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20 dark:text-destructive-foreground'
                 }`}>
-                  {product.stock ? 'In Stock' : 'Out of Stock'}
+                  {product.stock ? 'In Stock' : product.brand === 'PAMP Suisse' ? 'Contact to Order' : 'Out of Stock'}
                 </span>
+                {(() => {
+                  if (!product.metal_type || !product.purity) return null;
+                  if (product.metal_type === 'XPD') {
+                    return (
+                      <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                        GST May Apply
+                      </span>
+                    );
+                  }
+                  const purityNum = parseFloat(product.purity.replace(/[^0-9.]/g, ''));
+                  if (isNaN(purityNum)) return null;
+                  const meetsGSTThreshold =
+                    (product.metal_type === 'XAU' && purityNum >= 99.5) ||
+                    (product.metal_type === 'XAG' && purityNum >= 99.9) ||
+                    (product.metal_type === 'XPT' && purityNum >= 99.0);
+                  if (meetsGSTThreshold) {
+                    return (
+                      <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        GST-Free (Investment Grade)
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
@@ -256,6 +284,9 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                       </span>
                     )}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Prices are indicative and subject to market movement. Your price is locked for 15 minutes at checkout.
+                  </p>
                 </>
               )}
             </div>
@@ -296,6 +327,9 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                     <span className="text-sm font-medium text-foreground">{product.brand}</span>
                   </div>
                 )}
+              </div>
+              <div className="px-5 py-2.5 text-xs text-muted-foreground bg-muted/20">
+                Weight and purity as specified by manufacturer
               </div>
             </div>
 
@@ -359,21 +393,33 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              <button
-                onClick={handleBuyNow}
-                disabled={!product.stock || addingToCart || loadingPrices}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-6 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg flex items-center justify-center gap-2"
-              >
-                Buy Now
-              </button>
-              <button
-                onClick={handleAddToCart}
-                disabled={!product.stock || addingToCart || loadingPrices}
-                className="w-full bg-muted hover:bg-muted/80 text-foreground font-bold py-4 px-6 rounded-xl border border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg flex items-center justify-center gap-2"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                Add to Cart
-              </button>
+              {!product.stock && product.brand === 'PAMP Suisse' ? (
+                <a
+                  href={`mailto:sales@australiannationalbullion.com.au?subject=Order Enquiry: ${encodeURIComponent(product.name)}&body=${encodeURIComponent(`Hi,\n\nI am interested in ordering the following product:\n\n${product.name}\n\nPlease provide availability and pricing.\n\nThank you.`)}`}
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg flex items-center justify-center gap-2"
+                >
+                  <Mail className="h-5 w-5" />
+                  Contact to Order
+                </a>
+              ) : (
+                <>
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={!product.stock || addingToCart || loadingPrices}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-6 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg flex items-center justify-center gap-2"
+                  >
+                    Buy Now
+                  </button>
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={!product.stock || addingToCart || loadingPrices}
+                    className="w-full bg-muted hover:bg-muted/80 text-foreground font-bold py-4 px-6 rounded-xl border border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    Add to Cart
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Trust Badges */}
@@ -395,6 +441,17 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                   <Award className="h-6 w-6 text-primary" />
                 </div>
                 <div className="text-xs font-medium text-foreground">Certified</div>
+              </div>
+            </div>
+
+            {/* Collection Info */}
+            <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Collection: Sydney CBD office, by appointment only</span>
               </div>
             </div>
           </div>
