@@ -12,8 +12,7 @@ export default async function Home() {
   // Fetch random featured products from different metal types
   const { data: allProducts } = await supabase
     .from('products')
-    .select('*')
-    .eq('stock', true);
+    .select('*');
 
   // Shuffle and select 4 random products with variety
   const shuffleArray = <T,>(array: T[]): T[] => {

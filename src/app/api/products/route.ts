@@ -17,7 +17,6 @@ export async function GET() {
     supabase
       .from('products')
       .select('*')
-      .eq('stock', true)
       .order('category', { ascending: true })
       .order('price', { ascending: true }),
     supabase
