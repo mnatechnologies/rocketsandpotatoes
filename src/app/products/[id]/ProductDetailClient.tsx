@@ -268,7 +268,16 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
 
             {/* Price Box */}
             <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-              {loadingPrices ? (
+              {product.brand === 'PAMP Suisse' ? (
+                <>
+                  <div className="text-2xl font-bold text-foreground tracking-tight">
+                    Contact for Pricing
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    PAMP Suisse products are available by enquiry. Contact us for current pricing and availability.
+                  </p>
+                </>
+              ) : loadingPrices ? (
                 <div className="h-10 w-40 bg-muted animate-pulse rounded" />
               ) : (
                 <>
@@ -333,7 +342,8 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
               </div>
             </div>
 
-            {/* Quantity & Total */}
+            {/* Quantity & Total - hidden for PAMP (contact only) */}
+            {product.brand !== 'PAMP Suisse' && (
             <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <span className="font-medium text-foreground">Quantity</span>
@@ -390,6 +400,7 @@ export default function ProductDetailClient({ product, relatedProducts = [] }: P
                 <span className="text-2xl font-bold text-primary">{formatPrice(totalPrice)}</span>
               </div>
             </div>
+            )}
 
             {/* Action Buttons */}
             <div className="space-y-3">

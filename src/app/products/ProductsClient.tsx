@@ -8,7 +8,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useMetalPrices } from '@/contexts/MetalPricesContext';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { calculateBulkPricingFromCache } from '@/lib/pricing/priceCalculations';
-import { ShoppingCartIcon, Filter, X, ChevronDown, Minus, Plus, LayoutGrid, List } from "lucide-react";
+import { ShoppingCartIcon, Filter, X, ChevronDown, Minus, Plus, LayoutGrid, List, Mail } from "lucide-react";
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useCart } from '@/contexts/CartContext';
 import { DEFAULT_VOLUME_DISCOUNT_TIERS } from '@/lib/pricing/priceCalculations';
@@ -734,6 +734,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
 
     const displayPrice = product.calculated_price ?? product.price;
     const isHalted = product.sales_halted === true;
+    const isPamp = product.brand === 'PAMP Suisse';
 
     const cartItem = cart.find(item => item.product.id === product.id);
     const quantity = cartItem?.quantity || 0;
@@ -741,7 +742,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         const success = await addToCartById(product.id);
         if (success) {
             toast.success('Added to cart!', {
@@ -755,14 +756,14 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
     const handleIncrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         updateQuantity(product.id, quantity + 1);
     };
 
     const handleDecrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         if (quantity <= 1) {
             removeFromCart(product.id);
         } else {
@@ -773,7 +774,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
     const handlePresetClick = (e: React.MouseEvent, qty: number) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         if (quantity === 0) {
             addToCartById(product.id).then((success) => {
                 if (success) {
@@ -822,7 +823,11 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                     {/* Price + Cart Controls */}
                     <div className="flex items-center justify-between">
                         <div>
-                            {loadingPrices ? (
+                            {isPamp ? (
+                                <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                                    Contact for Pricing
+                                </div>
+                            ) : loadingPrices ? (
                                 <div className="h-6 w-20 bg-muted animate-pulse rounded" />
                             ) : (
                                 <div className={`text-lg font-bold ${isHalted ? 'text-muted-foreground' : 'text-foreground'}`}>
@@ -831,7 +836,11 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                             )}
                         </div>
 
-                        {isHalted ? (
+                        {isPamp ? (
+                            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                <Mail className="h-4 w-4" />
+                            </div>
+                        ) : isHalted ? (
                             <button
                                 disabled
                                 className="p-2 rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
@@ -868,7 +877,8 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                         )}
                     </div>
 
-                    {/* Bulk Purchase Presets */}
+                    {/* Bulk Purchase Presets - hidden for PAMP */}
+                    {!isPamp && (
                     <div className={`flex items-center gap-1 mt-2 pt-2 border-t border-border/50 ${isHalted ? 'opacity-40 pointer-events-none' : ''}`}>
                         <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
                         {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
@@ -887,6 +897,7 @@ function ProductCard({ product, loadingPrices }: { product: ProductWithDynamicPr
                             </button>
                         ))}
                     </div>
+                    )}
                 </div>
             </div>
         </Link>
@@ -899,6 +910,7 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
 
     const displayPrice = product.calculated_price ?? product.price;
     const isHalted = product.sales_halted === true;
+    const isPamp = product.brand === 'PAMP Suisse';
 
     const cartItem = cart.find(item => item.product.id === product.id);
     const quantity = cartItem?.quantity || 0;
@@ -906,7 +918,7 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         const success = await addToCartById(product.id);
         if (success) {
             toast.success('Added to cart!', { description: product.name });
@@ -918,14 +930,14 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
     const handleIncrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         updateQuantity(product.id, quantity + 1);
     };
 
     const handleDecrement = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         if (quantity <= 1) {
             removeFromCart(product.id);
         } else {
@@ -936,7 +948,7 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
     const handlePresetClick = (e: React.MouseEvent, qty: number) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isHalted) return;
+        if (isHalted || isPamp) return;
         if (quantity === 0) {
             addToCartById(product.id).then((success) => {
                 if (success) {
@@ -990,7 +1002,8 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                         <p className="text-xs text-muted-foreground mt-0.5">{product.brand}</p>
                     )}
 
-                    {/* Bulk Presets - mobile */}
+                    {/* Bulk Presets - mobile (hidden for PAMP) */}
+                    {!isPamp && (
                     <div className={`flex items-center gap-1 mt-1.5 sm:hidden ${isHalted ? 'opacity-40 pointer-events-none' : ''}`}>
                         <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
                         {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
@@ -1009,11 +1022,13 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                             </button>
                         ))}
                     </div>
+                    )}
                 </div>
 
                 {/* Price & Controls */}
                 <div className="flex-shrink-0 flex items-center gap-3 sm:gap-4">
-                    {/* Bulk Presets - desktop */}
+                    {/* Bulk Presets - desktop (hidden for PAMP) */}
+                    {!isPamp && (
                     <div className={`hidden sm:flex items-center gap-1 ${isHalted ? 'opacity-40 pointer-events-none' : ''}`}>
                         <span className="text-[10px] text-muted-foreground mr-0.5">Bulk:</span>
                         {DEFAULT_VOLUME_DISCOUNT_TIERS.map((tier) => (
@@ -1032,10 +1047,15 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                             </button>
                         ))}
                     </div>
+                    )}
 
                     {/* Price */}
                     <div className="text-right">
-                        {loadingPrices ? (
+                        {isPamp ? (
+                            <div className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400">
+                                Contact for Pricing
+                            </div>
+                        ) : loadingPrices ? (
                             <div className="h-6 w-20 bg-muted animate-pulse rounded" />
                         ) : (
                             <div className={`text-base sm:text-lg font-bold ${isHalted ? 'text-muted-foreground' : 'text-foreground'}`}>
@@ -1045,7 +1065,11 @@ function ProductListItem({ product, loadingPrices }: { product: ProductWithDynam
                     </div>
 
                     {/* Cart Controls */}
-                    {isHalted ? (
+                    {isPamp ? (
+                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            <Mail className="h-4 w-4" />
+                        </div>
+                    ) : isHalted ? (
                         <button
                             disabled
                             className="p-2 rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
