@@ -27,7 +27,12 @@
       "WebFetch(domain:www.ainsliebullion.com.au)",
       "WebFetch(domain:www.goldstackers.com.au)",
       "WebFetch(domain:www.melbournegoldcompany.com.au)",
-      "WebFetch(domain:www.austrac.gov.au)"
+      "WebFetch(domain:www.austrac.gov.au)",
+      "WebFetch(domain:www.opensanctions.org)",
+      "WebFetch(domain:data.opensanctions.org)"
+    ],
+    "additionalDirectories": [
+      "/Users/markmekhayl/WebstormProjects"
     ]
   },
   "outputStyle": "default"
