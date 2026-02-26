@@ -1,5 +1,36 @@
 Changelog - 2026-02-26
 
+Xero Bank Transfer Matching (Semi-Automatic Reconciliation)
+
+Core Logic
+
+- src/lib/xero/bank-matching.ts — extractReferenceCode() regex matcher, isAmountMatch() exact comparator, matchBankTransfers() polls Xero for unreconciled RECEIVE transactions and matches against open orders by ANB-XXXXXX reference + exact AUD amount
+- src/lib/xero/__tests__/bank-matching.test.ts — 9 unit tests covering reference extraction (embedded text, lowercase, multiple refs, no match) and amount matching (exact, floating point, zero rejection)
+
+Cron Integration
+
+- src/app/api/cron/bank-transfer-monitor/route.ts — Added Job 3: Xero bank transfer matching after existing reminder/expiry jobs, isolated in try/catch so Xero failures never affect payment monitoring
+
+Database
+
+- supabase/migrations/20260226000002_add_xero_matching_columns.sql — 4 new columns on bank_transfer_orders: xero_matched_at, xero_bank_transaction_id, xero_match_status (matched/amount_mismatch/not_found), xero_match_amount
+
+Admin UI
+
+- src/app/admin/bank-transfers/page.tsx — Green "Xero Matched" badge with timestamp, amber "Amount Mismatch" badge with expected vs received amounts, row highlighting for matched/mismatched orders, "Confirm (Matched)" one-click button with ring highlight
+
+API Changes
+
+- src/app/api/admin/bank-transfer/list/route.ts — Added xero_match_status, xero_matched_at, xero_match_amount, xero_bank_transaction_id to admin list response
+- src/app/api/admin/bank-transfer/confirm-payment/route.ts — On payment confirmation, auto-reconciles the matched Xero bank transaction (non-fatal if Xero fails)
+
+Design Docs
+
+- docs/plans/2026-02-26-xero-bank-transfer-matching-design.md
+- docs/plans/2026-02-26-xero-bank-transfer-matching-plan.md
+
+---
+
 Bank Transfer Payment System
 
 Backend — API Routes & Core Logic

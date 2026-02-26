@@ -4,6 +4,7 @@ import { createLogger } from '@/lib/utils/logger';
 import { requireAdmin } from '@/lib/auth/admin';
 import { sendEmail } from '@/lib/email/ses';
 import Stripe from 'stripe';
+import { getAuthenticatedClient } from '@/lib/xero/client';
 
 const logger = createLogger('ADMIN_BANK_TRANSFER_CONFIRM');
 
@@ -233,6 +234,30 @@ export async function POST(req: NextRequest) {
 
     if (auditError) {
       logger.error('Failed to create audit log (non-fatal):', auditError);
+    }
+
+    // 10. If this order was Xero-matched, reconcile the bank transaction in Xero
+    if (order.xero_bank_transaction_id) {
+      try {
+        const auth = await getAuthenticatedClient(supabase);
+        if (auth) {
+          const { xero, tenantId } = auth;
+          await xero.accountingApi.updateBankTransaction(
+            tenantId,
+            order.xero_bank_transaction_id,
+            {
+              bankTransactions: [{
+                bankTransactionID: order.xero_bank_transaction_id,
+                isReconciled: true,
+              } as unknown as import('xero-node').BankTransaction],
+            }
+          );
+          logger.log('Xero bank transaction reconciled:', order.xero_bank_transaction_id);
+        }
+      } catch (xeroError) {
+        // Non-fatal — payment is confirmed regardless
+        logger.error('Failed to reconcile Xero bank transaction (non-fatal):', xeroError);
+      }
     }
 
     logger.log('Bank transfer payment confirmed successfully:', order.reference_code);

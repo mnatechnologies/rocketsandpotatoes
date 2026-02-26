@@ -25,6 +25,10 @@ interface BankTransferOrderRow {
   customer_id: string | null;
   customer_name: string | null;
   customer_email: string | null;
+  xero_match_status: string | null;
+  xero_matched_at: string | null;
+  xero_match_amount: number | null;
+  xero_bank_transaction_id: string | null;
 }
 
 type Tab = 'awaiting' | 'completed' | 'expired';
@@ -423,6 +427,42 @@ export default function BankTransfersPage() {
   );
 }
 
+function XeroMatchBadge({ order }: { order: BankTransferOrderRow }) {
+  if (!order.xero_match_status) return null;
+
+  if (order.xero_match_status === 'matched') {
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs font-medium">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+          Xero Matched
+        </span>
+        {order.xero_matched_at && (
+          <span className="text-[10px] text-muted-foreground">
+            {new Date(order.xero_matched_at).toLocaleString('en-AU')}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (order.xero_match_status === 'amount_mismatch') {
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-medium">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+          Amount Mismatch
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          Expected {formatAUD(order.amount_aud)} — Received {formatAUD(order.xero_match_amount)}
+        </span>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function AwaitingTable({
   orders,
   onConfirm,
@@ -452,7 +492,7 @@ function AwaitingTable({
             const urgencyColor = getUrgencyColor(hours);
 
             return (
-              <tr key={order.id} className="border-b border-border/50 hover:bg-muted/30">
+              <tr key={order.id} className={`border-b border-border/50 hover:bg-muted/30 ${order.xero_match_status === 'matched' ? 'bg-green-50/50 dark:bg-green-950/20' : order.xero_match_status === 'amount_mismatch' ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
                 <td className="py-3 font-mono text-xs">{order.reference_code}</td>
                 <td className="py-3">
                   <div className="text-card-foreground">{order.customer_name || 'Unknown'}</div>
@@ -466,17 +506,24 @@ function AwaitingTable({
                   </span>
                 </td>
                 <td className="py-3">
-                  <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-medium">
-                    Awaiting Transfer
-                  </span>
+                  <XeroMatchBadge order={order} />
+                  {!order.xero_match_status && (
+                    <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-medium">
+                      Awaiting Transfer
+                    </span>
+                  )}
                 </td>
                 <td className="py-3">
                   <div className="flex gap-2">
                     <button
                       onClick={() => onConfirm(order)}
-                      className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors"
+                      className={`px-3 py-1 text-white rounded text-xs font-medium transition-colors ${
+                        order.xero_match_status === 'matched'
+                          ? 'bg-green-600 hover:bg-green-700 ring-2 ring-green-300 ring-offset-1'
+                          : 'bg-green-600 hover:bg-green-700'
+                      }`}
                     >
-                      Confirm
+                      {order.xero_match_status === 'matched' ? 'Confirm (Matched)' : 'Confirm'}
                     </button>
                     <button
                       onClick={() => onCancel(order)}

@@ -143,6 +143,11 @@ export async function GET(req: NextRequest) {
           ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
           : null,
         customer_email: customer?.email || null,
+        // Xero matching data
+        xero_match_status: order.xero_match_status || null,
+        xero_matched_at: order.xero_matched_at || null,
+        xero_match_amount: order.xero_match_amount || null,
+        xero_bank_transaction_id: order.xero_bank_transaction_id || null,
       };
     });
 

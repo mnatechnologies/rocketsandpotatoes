@@ -8,6 +8,7 @@ import {
   sendBankTransferReminderEmail,
   sendBankTransferExpiredEmail,
 } from '@/lib/email/sendBankTransferEmails';
+import { matchBankTransfers } from '@/lib/xero/bank-matching';
 
 const logger = createLogger('BANK_TRANSFER_MONITOR');
 
@@ -259,12 +260,29 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    logger.log('Monitor complete:', { remindersSent, ordersExpired });
+    // ── Job 3: Xero bank transfer matching ──
+    // Isolated in try/catch — Xero failures never affect Jobs 1 & 2
+    let xeroMatched = 0;
+    let xeroMismatches = 0;
+    try {
+      const matchResult = await matchBankTransfers(supabase);
+      xeroMatched = matchResult.ordersMatched;
+      xeroMismatches = matchResult.amountMismatches;
+      if (matchResult.errors.length > 0) {
+        logger.warn('Xero matching completed with errors:', matchResult);
+      }
+    } catch (xeroError) {
+      logger.error('Xero bank matching failed (non-fatal):', xeroError);
+    }
+
+    logger.log('Monitor complete:', { remindersSent, ordersExpired, xeroMatched, xeroMismatches });
 
     return NextResponse.json({
       success: true,
       remindersSent,
       ordersExpired,
+      xeroMatched,
+      xeroMismatches,
     });
   } catch (error) {
     logger.error('Bank transfer monitor failed:', error);
