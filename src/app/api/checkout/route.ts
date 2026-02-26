@@ -263,7 +263,7 @@ export async function POST(req: NextRequest) {
   // 2. Get customer data (including business_customer_id)
   const { data: customer, error: customerError } = await supabase
     .from('customers')
-    .select('*, business_customer_id')
+    .select('*')
     .eq('id', customerId)
     .single();
 
