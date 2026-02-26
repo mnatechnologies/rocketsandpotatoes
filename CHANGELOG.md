@@ -1,3 +1,78 @@
+Changelog - 2026-02-26
+
+Bank Transfer Payment System
+
+Backend — API Routes & Core Logic
+
+- src/app/api/bank-transfer/create-order/route.ts — Creates Stripe manual-capture payment intent for 10% deposit hold, inserts transaction + bank_transfer_orders record
+- src/app/api/bank-transfer/confirm-hold/route.ts — Confirms hold after Stripe auth, generates unique reference (ANB-XXXXXX), starts 24hr payment window, sends invoice email, generates TTR
+- src/app/api/bank-transfer/[id]/status/route.ts — Customer-facing order status endpoint
+- src/app/api/bank-transfer/[id]/notify-transferred/route.ts — Customer notifies admin that bank transfer was sent
+- src/app/api/bank-transfer/settings/route.ts — Public endpoint exposing enabled status, deposit percentage, payment window hours
+- src/app/api/admin/bank-transfer/confirm-payment/route.ts — Admin confirms bank transfer receipt, voids Stripe hold
+- src/app/api/admin/bank-transfer/cancel-order/route.ts — Admin cancels order with optional hold capture for market loss
+- src/app/api/admin/bank-transfer/list/route.ts — List orders with status filter for admin dashboard
+- src/app/api/admin/bank-transfer/settings/route.ts — Admin GET/PUT for bank transfer settings
+
+Database & Types
+
+- supabase/migrations/20260226000001_add_bank_transfer_tables.sql — New tables: bank_transfer_orders, bank_transfer_settings; new column on transactions: payment_method_type
+- src/types/bank-transfer.ts — TypeScript types for BankTransferOrder, BankTransferSettings, InvoiceData, status enums
+
+Utilities
+
+- src/lib/bank-transfer/reference.ts — Unique reference code generator (ANB-XXXXXX format with collision retry)
+- src/lib/bank-transfer/settings.ts — Settings fetcher + validateSettings() with boundary checks
+- src/lib/bank-transfer/market-loss.ts — Pure function for calculating market loss on expired orders (capped at hold amount)
+
+Email Templates
+
+- src/emails/BankTransferInvoiceEmail.tsx — Invoice with bank details, reference code, deadline, hold disclosure
+- src/emails/BankTransferReminderEmail.tsx — Urgent reminder with countdown at 18hrs
+- src/emails/BankTransferConfirmedEmail.tsx — Payment confirmed, hold released notification
+- src/emails/BankTransferExpiredEmail.tsx — Order expired with hold capture explanation
+- src/lib/email/sendBankTransferEmails.ts — 5 sender functions: invoice, reminder, confirmed, expired, admin transfer notification
+
+Cron Job
+
+- src/app/api/cron/bank-transfer-monitor/route.ts — Runs every 15 min: sends reminders for approaching deadlines, expires overdue orders with market loss calculation, captures/voids Stripe holds
+- vercel.json — Added cron schedule entry
+
+Webhook & Cleanup Modifications
+
+- src/app/api/webhooks/stripe/route.ts — Added early return for bank_transfer_deposit metadata in payment_intent.succeeded; added hold auto-expiry handling in payment_intent.canceled
+- src/app/api/cron/cleanup-price-locks/route.ts — Excludes active bank transfer sessions from price lock cleanup
+
+Frontend — Checkout Flow
+
+- src/components/PaymentMethodSelector.tsx — Card vs bank transfer selection with deposit info and market loss policy acknowledgment checkbox
+- src/components/BankTransferHoldForm.tsx — Stripe Elements form for 10% deposit card authorization
+- src/components/CheckoutFlow.tsx — Added payment_method and bank_transfer_hold steps with BankTransferHoldFormWrapper
+
+Invoice & Customer Pages
+
+- src/app/order/[id]/invoice/page.tsx — Client component with countdown timer, copy-to-clipboard for reference/BSB/account, status polling across 5 states (pending → confirmed → expired)
+
+Admin Pages
+
+- src/app/admin/bank-transfers/page.tsx — Tabbed management (Awaiting Transfer/Completed/Expired) with confirm payment and cancel order modals
+- src/app/admin/settings/bank-transfer/page.tsx — Settings form with validation for deposit %, payment window, bank details
+- src/app/admin/page.tsx — Added bank transfers pending count widget
+- src/app/admin/layout.tsx — Added nav links and breadcrumbs for bank transfer pages
+
+Tests
+
+- src/lib/bank-transfer/__tests__/market-loss.test.ts — 9 tests: zero capture, price drops, caps, fees, rounding, edge cases
+- src/lib/bank-transfer/__tests__/settings.test.ts — 11 tests: validation rules, boundaries
+- src/lib/bank-transfer/__tests__/reference.test.ts — 5 tests: format, uniqueness, collision handling
+- vitest.config.ts — Added @/ path alias for test resolution
+
+Bugfix
+
+- src/app/api/checkout/route.ts — Fixed 404 "Customer not found" error caused by explicit business_customer_id in Supabase select query when column doesn't exist in production schema; changed select('*, business_customer_id') to select('*')
+
+---
+
 Changelog - 2026-02-24
 
 New Seed Files
