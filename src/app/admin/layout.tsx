@@ -20,6 +20,8 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/pricing': 'Pricing Configuration',
   '/admin/integrations': 'Integrations',
   '/admin/sales-control': 'Sales Control',
+  '/admin/bank-transfers': 'Bank Transfers',
+  '/admin/settings/bank-transfer': 'BT Settings',
 };
 
 function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
@@ -129,6 +131,13 @@ export default function AdminLayout({
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Integrations
+              </Link>
+              <span className="text-muted-foreground hidden sm:inline">•</span>
+              <Link
+                href="/admin/bank-transfers"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
+              >
+                Bank Transfers
               </Link>
               <span className="text-muted-foreground hidden sm:inline">•</span>
               <Link

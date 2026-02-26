@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createLogger} from "@/lib/utils/logger";
 
 const logger = createLogger('ADMIN DASHBOARD')
+
+interface BankTransferOrderRow {
+  id: string;
+  payment_deadline: string;
+  status: string;
+}
+
 interface DashboardStats {
   pendingDocuments: number;
   flaggedTransactions: number;
@@ -24,18 +31,43 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [btAwaitingCount, setBtAwaitingCount] = useState(0);
+  const [btUrgent, setBtUrgent] = useState(false);
+
+  const fetchBankTransferStats = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/bank-transfer/list?status=awaiting_transfer&t=${Date.now()}`, {
+        cache: 'no-store',
+      });
+      const data = await res.json();
+      const orders: BankTransferOrderRow[] = data.data || [];
+      setBtAwaitingCount(orders.length);
+      // Check if any are <2hrs from expiry
+      const now = Date.now();
+      const hasUrgent = orders.some((o) => {
+        const deadline = new Date(o.payment_deadline).getTime();
+        return (deadline - now) < 2 * 60 * 60 * 1000;
+      });
+      setBtUrgent(hasUrgent);
+    } catch {
+      // Non-critical, silently fail
+    }
+  }, []);
 
   useEffect(() => {
     // Initial fetch
     fetchDashboardStats();
+    fetchBankTransferStats();
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         fetchDashboardStats();
+        fetchBankTransferStats();
       }
     };
     const handleFocus = () => {
       fetchDashboardStats();
+      fetchBankTransferStats();
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -154,6 +186,13 @@ export default function AdminDashboard() {
               link="/admin/edd-reviews"
               color="blue"
               icon="📋"
+            />
+            <ActionCard
+              title="Bank Transfers Pending"
+              count={btAwaitingCount}
+              link="/admin/bank-transfers"
+              color={btUrgent ? 'red' : btAwaitingCount > 0 ? 'orange' : 'blue'}
+              icon="🏦"
             />
           </div>
         </div>
@@ -274,7 +313,18 @@ export default function AdminDashboard() {
               link="/admin/audit-logs"
               icon="📝"
             />
-
+            <QuickLink
+              title="Bank Transfers"
+              description="Manage bank transfer orders"
+              link="/admin/bank-transfers"
+              icon="🏦"
+            />
+            <QuickLink
+              title="BT Settings"
+              description="Bank transfer payment configuration"
+              link="/admin/settings/bank-transfer"
+              icon="⚙️"
+            />
           </div>
         </div>
     </div>

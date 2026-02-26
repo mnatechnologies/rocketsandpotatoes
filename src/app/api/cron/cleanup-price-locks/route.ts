@@ -23,13 +23,29 @@ export async function GET(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Mark expired locks
-    const { data, error } = await supabase
+    // Exclude sessions with active bank transfer orders
+    const { data: activeTransactions } = await supabase
+      .from('transactions')
+      .select('metadata')
+      .eq('payment_method_type', 'bank_transfer')
+      .in('payment_status', ['pending', 'awaiting_bank_transfer']);
+
+    const activeSessionIds = (activeTransactions || [])
+      .map((t: { metadata: Record<string, unknown> | null }) => (t.metadata?.session_id as string))
+      .filter((id: string | undefined): id is string => Boolean(id));
+
+    // Mark expired locks (excluding active bank transfer sessions)
+    let query = supabase
       .from('price_locks')
       .update({ status: 'expired' })
       .eq('status', 'active')
-      .lt('expires_at', new Date().toISOString())
-      .select();
+      .lt('expires_at', new Date().toISOString());
+
+    if (activeSessionIds.length > 0) {
+      query = query.not('session_id', 'in', `(${activeSessionIds.join(',')})`);
+    }
+
+    const { data, error } = await query.select();
 
     if (error) throw error;
 

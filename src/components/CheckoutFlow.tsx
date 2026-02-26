@@ -8,6 +8,8 @@ import { Product } from "@/types/product";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements  } from "@stripe/react-stripe-js";
 import { PaymentForm } from './PaymentForm';
+import { PaymentMethodSelector } from './PaymentMethodSelector';
+import { BankTransferHoldForm } from './BankTransferHoldForm';
 import { createLogger } from '@/lib/utils/logger'
 import { SourceOfFundsForm } from './SourceOfFunds';
 import { EnhancedDueDiligenceForm } from './EnhancedDueDiligence';
@@ -35,7 +37,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const { getLockedPriceForProduct } = useCart();
 
 
-  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked' | 'business_verification' | 'payment' | 'coming_soon'>('validate');
+  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked' | 'business_verification' | 'payment_method' | 'payment' | 'bank_transfer_hold' | 'coming_soon'>('validate');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -141,8 +143,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
       } else if (result.status === 'business_verification_required') {
         setStep('business_verification');
       } else if (result.status === 'approved') {
-        await createPaymentIntent();
-        setStep('payment');
+        setStep('payment_method');
       }
     } catch (error) {
       logger.error('Error during validation:', error);
@@ -622,6 +623,49 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
     );
   }
 
+  if (step === 'payment_method') {
+    // Calculate AUD amount for the selector
+    const amountAud = currency === 'AUD' ? finalAmount : finalAmount * exchangeRate;
+
+    return (
+      <PaymentMethodSelector
+        onSelect={async (method) => {
+          if (method === 'card') {
+            logger.log('Card payment selected, creating payment intent...');
+            await createPaymentIntent();
+            setStep('payment');
+          } else {
+            logger.log('Bank transfer selected');
+            setStep('bank_transfer_hold');
+          }
+        }}
+        orderTotalAud={amountAud}
+        depositPercentage={10}
+      />
+    );
+  }
+
+  if (step === 'bank_transfer_hold') {
+    const amountAud = currency === 'AUD' ? finalAmount : finalAmount * exchangeRate;
+
+    return (
+      <BankTransferHoldFormWrapper
+        sessionId={sessionId!}
+        customerId={customerId}
+        customerEmail={customerEmail || ''}
+        cartItems={cartItemsWithLockedPrices || []}
+        currency={currency}
+        amount={finalAmount}
+        orderTotalAud={amountAud}
+        onSuccess={(orderId) => {
+          logger.log('Bank transfer hold successful, redirecting to invoice...');
+          window.location.href = `/order/${orderId}/invoice`;
+        }}
+        onBack={() => setStep('payment_method')}
+      />
+    );
+  }
+
   if (step === 'payment') {
     const needsEDD = validationResult?.requirements?.requiresEnhancedDD && !eddCompleted;
     const needsSOF = validationResult?.requirements?.requiresTTR && !sourceOfFundsProvided;
@@ -681,4 +725,137 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   }
 
   return <div>Processing...</div>;
+}
+
+
+/**
+ * Wrapper that calls create-order to get the Stripe clientSecret,
+ * then renders Elements + BankTransferHoldForm.
+ */
+interface BankTransferHoldFormWrapperProps {
+  sessionId: string;
+  customerId: string;
+  customerEmail: string;
+  cartItems: any[];
+  currency: string;
+  amount: number;
+  orderTotalAud: number;
+  onSuccess: (orderId: string) => void;
+  onBack: () => void;
+}
+
+function BankTransferHoldFormWrapper({
+  sessionId,
+  customerId,
+  customerEmail,
+  cartItems,
+  currency,
+  amount,
+  orderTotalAud,
+  onSuccess,
+  onBack,
+}: BankTransferHoldFormWrapperProps) {
+  const [holdClientSecret, setHoldClientSecret] = useState<string | null>(null);
+  const [holdOrderId, setHoldOrderId] = useState<string | null>(null);
+  const [holdPaymentIntentId, setHoldPaymentIntentId] = useState<string | null>(null);
+  const [holdDepositAmountAud, setHoldDepositAmountAud] = useState<number>(0);
+  const [holdOrderTotalAud, setHoldOrderTotalAud] = useState<number>(orderTotalAud);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const orderCreated = useRef(false);
+
+  useEffect(() => {
+    if (orderCreated.current) return;
+    orderCreated.current = true;
+
+    const createOrder = async () => {
+      try {
+        const response = await fetch('/api/bank-transfer/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            customerId,
+            clerkUserId: customerId,
+            customerEmail,
+            cartItems: cartItems.map((item: any) => ({
+              productId: item.productId || item.id,
+              quantity: item.quantity,
+              name: item.name,
+            })),
+            currency,
+            amount,
+            marketLossPolicyAccepted: true,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create bank transfer order');
+        }
+
+        const data = await response.json();
+        setHoldClientSecret(data.clientSecret);
+        setHoldOrderId(data.bankTransferOrderId);
+        setHoldPaymentIntentId(data.paymentIntentId);
+        setHoldDepositAmountAud(data.depositAmountAud);
+        if (data.orderTotalAud) setHoldOrderTotalAud(data.orderTotalAud);
+      } catch (err: any) {
+        setError(err.message || 'Failed to set up bank transfer order');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    createOrder();
+  }, [sessionId, customerId, customerEmail, cartItems, currency, amount]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+        <p className="text-muted-foreground">Setting up your bank transfer order...</p>
+      </div>
+    );
+  }
+
+  if (error || !holdClientSecret || !holdOrderId || !holdPaymentIntentId) {
+    return (
+      <div className="space-y-4">
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <p className="text-destructive-foreground font-medium">Setup Error</p>
+          <p className="text-destructive-foreground text-sm mt-1">
+            {error || 'Failed to initialize bank transfer order. Please try again.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Back to payment method selection
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret: holdClientSecret,
+        appearance: { theme: 'stripe' },
+      }}
+      key={holdClientSecret}
+    >
+      <BankTransferHoldForm
+        bankTransferOrderId={holdOrderId}
+        paymentIntentId={holdPaymentIntentId}
+        depositAmountAud={holdDepositAmountAud}
+        orderTotalAud={holdOrderTotalAud}
+        onSuccess={onSuccess}
+        onBack={onBack}
+      />
+    </Elements>
+  );
 }

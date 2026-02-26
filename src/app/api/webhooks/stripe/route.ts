@@ -53,6 +53,12 @@ export async function POST(req: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         logger.log('Payment succeeded:', paymentIntent.id);
 
+        // Skip normal order flow for bank transfer deposit captures (market loss)
+        if (paymentIntent.metadata?.type === 'bank_transfer_deposit') {
+          logger.log('Bank transfer deposit captured:', paymentIntent.id);
+          break;
+        }
+
         // Find transaction by payment intent ID
         const { data: existingTransaction, error: findError } = await supabase
             .from('transactions')
@@ -280,6 +286,20 @@ export async function POST(req: NextRequest) {
       case 'payment_intent.canceled': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         logger.log('Payment canceled:', paymentIntent.id);
+
+        // Handle bank transfer hold auto-expiry by Stripe
+        if (paymentIntent.metadata?.type === 'bank_transfer_deposit') {
+          const { error } = await supabase
+            .from('bank_transfer_orders')
+            .update({ hold_status: 'expired', updated_at: new Date().toISOString() })
+            .eq('stripe_hold_intent_id', paymentIntent.id);
+
+          if (error) {
+            logger.error('Failed to update bank transfer order hold status:', error);
+          }
+          logger.log('Bank transfer hold auto-expired by Stripe:', paymentIntent.id);
+          break;
+        }
 
         // Update transaction status to canceled
         const { error: updateError } = await supabase
