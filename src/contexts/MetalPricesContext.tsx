@@ -59,15 +59,29 @@ function getMarketStatus() {
 }
 
 const FETCH_INTERVAL_MS = 300000; // 5 minutes
+const CACHE_KEY = 'metal_prices_cache';
+
+function getCachedState(): { prices: MetalPrice[]; pricingConfig: PricingConfig | null; fetchedAt: number; dataTimestamp: string | null } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    // Only use cache if it's less than 5 minutes old
+    if (Date.now() - cached.fetchedAt < FETCH_INTERVAL_MS) return cached;
+    return null;
+  } catch { return null; }
+}
 
 export function MetalPricesProvider({ children }: { children: ReactNode }) {
-  const [prices, setPrices] = useState<MetalPrice[]>([]);
-  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const cached = useRef(getCachedState());
+  const [prices, setPrices] = useState<MetalPrice[]>(cached.current?.prices ?? []);
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(cached.current?.pricingConfig ?? null);
+  const [isLoading, setIsLoading] = useState(!cached.current);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [dataTimestamp, setDataTimestamp] = useState<Date | null>(null)
-  const lastFetchedAt = useRef<number>(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(cached.current ? new Date(cached.current.fetchedAt) : null);
+  const [dataTimestamp, setDataTimestamp] = useState<Date | null>(cached.current?.dataTimestamp ? new Date(cached.current.dataTimestamp) : null);
+  const lastFetchedAt = useRef<number>(cached.current?.fetchedAt ?? 0);
 
   const fetchPrices = async (force = false) => {
     // Enforce strict 5-minute minimum between fetches
@@ -104,23 +118,32 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
       }
 
       // Fetch pricing config (non-blocking - use defaults if it fails)
+      let resolvedConfig: PricingConfig;
       if (configResponse.ok) {
         const configResult = await configResponse.json();
         if (configResult.success && configResult.data) {
-          setPricingConfig({
+          resolvedConfig = {
             markup_percentage: configResult.data.markup_percentage,
             default_base_fee_percentage: configResult.data.default_base_fee_percentage,
             brand_base_fee_percentages: configResult.data.brand_base_fee_percentages || {},
-          });
+          };
+        } else {
+          resolvedConfig = { markup_percentage: 10, default_base_fee_percentage: 2, brand_base_fee_percentages: {} };
         }
       } else {
-        // Use defaults if pricing config fetch fails
-        setPricingConfig({
-          markup_percentage: 10,
-          default_base_fee_percentage: 2,
-          brand_base_fee_percentages: {},
-        });
+        resolvedConfig = { markup_percentage: 10, default_base_fee_percentage: 2, brand_base_fee_percentages: {} };
       }
+      setPricingConfig(resolvedConfig);
+
+      // Persist to sessionStorage so page refreshes don't reset the timer
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          prices: pricesResult.data,
+          pricingConfig: resolvedConfig,
+          fetchedAt: lastFetchedAt.current,
+          dataTimestamp: pricesResult.timestamp || null,
+        }));
+      } catch { /* quota exceeded — ignore */ }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch prices');
       // Set default pricing config on error
