@@ -29,7 +29,9 @@
       "WebFetch(domain:www.melbournegoldcompany.com.au)",
       "WebFetch(domain:www.austrac.gov.au)",
       "WebFetch(domain:www.opensanctions.org)",
-      "WebFetch(domain:data.opensanctions.org)"
+      "WebFetch(domain:data.opensanctions.org)",
+      "Bash(mkdir:*)",
+      "Bash(git add:*)"
     ],
     "additionalDirectories": [
       "/Users/markmekhayl/WebstormProjects"

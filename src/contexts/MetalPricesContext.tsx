@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { createLogger} from "@/lib/utils/logger";
 
@@ -58,6 +58,8 @@ function getMarketStatus() {
   return { isOpen: true, reason: 'Live' };
 }
 
+const FETCH_INTERVAL_MS = 300000; // 5 minutes
+
 export function MetalPricesProvider({ children }: { children: ReactNode }) {
   const [prices, setPrices] = useState<MetalPrice[]>([]);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
@@ -65,8 +67,16 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [dataTimestamp, setDataTimestamp] = useState<Date | null>(null)
+  const lastFetchedAt = useRef<number>(0);
 
-  const fetchPrices = async () => {
+  const fetchPrices = async (force = false) => {
+    // Enforce strict 5-minute minimum between fetches
+    const now = Date.now();
+    if (!force && lastFetchedAt.current && now - lastFetchedAt.current < FETCH_INTERVAL_MS) {
+      logger.log('Skipping fetch — last fetch was', Math.round((now - lastFetchedAt.current) / 1000), 's ago');
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -83,6 +93,7 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
 
       if (pricesResult.success && pricesResult.data) {
         setPrices(pricesResult.data);
+        lastFetchedAt.current = Date.now();
         setLastUpdated(new Date());
 
         if (pricesResult.timestamp) {
@@ -124,53 +135,22 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Initial fetch on mount
+    // Initial fetch on mount (throttled — skips if data is fresh)
     fetchPrices();
 
-    // Industry best practice: Only poll when markets are OPEN
-    // JM Bullion approach: Static prices when markets closed
-    const UPDATE_INTERVAL_OPEN = 300000; // 5 minutes when markets are open
-    const STATUS_CHECK_INTERVAL = 60000; // Check market status every minute
-
-    let priceInterval: NodeJS.Timeout | null = null;
-    let statusInterval: NodeJS.Timeout | null = null;
-
-    const setupPolling = () => {
+    // Strict 5-minute polling — market hours checked inside the tick
+    const priceInterval = setInterval(() => {
       const marketStatus = getMarketStatus();
-
       if (marketStatus.isOpen) {
-        // Markets are open - poll for price updates every 5 minutes
-        if (!priceInterval) {
-          logger.log('📊 Markets OPEN - Starting price polling (every 5 minutes)');
-          priceInterval = setInterval(fetchPrices, UPDATE_INTERVAL_OPEN);
-        }
-      } else {
-        // Markets are closed - stop polling to save API quota
-        if (priceInterval) {
-          logger.log('🔴 Markets CLOSED - Stopping price polling');
-          clearInterval(priceInterval);
-          priceInterval = null;
-        }
+        fetchPrices(true);
       }
-    };
+    }, FETCH_INTERVAL_MS);
 
-    // Set up initial polling based on current market status
-    setupPolling();
-
-    // Check market status every minute to detect open/close transitions
-    statusInterval = setInterval(() => {
-      setupPolling();
-    }, STATUS_CHECK_INTERVAL);
-
-    // Cleanup
-    return () => {
-      if (priceInterval) clearInterval(priceInterval);
-      if (statusInterval) clearInterval(statusInterval);
-    };
+    return () => clearInterval(priceInterval);
   }, []);
 
   return (
-    <MetalPricesContext.Provider value={{ prices, pricingConfig, isLoading, error, lastUpdated, dataTimestamp, refetch: fetchPrices }}>
+    <MetalPricesContext.Provider value={{ prices, pricingConfig, isLoading, error, lastUpdated, dataTimestamp, refetch: () => fetchPrices() }}>
       {children}
     </MetalPricesContext.Provider>
   );

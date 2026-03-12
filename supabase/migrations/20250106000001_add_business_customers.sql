@@ -299,7 +299,7 @@ CREATE INDEX idx_business_edd_business ON public.business_edd(business_customer_
 ALTER TABLE public.customers
     ADD COLUMN IF NOT EXISTS customer_type character varying(20) DEFAULT 'individual'::character varying,
     ADD COLUMN IF NOT EXISTS business_customer_id uuid REFERENCES public.business_customers(id),
-    ADD COLUMN IF NOT EXISTS is_acting_as_business boolean DEFAULT false;
+    ADD COLUMN IF NOT EXISTS is_acting_as_business boolean DEFAULT false,
     ADD COLUMN IF NOT EXISTS onboarding_complete boolean DEFAULT false;
 
 ALTER TABLE public.customers
