@@ -20,7 +20,16 @@ const TROY_OZ_TO_GRAMS = 31.1035;
 export default function PriceTicker() {
   const { prices: contextPrices, isLoading, lastUpdated } = useMetalPrices();
   const { currency, exchangeRate, convertPrice } = useCurrency();
-  const [nextRefreshCountdown, setNextRefreshCountdown] = useState('');
+  const computeCountdown = (updated: Date | null): string => {
+    if (!updated) return '5:00';
+    const diff = updated.getTime() + 5 * 60 * 1000 - Date.now();
+    if (diff <= 0) return '0:00';
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `0${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const [nextRefreshCountdown, setNextRefreshCountdown] = useState(() => computeCountdown(lastUpdated));
   const [headerHeight, setHeaderHeight] = useState(80);
   const [tickerCollapsed, setTickerCollapsed] = useState(false);
 
@@ -50,19 +59,7 @@ export default function PriceTicker() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      // Update refresh countdown
-      if (lastUpdated) {
-        const nextRefresh = new Date(lastUpdated.getTime() + 5 * 60 * 1000);
-        const now = new Date();
-        const diff = nextRefresh.getTime() - now.getTime();
-        if (diff > 0) {
-          const mins = Math.floor(diff / 60000);
-          const secs = Math.floor((diff % 60000) / 1000);
-          setNextRefreshCountdown(`0${mins}:${secs.toString().padStart(2, '0')}`);
-        } else {
-          setNextRefreshCountdown('0:00');
-        }
-      }
+      setNextRefreshCountdown(computeCountdown(lastUpdated));
     }, 1000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
