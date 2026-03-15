@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { MetalSymbol } from '@/lib/metals-api/metalsApi';
 import { createLogger} from "@/lib/utils/logger";
 
@@ -25,7 +25,8 @@ interface MetalPricesContextType {
   isLoading: boolean;
   error: string | null;
   lastUpdated: Date | null;
-  dataTimestamp: Date | null
+  dataTimestamp: Date | null;
+  nextUpdateTime: Date;
   refetch: () => Promise<void>;
 }
 
@@ -59,38 +60,32 @@ function getMarketStatus() {
 }
 
 const FETCH_INTERVAL_MS = 300000; // 5 minutes
-const CACHE_KEY = 'metal_prices_cache';
 
-function getCachedState(): { prices: MetalPrice[]; pricingConfig: PricingConfig | null; fetchedAt: number; dataTimestamp: string | null } | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw);
-    // Only use cache if it's less than 5 minutes old
-    if (Date.now() - cached.fetchedAt < FETCH_INTERVAL_MS) return cached;
-    return null;
-  } catch { return null; }
+/** Returns the next wall-clock 5-minute mark (:00, :05, :10, :15, ...) */
+function getNextUpdateTime(): Date {
+  const now = new Date();
+  const mins = now.getMinutes();
+  const nextMark = Math.ceil((mins + 1) / 5) * 5;
+  const next = new Date(now);
+  next.setMinutes(nextMark, 0, 0);
+  return next;
+}
+
+/** Returns ms until the next 5-minute wall-clock mark */
+function msUntilNextUpdate(): number {
+  return Math.max(0, getNextUpdateTime().getTime() - Date.now());
 }
 
 export function MetalPricesProvider({ children }: { children: ReactNode }) {
-  const cached = useRef(getCachedState());
-  const [prices, setPrices] = useState<MetalPrice[]>(cached.current?.prices ?? []);
-  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(cached.current?.pricingConfig ?? null);
-  const [isLoading, setIsLoading] = useState(!cached.current);
+  const [prices, setPrices] = useState<MetalPrice[]>([]);
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(cached.current ? new Date(cached.current.fetchedAt) : null);
-  const [dataTimestamp, setDataTimestamp] = useState<Date | null>(cached.current?.dataTimestamp ? new Date(cached.current.dataTimestamp) : null);
-  const lastFetchedAt = useRef<number>(cached.current?.fetchedAt ?? 0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [dataTimestamp, setDataTimestamp] = useState<Date | null>(null);
+  const [nextUpdateTime, setNextUpdateTime] = useState<Date>(getNextUpdateTime());
 
-  const fetchPrices = async (force = false) => {
-    // Enforce strict 5-minute minimum between fetches
-    const now = Date.now();
-    if (!force && lastFetchedAt.current && now - lastFetchedAt.current < FETCH_INTERVAL_MS) {
-      logger.log('Skipping fetch — last fetch was', Math.round((now - lastFetchedAt.current) / 1000), 's ago');
-      return;
-    }
-
+  const fetchPrices = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -107,7 +102,6 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
 
       if (pricesResult.success && pricesResult.data) {
         setPrices(pricesResult.data);
-        lastFetchedAt.current = Date.now();
         setLastUpdated(new Date());
 
         if (pricesResult.timestamp) {
@@ -134,16 +128,6 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
         resolvedConfig = { markup_percentage: 10, default_base_fee_percentage: 2, brand_base_fee_percentages: {} };
       }
       setPricingConfig(resolvedConfig);
-
-      // Persist to sessionStorage so page refreshes don't reset the timer
-      try {
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-          prices: pricesResult.data,
-          pricingConfig: resolvedConfig,
-          fetchedAt: lastFetchedAt.current,
-          dataTimestamp: pricesResult.timestamp || null,
-        }));
-      } catch { /* quota exceeded — ignore */ }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch prices');
       // Set default pricing config on error
@@ -155,25 +139,43 @@ export function MetalPricesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    // Initial fetch on mount (throttled — skips if data is fresh)
-    fetchPrices();
-
-    // Strict 5-minute polling — market hours checked inside the tick
-    const priceInterval = setInterval(() => {
-      const marketStatus = getMarketStatus();
-      if (marketStatus.isOpen) {
-        fetchPrices(true);
-      }
-    }, FETCH_INTERVAL_MS);
-
-    return () => clearInterval(priceInterval);
   }, []);
 
+  useEffect(() => {
+    // Fetch immediately on mount
+    fetchPrices();
+
+    // Schedule next fetch at the wall-clock 5-minute mark, then repeat every 5 minutes
+    const initialDelay = msUntilNextUpdate();
+    logger.log('Next price update in', Math.round(initialDelay / 1000), 's (at', getNextUpdateTime().toLocaleTimeString(), ')');
+
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const timeoutId = setTimeout(() => {
+      const marketStatus = getMarketStatus();
+      if (marketStatus.isOpen) {
+        fetchPrices();
+      }
+      setNextUpdateTime(getNextUpdateTime());
+
+      // Then repeat every 5 minutes, aligned to the clock
+      intervalId = setInterval(() => {
+        const status = getMarketStatus();
+        if (status.isOpen) {
+          fetchPrices();
+        }
+        setNextUpdateTime(getNextUpdateTime());
+      }, FETCH_INTERVAL_MS);
+    }, initialDelay);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [fetchPrices]);
+
   return (
-    <MetalPricesContext.Provider value={{ prices, pricingConfig, isLoading, error, lastUpdated, dataTimestamp, refetch: () => fetchPrices() }}>
+    <MetalPricesContext.Provider value={{ prices, pricingConfig, isLoading, error, lastUpdated, dataTimestamp, nextUpdateTime, refetch: fetchPrices }}>
       {children}
     </MetalPricesContext.Provider>
   );

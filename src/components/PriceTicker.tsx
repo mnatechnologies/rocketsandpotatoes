@@ -18,18 +18,17 @@ interface TickerPrice {
 const TROY_OZ_TO_GRAMS = 31.1035;
 
 export default function PriceTicker() {
-  const { prices: contextPrices, isLoading, lastUpdated } = useMetalPrices();
+  const { prices: contextPrices, isLoading, nextUpdateTime } = useMetalPrices();
   const { currency, exchangeRate, convertPrice } = useCurrency();
-  const computeCountdown = (updated: Date | null): string => {
-    if (!updated) return '5:00';
-    const diff = updated.getTime() + 5 * 60 * 1000 - Date.now();
+  const computeCountdown = (target: Date): string => {
+    const diff = target.getTime() - Date.now();
     if (diff <= 0) return '0:00';
     const mins = Math.floor(diff / 60000);
     const secs = Math.floor((diff % 60000) / 1000);
     return `0${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const [nextRefreshCountdown, setNextRefreshCountdown] = useState(() => computeCountdown(lastUpdated));
+  const [nextRefreshCountdown, setNextRefreshCountdown] = useState(() => computeCountdown(nextUpdateTime));
   const [headerHeight, setHeaderHeight] = useState(80);
   const [tickerCollapsed, setTickerCollapsed] = useState(false);
 
@@ -58,11 +57,12 @@ export default function PriceTicker() {
   });
 
   useEffect(() => {
+    setNextRefreshCountdown(computeCountdown(nextUpdateTime));
     const interval = setInterval(() => {
-      setNextRefreshCountdown(computeCountdown(lastUpdated));
+      setNextRefreshCountdown(computeCountdown(nextUpdateTime));
     }, 1000);
     return () => clearInterval(interval);
-  }, [lastUpdated]);
+  }, [nextUpdateTime]);
 
   const formatPrice = (value: number) =>
     '$' + new Intl.NumberFormat("en-AU", {
