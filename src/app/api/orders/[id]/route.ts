@@ -89,7 +89,7 @@ export async function GET(
       amount_aud: order.amount_aud || order.amount,
       product_type: order.product_type,
       product_details: order.product_details,
-      payment_method: order.payment_method,
+      payment_method: order.payment_method_type || 'card',
       payment_status: order.payment_status,
       status: order.payment_status,
       stripe_payment_intent_id: order.stripe_payment_intent_id,

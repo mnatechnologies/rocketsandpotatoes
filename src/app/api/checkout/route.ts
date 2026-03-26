@@ -681,6 +681,7 @@ export async function POST(req: NextRequest) {
           displayCurrency: currency,  // What user saw
           lockedFxRate: fxRate,
         },
+        payment_method_type: 'card',
         payment_status: 'pending_review',
         flagged_for_review: true,
         review_status: 'pending',

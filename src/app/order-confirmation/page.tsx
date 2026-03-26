@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { createLogger } from '@/lib/utils/logger';
 import { useCurrency} from "@/contexts/CurrencyContext";
+import { useCart } from '@/contexts/CartContext';
 
 const logger = createLogger('ORDER_CONFIRMATION');
 
@@ -44,8 +45,18 @@ function OrderConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isLoaded } = useUser();
-  const hasFetchedOrder = useRef(false); // ✅ Add this
+  const hasFetchedOrder = useRef(false);
   const {formatPrice} = useCurrency();
+  const { clearCart, cart } = useCart();
+
+  // Clear cart on confirmation page load (handles 3DS redirect cases
+  // where PaymentForm's clearCart() never ran)
+  useEffect(() => {
+    if (cart.length > 0 && searchParams.get('orderId')) {
+      clearCart();
+    }
+  }, []);
+
   useEffect(() => {
     logger.log('Order confirmation page mounted');
 

@@ -208,12 +208,12 @@ export async function POST(req: NextRequest) {
           .from('transactions')
           .update({
             payment_status: 'succeeded',
-            payment_method: paymentMethod,
+            payment_method_type: 'card',
             amount: amountInUSD,
             amount_aud: amountInAUD,
             currency: 'USD',
             product_details: {
-              items: cartItems || [productDetails],  // ✅ FIX 1: Use NEW cart items
+              items: cartItems || [productDetails],
               mainProduct: productDetails,
               displayCurrency: currency,
               lockedFxRate: fxRate,
@@ -223,14 +223,19 @@ export async function POST(req: NextRequest) {
               occupation: customer.occupation,
               employer: customer.employer,
             },
-            // ✅ FIX 2: Update compliance flags with CURRENT requirements
             requires_kyc: requirements.requiresKYC,
             requires_ttr: requirements.requiresTTR,
             requires_enhanced_dd: requirements.requiresEnhancedDD,
-            flagged_for_review: false,  // Reset since payment succeeded
-            review_status: null,  // Clear review status
-            review_notes: null,  // Clear old review notes
-            metadata: null,  // Clear old metadata (or create new if needed)
+            flagged_for_review: false,
+            review_status: null,
+            review_notes: null,
+            metadata: {
+              ...(existingTx.metadata || {}),
+              sessionId,
+              lockedFxRate: fxRate,
+              cartItemCount: cartItems?.length || 1,
+              paymentFlow: 'resumed_from_review',
+            },
             source_of_funds_checked: requirements.requiresTTR,
             source_of_funds_check_date: amountInAUD >= 10000 ? new Date().toISOString() : null,
             updated_at: new Date().toISOString(),
@@ -264,7 +269,7 @@ export async function POST(req: NextRequest) {
           employer: customer.employer,
         },
         stripe_payment_intent_id: stripePaymentIntentId,
-        payment_method: paymentMethod,
+        payment_method_type: 'card',
         payment_status: 'succeeded',
         requires_kyc: requirements.requiresKYC,
         requires_ttr: requirements.requiresTTR,
@@ -274,6 +279,12 @@ export async function POST(req: NextRequest) {
         flagged_for_review: false,
         review_status: null,
         review_notes: null,
+        metadata: {
+          sessionId,
+          lockedFxRate: fxRate,
+          cartItemCount: cartItems?.length || 1,
+          paymentFlow: 'direct',
+        },
       };
 
       const { data: created, error: createError } = await supabase

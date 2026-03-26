@@ -11,6 +11,7 @@ import {
   getLockedPrice,
   clearPricingTimer,
   isTimerActive,
+  getTimerStartTime,
 } from '@/lib/pricing/pricingTimer';
 import { createLogger } from '@/lib/utils/logger';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -151,7 +152,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setTimerRemaining(remaining);
       setTimerFormatted(formatted);
 
-      const expired = !active && remaining === 0;
+      // Only mark expired if a timer was actually started (key exists but time ran out).
+      // If timer was cleared (e.g. cart emptied then new item added), don't treat as expired.
+      const timerWasStarted = getTimerStartTime() !== null;
+      const expired = !active && remaining === 0 && timerWasStarted;
       setIsTimerExpired(expired);
 
       if (expired && !isTimerExpired) {
@@ -324,7 +328,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         logger.error('Error clearing server locks:', error);
       }
     }
-    
+
+    // Rotate session ID so the async Stripe webhook (which marks all locks
+    // for the old session as 'used') doesn't clobber locks from a new cart.
+    const newSessionId = crypto.randomUUID();
+    localStorage.setItem(SESSION_ID_KEY, newSessionId);
+    setSessionId(newSessionId);
+    logger.log('Session ID rotated:', newSessionId);
+
     logger.log('Cart cleared');
   }, [sessionId]);
 

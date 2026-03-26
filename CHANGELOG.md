@@ -1,3 +1,25 @@
+Changelog  - 2026-03-26
+
+Order Fulfillment System
+- **Migration:** Added fulfillment tracking columns to `transactions` table (`fulfillment_status`, `shipped_at`, `delivered_at`, `tracking_number`, `shipping_carrier`, `fulfillment_notes`, `fulfilled_by`)
+- **Admin notifications:** New `sendAdminOrderNotification()` sends email (SES) + SMS (SNS) to admin on every new order — wired into Stripe webhook (card orders) and bank transfer confirm-hold
+- **Customer emails:** Shipped and delivered notification emails sent automatically on fulfillment status change
+- **Fulfillment API:** `GET /api/admin/fulfillment/list` (filter by tab: pending/shipped/delivered, 90-day default) and `POST /api/admin/fulfillment/update` (status transitions with validation + audit logging)
+- **Admin fulfillment page:** `/admin/fulfillment` — 3 tabs (Pending Fulfillment, Shipped, Delivered), ship modal with carrier dropdown (Australia Post, StarTrack, TNT, Sendle, Hand Delivery, Other) + tracking number, deliver confirmation modal
+- **Dashboard integration:** Added "Pending Fulfillment" count to dashboard API, action card, and quick link
+- **Layout:** Added "Fulfillment" to admin breadcrumb map and quick nav bar
+
+ Product Listing
+- **Gold-first default sort:** When viewing all products, items are now grouped by metal category (Gold > Silver > Platinum > Palladium) before applying price/name sort within each group
+
+Price Ticker
+- **Alignment fix:** Reduced metal price box padding from `py-2.5 md:py-5` to `py-2 md:py-2.5` to align vertically with the last 3 columns (Next Update, FX Rate, Live Pricing)
+- **Increased text size:** Troy oz price bumped to `text-lg md:text-[22px]`, gram price bumped to `text-sm md:text-lg`
+
+Database
+- **Product images:** Converted all product `image_url` and `images` array entries from `.jpg` to `.png` to match new optimised image assets
+
+
 Changelog - 2026-02-26
 
 Xero Bank Transfer Matching (Semi-Automatic Reconciliation)
