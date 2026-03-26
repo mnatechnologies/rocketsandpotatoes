@@ -14,6 +14,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/kyc/webhook',
   '/api/fx-rate',
   '/api/cron(.*)',
+  '/api/admin/pricing',
   '/blocked(.*)',
   '/about',
   '/contact',

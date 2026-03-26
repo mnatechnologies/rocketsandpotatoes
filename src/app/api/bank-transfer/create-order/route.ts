@@ -4,6 +4,8 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { getBankTransferSettings, validateSettings } from '@/lib/bank-transfer/settings';
+import { generateUniqueReference } from '@/lib/bank-transfer/reference';
+import { deduplicateLocks } from '@/lib/pricing/deduplicateLocks';
 
 const logger = createLogger('BANK_TRANSFER_CREATE_ORDER');
 
@@ -114,11 +116,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Calculate order total in AUD from price locks (always use locked_price_aud x quantity)
+    // 5. Deduplicate locks (race conditions can create multiple active locks per product)
+    const uniqueLocks = deduplicateLocks(priceLocks);
+    if (uniqueLocks.length < priceLocks.length) {
+      logger.warn(`Deduplicated ${priceLocks.length} locks down to ${uniqueLocks.length}`);
+    }
+
+    // Calculate order total in AUD from price locks (always use locked_price_aud x quantity)
     let orderTotalAud = 0;
     let amountUsd = 0;
 
-    for (const lock of priceLocks) {
+    for (const lock of uniqueLocks) {
       const cartItem = cartItems.find(
         (item: { productId: string }) => item.productId === lock.product_id
       );
@@ -259,12 +267,15 @@ export async function POST(req: NextRequest) {
 
     logger.log('Transaction created:', transaction.id);
 
-    // 11. Create bank_transfer_order record
+    // 11. Generate unique reference code and create bank_transfer_order record
+    const referenceCode = await generateUniqueReference();
+    logger.log('Reference code generated:', referenceCode);
+
     const { data: bankTransferOrder, error: btoError } = await supabase
       .from('bank_transfer_orders')
       .insert({
         transaction_id: transaction.id,
-        reference_code: 'PLACEHOLDER', // Will be set in confirm-hold
+        reference_code: referenceCode,
         status: 'hold_pending',
         deposit_percentage: settings.deposit_percentage,
         deposit_amount_aud: depositAmountAud,

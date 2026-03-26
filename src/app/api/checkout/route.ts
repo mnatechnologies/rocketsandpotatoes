@@ -10,6 +10,7 @@ import { generateSMR } from "@/lib/compliance/smr-generator";
 import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
 import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 import { applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
+import { deduplicateLocks } from '@/lib/pricing/deduplicateLocks';
 import {sendTransactionFlaggedAlert} from "@/lib/email/sendComplianceAlert";
 import { createEDDInvestigation } from '@/lib/compliance/edd-service';
 import { auth } from '@clerk/nextjs/server';
@@ -137,8 +138,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Type guard - locks is definitely not null here
-  const validLocks = locks;
+  // Deduplicate locks (race conditions can create multiple active locks per product)
+  const validLocks = deduplicateLocks(locks);
+  if (validLocks.length < locks.length) {
+    logger.warn(`Deduplicated ${locks.length} locks down to ${validLocks.length}`);
+  }
 
   logger.log('📦 Found price locks:', validLocks.map(lock => ({
     product_id: lock.product_id,

@@ -1,12 +1,18 @@
 import {NextRequest, NextResponse} from "next/server";
 import {createVerificationSession} from "@/lib/stripe/identity";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { createLogger } from "@/lib/utils/logger";
 import { auth } from '@clerk/nextjs/server';
 
 /* eslint-disable */
 
 const logger = createLogger('KYC_INITIATE_API');
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -16,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   const { customerId } = await (req as any).json();
 
-  const supabase = await createServerSupabase();
+  const supabase = supabaseAdmin;
 
   // Verify customer belongs to authenticated user
   const { data: customerOwner } = await supabase

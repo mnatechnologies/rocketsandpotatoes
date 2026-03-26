@@ -7,6 +7,7 @@ import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { getComplianceRequirements } from '@/lib/compliance/thresholds';
+import { deduplicateLocks } from '@/lib/pricing/deduplicateLocks';
 
 
 const logger = createLogger('CREATE_ORDER_API');
@@ -76,20 +77,26 @@ export async function POST(req: NextRequest) {
       }
 
       if (locks && locks.length > 0) {
+        // Deduplicate locks (race conditions can create multiple active locks per product)
+        const uniqueLocks = deduplicateLocks(locks);
+        if (uniqueLocks.length < locks.length) {
+          logger.warn(`Deduplicated ${locks.length} locks down to ${uniqueLocks.length}`);
+        }
+
         // ✅ Calculate from locked prices (no conversion needed!)
-        amountInUSD = locks.reduce((sum, lock) => {
+        amountInUSD = uniqueLocks.reduce((sum, lock) => {
           const item = cartItems?.find((i: any) => i.productId === lock.product_id);
           const quantity = item?.quantity || 1;
           return sum + (lock.locked_price_usd * quantity);
         }, 0);
 
-        amountInAUD = locks.reduce((sum, lock) => {
+        amountInAUD = uniqueLocks.reduce((sum, lock) => {
           const item = cartItems?.find((i: any) => i.productId === lock.product_id);
           const quantity = item?.quantity || 1;
           return sum + (lock.locked_price_aud * quantity);
         }, 0);
 
-        fxRate = locks[0].fx_rate;
+        fxRate = uniqueLocks[0].fx_rate;
 
         logger.log('✅ Using locked prices (NO conversion):', {
           amountInUSD: amountInUSD.toFixed(2),

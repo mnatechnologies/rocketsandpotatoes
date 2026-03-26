@@ -38,7 +38,7 @@ export default function ProductsClient({ products }: ProductsClientProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [selectedWeight, setSelectedWeight] = useState<string>('All Weights');
     const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-    const BRAND_OPTIONS = ['Ainslie', 'Perth Mint', 'ABC Bullion', 'PAMP'];
+    const BRAND_OPTIONS = ['Ainslie', 'Perth Mint', 'ABC Bullion', 'PAMP Suisse'];
     const FILTER_CATEGORIES = ['Gold', 'Silver', 'Platinum', 'Palladium', 'Coins'] as const;
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
         categories: false,
@@ -235,7 +235,22 @@ export default function ProductsClient({ products }: ProductsClientProps) {
             filtered = filtered.filter(p => p.weight === selectedWeight);
         }
 
+        // Category priority: gold first when viewing all products
+        const categoryOrder: Record<string, number> = {
+            Gold: 0,
+            Silver: 1,
+            Platinum: 2,
+            Palladium: 3,
+        };
+
         const sorted = [...filtered].sort((a, b) => {
+            // When viewing all categories, group by metal category (gold first)
+            if (selectedCategory === 'all') {
+                const catA = categoryOrder[a.category || ''] ?? 99;
+                const catB = categoryOrder[b.category || ''] ?? 99;
+                if (catA !== catB) return catA - catB;
+            }
+
             const priceA = a.calculated_price ?? a.price;
             const priceB = b.calculated_price ?? b.price;
 

@@ -172,13 +172,14 @@ export async function POST(request: NextRequest) {
       ? existingExpiry
       : new Date(Date.now() + LOCK_DURATION_MS);
 
-    // Clear any existing active locks for this session
+    // Clear ALL existing active locks for these products in this session.
+    // Use a broader expiration to prevent race-condition duplicates:
+    // expire first, then insert, and use upsert-like semantics.
     await supabase
       .from('price_locks')
       .update({ status: 'expired' })
       .eq('session_id', sessionId)
       .eq('status', 'active')
-      .gt('expires_at', new Date().toISOString())
       .in('product_id', productIds);
 
     // ✅ Create new locks with BOTH currencies (single source of truth)

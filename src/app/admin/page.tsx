@@ -17,6 +17,7 @@ interface DashboardStats {
   flaggedTransactions: number;
   activeInvestigations: number;
   pendingTTRs: number;
+  pendingFulfillment: number;
   totalCustomers: number;
   verifiedCustomers: number;
   recentTransactionsCount: number;
@@ -188,6 +189,13 @@ export default function AdminDashboard() {
               icon="📋"
             />
             <ActionCard
+              title="Pending Fulfillment"
+              count={stats?.pendingFulfillment || 0}
+              link="/admin/fulfillment"
+              color={(stats?.pendingFulfillment || 0) > 0 ? 'orange' : 'blue'}
+              icon="📦"
+            />
+            <ActionCard
               title="Bank Transfers Pending"
               count={btAwaitingCount}
               link="/admin/bank-transfers"
@@ -312,6 +320,12 @@ export default function AdminDashboard() {
               description="View system audit trail"
               link="/admin/audit-logs"
               icon="📝"
+            />
+            <QuickLink
+              title="Order Fulfillment"
+              description="Track packing, shipping, and delivery"
+              link="/admin/fulfillment"
+              icon="📦"
             />
             <QuickLink
               title="Bank Transfers"

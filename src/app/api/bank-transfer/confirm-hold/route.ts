@@ -7,6 +7,7 @@ import { generateUniqueReference } from '@/lib/bank-transfer/reference';
 import { getBankTransferSettings } from '@/lib/bank-transfer/settings';
 import { generateTTR } from '@/lib/compliance/ttr-generator';
 import { sendEmail } from '@/lib/email/ses';
+import { sendAdminOrderNotification } from '@/lib/notifications/sendAdminOrderNotification';
 
 const logger = createLogger('BANK_TRANSFER_CONFIRM_HOLD');
 
@@ -316,7 +317,37 @@ export async function POST(req: NextRequest) {
       // Email failure should not block the confirm-hold flow
     }
 
-    // 12. Create audit log entry
+    // 12. Admin order notification (non-blocking)
+    try {
+      const items = transaction.product_details?.items || [];
+      const itemsSummary = items
+        .map((item: { product?: { name?: string }; name?: string; quantity?: number }) =>
+          `${item.product?.name || item.name || 'Product'} x${item.quantity || 1}`
+        )
+        .join(', ') || 'N/A';
+
+      // Fetch customer name
+      const { data: customerForNotif } = await supabase
+        .from('customers')
+        .select('first_name, last_name, email')
+        .eq('id', transaction.customer_id)
+        .single();
+
+      await sendAdminOrderNotification({
+        orderId: transaction.id,
+        customerName: customerForNotif
+          ? `${customerForNotif.first_name || ''} ${customerForNotif.last_name || ''}`.trim()
+          : 'Unknown',
+        customerEmail: customerForNotif?.email || '',
+        amountAud: transaction.amount_aud || 0,
+        paymentMethod: 'bank_transfer',
+        itemsSummary,
+      });
+    } catch (notifError) {
+      logger.error('Admin order notification failed (non-blocking):', notifError);
+    }
+
+    // 13. Create audit log entry
     const { error: auditError } = await supabase.from('audit_logs').insert({
       action_type: 'bank_transfer_hold_confirmed',
       entity_type: 'bank_transfer_order',

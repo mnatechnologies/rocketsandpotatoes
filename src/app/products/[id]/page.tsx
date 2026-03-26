@@ -1,4 +1,4 @@
-import {createServerSupabase} from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { notFound } from 'next/navigation';
 import ProductDetailClient from './ProductDetailClient';
 import { Product } from '@/types/product';
@@ -8,9 +8,16 @@ import { getProductImageUrl, parseImages } from '@/lib/utils/imageUrl';
 
 const logger = createLogger('PRODUCT_PAGE')
 
+// Public page — use service role to bypass RLS (products are public data)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
+
 export default async function ProductDetailPage({params}: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
+  const supabase = supabaseAdmin;
 
   let product: Product | null = null;
   let error: any = null;

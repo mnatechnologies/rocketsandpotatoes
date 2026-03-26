@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { createLogger}  from "@/lib/utils/logger";
 import { auth } from '@clerk/nextjs/server';
 
 const logger = createLogger('DOCUMENT_UPLOAD_API')
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -13,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   const formData = await (req as any).formData();
 
-  const supabase = await createServerSupabase();
+  const supabase = supabaseAdmin;
 
   const file = formData.get('file') as File;
   const customerId = formData.get('customerId') as string;

@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
 import { comparePaymentMethodName } from '@/lib/compliance/name-matching';
+import { sendAdminOrderNotification } from '@/lib/notifications/sendAdminOrderNotification';
 
 
 const logger = createLogger('STRIPE_PAYMENT_WEBHOOK');
@@ -78,10 +79,16 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ received: true });
         }
 
-        // ✅ Fetch customer for name comparison
+        // Skip bank transfer transactions — their lifecycle is managed by the bank-transfer routes, not this webhook
+        if (existingTransaction.payment_method_type === 'bank_transfer') {
+          logger.log('Skipping bank transfer transaction (managed by bank-transfer flow):', existingTransaction.id);
+          break;
+        }
+
+        // ✅ Fetch customer for name comparison + email for notifications
         const { data: customer } = await supabase
             .from('customers')
-            .select('id, first_name, last_name, verification_status, verification_level')
+            .select('id, first_name, last_name, email, verification_status, verification_level')
             .eq('id', existingTransaction.customer_id)
             .single();
 
@@ -234,6 +241,29 @@ export async function POST(req: NextRequest) {
       //     }
       //   }
       //
+
+        // Admin notification (non-blocking)
+        try {
+          const items = existingTransaction.product_details?.items || [];
+          const itemsSummary = items
+            .map((item: { product?: { name?: string }; name?: string; quantity?: number }) =>
+              `${item.product?.name || item.name || 'Product'} x${item.quantity || 1}`
+            )
+            .join(', ') || 'N/A';
+
+          await sendAdminOrderNotification({
+            orderId: existingTransaction.id,
+            customerName: customer
+              ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
+              : 'Unknown',
+            customerEmail: customer?.email || '',
+            amountAud: existingTransaction.amount_aud || existingTransaction.amount || 0,
+            paymentMethod: 'card',
+            itemsSummary,
+          });
+        } catch (notifError) {
+          logger.error('Admin order notification failed (non-blocking):', notifError);
+        }
 
         // Sync to Xero (non-blocking - failures logged, never break webhook)
         try {

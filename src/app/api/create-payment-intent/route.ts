@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
 import { createLogger } from '@/lib/utils/logger';
 import { createClient } from '@supabase/supabase-js';
+import { deduplicateLocks } from '@/lib/pricing/deduplicateLocks';
 
 const logger = createLogger('CREATE_PAYMENT_INTENT_API');
 
@@ -71,11 +72,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Deduplicate locks (race conditions can create multiple active locks per product)
+      const uniqueLocks = deduplicateLocks(locks);
+      if (uniqueLocks.length < locks.length) {
+        logger.warn(`Deduplicated ${locks.length} locks down to ${uniqueLocks.length}`);
+      }
+
       // ✅ Get the currency these prices were locked in
-      const lockedCurrency = locks[0]?.currency || 'USD';
+      const lockedCurrency = uniqueLocks[0]?.currency || 'USD';
 
       // ✅ Calculate expected total in the LOCKED currency (no conversion!)
-      const expectedTotal = locks.reduce((sum, lock) => {
+      const expectedTotal = uniqueLocks.reduce((sum, lock) => {
         const cartItem = cartItems?.find((item: { productId: any; }) => item.productId === lock.product_id);
 
         // SKIP locks for products not in current cart (old locks from previous sessions)

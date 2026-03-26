@@ -21,6 +21,7 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/integrations': 'Integrations',
   '/admin/sales-control': 'Sales Control',
   '/admin/bank-transfers': 'Bank Transfers',
+  '/admin/fulfillment': 'Fulfillment',
   '/admin/settings/bank-transfer': 'BT Settings',
 };
 
@@ -138,6 +139,13 @@ export default function AdminLayout({
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 Bank Transfers
+              </Link>
+              <span className="text-muted-foreground hidden sm:inline">•</span>
+              <Link
+                href="/admin/fulfillment"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
+              >
+                Fulfillment
               </Link>
               <span className="text-muted-foreground hidden sm:inline">•</span>
               <Link

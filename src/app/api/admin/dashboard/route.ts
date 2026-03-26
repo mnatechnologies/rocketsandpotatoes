@@ -168,6 +168,17 @@ export async function GET(req: NextRequest) {
     }
     //fetch pending & escalated EDD reviews
 
+    // Fetch pending fulfillment count
+    const { count: pendingFulfillment, error: fulfillmentError } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('payment_status', 'succeeded')
+      .in('fulfillment_status', ['unfulfilled', 'packing']);
+
+    if (fulfillmentError) {
+      logger.error('Error fetching pending fulfillment:', fulfillmentError);
+    }
+
     const { count: pendingEddReviews } = await supabase
         .from('customer_edd')
         .select('*', { count: 'exact', head: true })
@@ -190,6 +201,7 @@ export async function GET(req: NextRequest) {
       suspiciousReports: suspiciousReports || 0,
       staffRequiringTraining: staffRequiringTraining.length,
       overdueTraining: overdueStaffCount,
+      pendingFulfillment: pendingFulfillment || 0,
       eddReviewsPending: pendingEddReviews || 0,
       eddReviewsEscalated: escalatedEddReviews || 0,
     });

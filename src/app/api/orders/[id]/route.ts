@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
 import { createLogger } from '@/lib/utils/logger';
 import {getComplianceRequirements} from "@/lib/compliance/thresholds";
 /* eslint-disable */
 
 const logger = createLogger('ORDER_API');
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 export async function GET(
   req: NextRequest,
@@ -25,7 +31,7 @@ export async function GET(
 
     logger.log('Authenticated user ID:', userId);
 
-    const supabase = await createServerSupabase();
+    const supabase = supabaseAdmin;
 
     // Fetch the transaction/order
     const { data: order, error: orderError } = await supabase
