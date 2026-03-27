@@ -87,7 +87,7 @@ Xero Bank Transfer Matching (Semi-Automatic Reconciliation)
 
 Core Logic
 
-- src/lib/xero/bank-matching.ts — extractReferenceCode() regex matcher, isAmountMatch() exact comparator, matchBankTransfers() polls Xero for unreconciled RECEIVE transactions and matches against open orders by ANB-XXXXXX reference + exact AUD amount
+claude
 - src/lib/xero/__tests__/bank-matching.test.ts — 9 unit tests covering reference extraction (embedded text, lowercase, multiple refs, no match) and amount matching (exact, floating point, zero rejection)
 
 Cron Integration

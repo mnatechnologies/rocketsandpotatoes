@@ -23,6 +23,7 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/bank-transfers': 'Bank Transfers',
   '/admin/fulfillment': 'Fulfillment',
   '/admin/retention': 'Record Retention',
+  '/admin/backup': 'Database Backups',
   '/admin/settings/bank-transfer': 'BT Settings',
   '/admin/customers': 'Customers',
   '/admin/products': 'Products',

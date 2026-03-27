@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
           count: failCount,
           // Errors surfaced in admin status endpoint
         },
-        actionUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/backup/status`,
+        actionUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/backup`,
       });
     }
 
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
         severity: 'critical',
         title: 'DB Backup Failed',
         description: `Daily database backup failed to run. Data may not be protected. Error: ${message}`,
-        actionUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/backup/status`,
+        actionUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/backup`,
       });
     } catch (alertErr) {
       logger.error('Also failed to send backup failure alert:', alertErr);
