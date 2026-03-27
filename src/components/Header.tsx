@@ -11,7 +11,7 @@ import {
   UserButton,
   useUser,
 } from '@clerk/nextjs';
-import { ShoppingCartIcon, ChevronDown } from "lucide-react";
+import { ShoppingCartIcon, ChevronDown, UserCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -258,6 +258,13 @@ export default function Header() {
                 </SignUpButton>
               </SignedOut>
               <SignedIn>
+                <Link
+                  href="/account"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-all"
+                  aria-label="My Account"
+                >
+                  <UserCircle className="h-[18px] w-[18px]" />
+                </Link>
                 <UserButton />
               </SignedIn>
             </div>
@@ -373,6 +380,14 @@ export default function Header() {
                     </SignUpButton>
                   </SignedOut>
                   <SignedIn>
+                    <Link
+                      href="/account"
+                      className="w-full inline-flex items-center justify-center gap-2 h-10 px-3 rounded-md text-sm font-medium text-foreground/80 hover:text-foreground border border-border hover:bg-muted/30 transition-all"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <UserCircle className="h-4 w-4" />
+                      My Account
+                    </Link>
                     <div className="flex justify-center">
                       <UserButton />
                     </div>

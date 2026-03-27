@@ -1,3 +1,43 @@
+Changelog - 2026-03-27
+
+Customer Account Dashboard
+- **Account dashboard** (`/account`): Overview page with greeting, quick stats (total orders, total spent, member since), recent orders, account/verification status
+- **Order history** (`/account/orders`): Full order list with payment/fulfillment status badges, expandable order details, invoice links for bank transfer orders, "load more" pagination
+- **Account settings** (`/account/settings`): Profile display (name, email, account type, verification status), business info for business accounts
+- **Account layout** (`/account/layout.tsx`): Shared sub-navigation (Dashboard | Orders | Settings) with active route highlighting
+- **APIs:** `GET /api/account/orders` (order list scoped to authenticated user), `GET /api/account/profile` (customer profile)
+- **Header:** Added account icon (UserCircle) for signed-in users in desktop and mobile nav
+
+Admin Customer Management
+- **Customer list** (`/admin/customers`): Searchable/filterable table with tabs (All, Verified, Pending, Unverified, Business), pagination (50/page), order count and total spent aggregates
+- **Customer detail** (`/admin/customers/[id]`): Collapsible sections for Profile, Verification, Risk & Compliance, Business Details (conditional), and Orders history
+- **APIs:** `GET /api/admin/customers` (search, filter, pagination with aggregates), `GET /api/admin/customers/[id]` (full detail with parallel fetches for business, transactions, verifications, EDD, sanctions)
+- **Layout:** Added "Customers" to admin breadcrumb map and quick nav
+
+Admin Product CRUD
+- **Product list** (`/admin/products`): Search by name, filter by metal type and stock status, image thumbnails, quick stock toggle per row, edit/delete actions with confirmation modal
+- **Create product** (`/admin/products/new`): Form with auto-slug generation, all product fields, validation
+- **Edit product** (`/admin/products/[id]/edit`): Pre-populated form, preserves existing slug if not changed
+- **APIs:** `GET/POST /api/admin/products` (list + create), `GET/PUT/PATCH/DELETE /api/admin/products/[id]` (read, update, stock toggle, delete)
+- **Layout:** Added "Products" to admin breadcrumb map and quick nav
+
+Security & Code Review Fixes
+- Sanitized search params in admin customers API to prevent PostgREST filter injection
+- Removed `monitoring_level` from customer-facing profile API (AML/CTF compliance — internal field)
+- Added server-side allowlist validation for `metal_type` and `form_type` on product create/update
+- Added UUID format validation on admin customer detail endpoint
+- Added `http(s)://` protocol validation for product image URLs
+- Fixed DELETE returning 200 on non-existent products (now 404), handles FK violations (409)
+- Fixed PATCH/stock toggle returning 500 on non-existent products (now 404)
+- Fixed business filter pagination count returning wrong total
+- Added `.limit(5000)` + error logging on transaction aggregate query
+- Fixed slug being set to null on product update when not provided
+- Changed profile API to return `{ customer: null }` (200) instead of 404 for new Clerk users
+- Added toast error notifications on account page fetch failures
+- Removed unused `totalPages` variable from orders page
+- Added filter param allowlisting on admin customers endpoint
+- Stripped wildcard chars from product search input
+
 Changelog  - 2026-03-26
 
 Order Fulfillment System
@@ -45,7 +85,7 @@ API Changes
 
 - src/app/api/admin/bank-transfer/list/route.ts — Added xero_match_status, xero_matched_at, xero_match_amount, xero_bank_transaction_id to admin list response
 - src/app/api/admin/bank-transfer/confirm-payment/route.ts — On payment confirmation, auto-reconciles the matched Xero bank transaction (non-fatal if Xero fails)
-
+clau
 Design Docs
 
 - docs/plans/2026-02-26-xero-bank-transfer-matching-design.md

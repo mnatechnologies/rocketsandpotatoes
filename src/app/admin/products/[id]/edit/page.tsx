@@ -1,0 +1,378 @@
+'use client';
+
+import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import Link from 'next/link';
+import { generateSlug } from '@/lib/utils/slug';
+
+const METAL_TYPES = ['gold', 'silver', 'platinum', 'palladium'];
+const FORM_TYPES = ['bar', 'coin', 'round'];
+
+interface FormState {
+  name: string;
+  slug: string;
+  description: string;
+  metal_type: string;
+  weight: string;
+  purity: string;
+  category: string;
+  form_type: string;
+  brand: string;
+  price: string;
+  stock: boolean;
+  image_url: string;
+}
+
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [form, setForm] = useState<FormState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const res = await fetch(`/api/admin/products/${id}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) {
+          setLoadError('Product not found');
+          return;
+        }
+        const json = await res.json();
+        const p = json.data;
+        setForm({
+          name: p.name || '',
+          slug: p.slug || generateSlug(p.name || ''),
+          description: p.description || '',
+          metal_type: p.metal_type || '',
+          weight: p.weight || '',
+          purity: p.purity || '',
+          category: p.category || '',
+          form_type: p.form_type || '',
+          brand: p.brand || '',
+          price: p.price?.toString() || '',
+          stock: p.stock ?? true,
+          image_url: p.image_url || '',
+        });
+        setSlugEdited(!!p.slug);
+      } catch {
+        setLoadError('Failed to load product');
+      }
+    };
+    fetchProduct();
+  }, [id]);
+
+  // Auto-generate slug from name if not manually set
+  useEffect(() => {
+    if (form && !slugEdited) {
+      setForm((prev) => prev ? { ...prev, slug: generateSlug(prev.name) } : prev);
+    }
+  }, [form?.name, slugEdited]);
+
+  const set = (field: keyof FormState, value: string | boolean) => {
+    setForm((prev) => prev ? { ...prev, [field]: value } : prev);
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const validate = (): boolean => {
+    if (!form) return false;
+    const newErrors: Partial<Record<keyof FormState, string>> = {};
+    if (!form.name.trim()) newErrors.name = 'Name is required';
+    if (!form.metal_type) newErrors.metal_type = 'Metal type is required';
+    if (!form.price || Number(form.price) <= 0) newErrors.price = 'Price must be greater than 0';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate() || !form) return;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          price: Number(form.price),
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || 'Failed to update product');
+        return;
+      }
+
+      toast.success(`${form.name} updated successfully`);
+      router.push('/admin/products');
+    } catch {
+      toast.error('Failed to update product');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loadError) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500 mb-4">{loadError}</p>
+        <Link
+          href="/admin/products"
+          className="text-sm text-primary hover:underline"
+        >
+          Back to Products
+        </Link>
+      </div>
+    );
+  }
+
+  if (!form) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3" />
+        <p className="text-muted-foreground text-sm">Loading product...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center gap-4">
+        <Link
+          href="/admin/products"
+          className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+        >
+          &larr; Back to Products
+        </Link>
+      </div>
+
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground mb-1">Edit Product</h1>
+        <p className="text-muted-foreground">Update product details.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="e.g. 1oz ABC Gold Bar"
+            className={`w-full border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+              errors.name ? 'border-red-400' : 'border-border'
+            }`}
+          />
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+        </div>
+
+        {/* Slug */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">Slug</label>
+          <input
+            type="text"
+            value={form.slug}
+            onChange={(e) => {
+              setSlugEdited(true);
+              set('slug', e.target.value);
+            }}
+            placeholder="product-url-slug"
+            className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Used in product URLs. Change carefully.</p>
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+          <textarea
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            rows={3}
+            placeholder="Product description..."
+            className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        {/* Metal Type + Form Type */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Metal Type <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.metal_type}
+              onChange={(e) => set('metal_type', e.target.value)}
+              className={`w-full border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                errors.metal_type ? 'border-red-400' : 'border-border'
+              }`}
+            >
+              <option value="">Select metal type</option>
+              {METAL_TYPES.map((m) => (
+                <option key={m} value={m} className="capitalize">
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                </option>
+              ))}
+            </select>
+            {errors.metal_type && <p className="text-red-500 text-xs mt-1">{errors.metal_type}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Form Type</label>
+            <select
+              value={form.form_type}
+              onChange={(e) => set('form_type', e.target.value)}
+              className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select form type</option>
+              {FORM_TYPES.map((f) => (
+                <option key={f} value={f} className="capitalize">
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Weight + Purity */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Weight</label>
+            <input
+              type="text"
+              value={form.weight}
+              onChange={(e) => set('weight', e.target.value)}
+              placeholder="e.g. 1oz, 100g"
+              className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Purity</label>
+            <input
+              type="text"
+              value={form.purity}
+              onChange={(e) => set('purity', e.target.value)}
+              placeholder="e.g. 0.9999"
+              className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+
+        {/* Category */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">Category</label>
+          <select
+            value={form.category}
+            onChange={(e) => set('category', e.target.value)}
+            className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">Select category</option>
+            {METAL_TYPES.map((m) => (
+              <option key={m} value={m} className="capitalize">
+                {m.charAt(0).toUpperCase() + m.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Brand */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">Brand</label>
+          <input
+            type="text"
+            value={form.brand}
+            onChange={(e) => set('brand', e.target.value)}
+            placeholder="e.g. Perth Mint, ABC Bullion"
+            className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        {/* Price */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            Base Price (USD) <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+            <input
+              type="number"
+              value={form.price}
+              onChange={(e) => set('price', e.target.value)}
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+              className={`w-full border rounded-lg pl-7 pr-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                errors.price ? 'border-red-400' : 'border-border'
+              }`}
+            />
+          </div>
+          {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
+        </div>
+
+        {/* Image URL */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">Image URL</label>
+          <input
+            type="text"
+            value={form.image_url}
+            onChange={(e) => set('image_url', e.target.value)}
+            placeholder="https://..."
+            className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          {form.image_url && (
+            <img
+              src={form.image_url}
+              alt="Preview"
+              className="mt-2 h-20 w-20 object-cover rounded border border-border"
+              onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+            />
+          )}
+        </div>
+
+        {/* Stock */}
+        <div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.stock}
+              onChange={(e) => set('stock', e.target.checked)}
+              className="w-4 h-4 rounded border-border"
+            />
+            <span className="text-sm font-medium text-foreground">In Stock</span>
+          </label>
+          <p className="text-xs text-muted-foreground mt-1 ml-7">
+            Uncheck to mark this product as out of stock.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 pt-2">
+          <Link
+            href="/admin/products"
+            className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+          >
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
