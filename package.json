@@ -28,6 +28,7 @@
     "test-api-pricing": "dotenvx run --env-file=.env.development node src/test/test-metalpriceapi-direct.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1018.0",
     "@aws-sdk/client-ses": "^3.940.0",
     "@aws-sdk/client-sns": "^3.993.0",
     "@clerk/nextjs": "^6.33.7",

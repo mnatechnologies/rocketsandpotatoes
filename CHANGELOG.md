@@ -21,6 +21,27 @@ Admin Product CRUD
 - **APIs:** `GET/POST /api/admin/products` (list + create), `GET/PUT/PATCH/DELETE /api/admin/products/[id]` (read, update, stock toggle, delete)
 - **Layout:** Added "Products" to admin breadcrumb map and quick nav
 
+Admin Order Management
+- **Order list** (`/admin/orders`): Searchable, filterable order table with tabs (All, Succeeded, Pending, Failed, Awaiting Transfer), pagination, payment/fulfillment status badges
+- **Order detail** (`/admin/orders/[id]`): Full order view with customer info (linked to customer detail), items table, payment details (Stripe intent, cardholder name, mismatch severity), bank transfer info, amounts (USD/AUD/FX), compliance flags, fulfillment status, audit log trail
+- **APIs:** `GET /api/admin/orders` (search, filter, pagination), `GET /api/admin/orders/[id]` (full detail with parallel fetches)
+- **Layout:** Added "Orders" to admin breadcrumb map and quick nav
+
+Database Backup Automation
+- **Backup service** (`src/lib/backup/`): S3 upload utility with AES256 SSE, paginated table export (500-row pages) for 8 compliance tables
+- **Daily cron** (`/api/cron/db-backup`): Runs at 2 AM AEST, exports all compliance tables as JSON to S3, logs to audit_logs, sends admin alert on failure
+- **Admin status endpoint** (`/api/admin/backup/status`): Returns last 10 backup runs
+- **New dependency:** `@aws-sdk/client-s3`
+- **New env vars:** `AWS_S3_BACKUP_BUCKET`, `AWS_S3_BACKUP_REGION`
+- **S3 lifecycle:** Document recommends Standard-IA after 30 days, 7-year expiry, bucket versioning
+
+7-Year Record Retention Policy (AUSTRAC Compliance)
+- **Migration** (`20260327000002_add_retention_policy.sql`): Adds `archived_at` and `retention_expires_at` (generated column: created_at + 7 years) to 7 compliance tables with partial indexes
+- **Retention service** (`src/lib/compliance/retention.ts`): `getRetentionReport()`, `archiveExpiredRecords()`, `getExpiringRecords(months)` — soft-archive only, never hard delete
+- **Monthly cron** (`/api/cron/retention-check`): Runs 1st of month at 3 AM AEST, archives expired records, sends compliance alert with summary
+- **Admin page** (`/admin/retention`): Summary cards (active, archived, expiring 6/12mo), per-table breakdown, AUSTRAC policy info banner
+- **Layout:** Added "Retention" to admin breadcrumb map and quick nav
+
 Security & Code Review Fixes
 - Sanitized search params in admin customers API to prevent PostgREST filter injection
 - Removed `monitoring_level` from customer-facing profile API (AML/CTF compliance — internal field)
