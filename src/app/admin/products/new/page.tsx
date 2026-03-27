@@ -4,14 +4,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { generateSlug } from '@/lib/utils/slug';
 
-const METAL_TYPES = ['gold', 'silver', 'platinum', 'palladium'];
-const FORM_TYPES = ['bar', 'coin', 'round'];
+const METAL_TYPES = [
+  { value: 'XAU', label: 'Gold' },
+  { value: 'XAG', label: 'Silver' },
+  { value: 'XPT', label: 'Platinum' },
+  { value: 'XPD', label: 'Palladium' },
+];
 
 interface FormState {
   name: string;
-  slug: string;
   description: string;
   metal_type: string;
   weight: string;
@@ -26,7 +28,6 @@ interface FormState {
 
 const defaultForm: FormState = {
   name: '',
-  slug: '',
   description: '',
   metal_type: '',
   weight: '',
@@ -42,21 +43,14 @@ const defaultForm: FormState = {
 export default function NewProductPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(defaultForm);
-  const [slugEdited, setSlugEdited] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
-  // Auto-generate slug from name unless manually edited
-  useEffect(() => {
-    if (!slugEdited) {
-      setForm((prev) => ({ ...prev, slug: generateSlug(prev.name) }));
-    }
-  }, [form.name, slugEdited]);
-
-  // Auto-populate category from metal_type
+  // Auto-populate category from metal_type label
   useEffect(() => {
     if (form.metal_type && !form.category) {
-      setForm((prev) => ({ ...prev, category: prev.metal_type }));
+      const label = METAL_TYPES.find((m) => m.value === form.metal_type)?.label || '';
+      setForm((prev) => ({ ...prev, category: label }));
     }
   }, [form.metal_type]);
 
@@ -140,22 +134,6 @@ export default function NewProductPage() {
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
         </div>
 
-        {/* Slug */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Slug</label>
-          <input
-            type="text"
-            value={form.slug}
-            onChange={(e) => {
-              setSlugEdited(true);
-              set('slug', e.target.value);
-            }}
-            placeholder="auto-generated-from-name"
-            className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Auto-generated from name. Used in product URLs.</p>
-        </div>
-
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">Description</label>
@@ -183,8 +161,8 @@ export default function NewProductPage() {
             >
               <option value="">Select metal type</option>
               {METAL_TYPES.map((m) => (
-                <option key={m} value={m} className="capitalize">
-                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                <option key={m.value} value={m.value}>
+                  {m.label} ({m.value})
                 </option>
               ))}
             </select>
@@ -193,18 +171,13 @@ export default function NewProductPage() {
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Form Type</label>
-            <select
+            <input
+              type="text"
               value={form.form_type}
               onChange={(e) => set('form_type', e.target.value)}
+              placeholder="e.g. bar, coin, round"
               className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">Select form type</option>
-              {FORM_TYPES.map((f) => (
-                <option key={f} value={f} className="capitalize">
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
 
@@ -236,18 +209,13 @@ export default function NewProductPage() {
         {/* Category */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">Category</label>
-          <select
+          <input
+            type="text"
             value={form.category}
             onChange={(e) => set('category', e.target.value)}
+            placeholder="e.g. Gold, Silver (auto-filled from metal type)"
             className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Select category (defaults to metal type)</option>
-            {METAL_TYPES.map((m) => (
-              <option key={m} value={m} className="capitalize">
-                {m.charAt(0).toUpperCase() + m.slice(1)}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {/* Brand */}

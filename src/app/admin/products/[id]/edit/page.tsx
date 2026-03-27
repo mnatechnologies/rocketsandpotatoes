@@ -4,14 +4,16 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { generateSlug } from '@/lib/utils/slug';
 
-const METAL_TYPES = ['gold', 'silver', 'platinum', 'palladium'];
-const FORM_TYPES = ['bar', 'coin', 'round'];
+const METAL_TYPES = [
+  { value: 'XAU', label: 'Gold' },
+  { value: 'XAG', label: 'Silver' },
+  { value: 'XPT', label: 'Platinum' },
+  { value: 'XPD', label: 'Palladium' },
+];
 
 interface FormState {
   name: string;
-  slug: string;
   description: string;
   metal_type: string;
   weight: string;
@@ -29,7 +31,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const [form, setForm] = useState<FormState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [slugEdited, setSlugEdited] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
@@ -45,7 +46,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         const p = json.data;
         setForm({
           name: p.name || '',
-          slug: p.slug || generateSlug(p.name || ''),
           description: p.description || '',
           metal_type: p.metal_type || '',
           weight: p.weight || '',
@@ -57,20 +57,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           stock: p.stock ?? true,
           image_url: p.image_url || '',
         });
-        setSlugEdited(!!p.slug);
       } catch {
         setLoadError('Failed to load product');
       }
     };
     fetchProduct();
   }, [id]);
-
-  // Auto-generate slug from name if not manually set
-  useEffect(() => {
-    if (form && !slugEdited) {
-      setForm((prev) => prev ? { ...prev, slug: generateSlug(prev.name) } : prev);
-    }
-  }, [form?.name, slugEdited]);
 
   const set = (field: keyof FormState, value: string | boolean) => {
     setForm((prev) => prev ? { ...prev, [field]: value } : prev);
@@ -123,10 +115,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="text-center py-12">
         <p className="text-red-500 mb-4">{loadError}</p>
-        <Link
-          href="/admin/products"
-          className="text-sm text-primary hover:underline"
-        >
+        <Link href="/admin/products" className="text-sm text-primary hover:underline">
           Back to Products
         </Link>
       </div>
@@ -176,22 +165,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
         </div>
 
-        {/* Slug */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Slug</label>
-          <input
-            type="text"
-            value={form.slug}
-            onChange={(e) => {
-              setSlugEdited(true);
-              set('slug', e.target.value);
-            }}
-            placeholder="product-url-slug"
-            className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Used in product URLs. Change carefully.</p>
-        </div>
-
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">Description</label>
@@ -219,8 +192,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             >
               <option value="">Select metal type</option>
               {METAL_TYPES.map((m) => (
-                <option key={m} value={m} className="capitalize">
-                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                <option key={m.value} value={m.value}>
+                  {m.label} ({m.value})
                 </option>
               ))}
             </select>
@@ -229,18 +202,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Form Type</label>
-            <select
+            <input
+              type="text"
               value={form.form_type}
               onChange={(e) => set('form_type', e.target.value)}
+              placeholder="e.g. bar, coin, round"
               className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">Select form type</option>
-              {FORM_TYPES.map((f) => (
-                <option key={f} value={f} className="capitalize">
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
 
@@ -272,18 +240,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         {/* Category */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">Category</label>
-          <select
+          <input
+            type="text"
             value={form.category}
             onChange={(e) => set('category', e.target.value)}
+            placeholder="e.g. Gold, Silver"
             className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Select category</option>
-            {METAL_TYPES.map((m) => (
-              <option key={m} value={m} className="capitalize">
-                {m.charAt(0).toUpperCase() + m.slice(1)}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {/* Brand */}

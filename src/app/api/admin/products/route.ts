@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/auth/admin';
 import { createLogger } from '@/lib/utils/logger';
-import { generateSlug } from '@/lib/utils/slug';
 
 const logger = createLogger('ADMIN_PRODUCTS');
 
-const VALID_METAL_TYPES = ['gold', 'silver', 'platinum', 'palladium'];
-const VALID_FORM_TYPES = ['bar', 'coin', 'round'];
+const VALID_METAL_TYPES = ['XAU', 'XAG', 'XPT', 'XPD'];
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -30,7 +28,7 @@ export async function GET(req: NextRequest) {
   logger.log('Fetching products', { search, metalType, stockFilter });
 
   try {
-    let query = supabase.from('products').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('products').select('*').order('name', { ascending: true });
 
     if (search) {
       query = query.ilike('name', `%${search}%`);
@@ -78,7 +76,6 @@ export async function POST(req: NextRequest) {
       price,
       stock,
       image_url,
-      slug: providedSlug,
     } = body;
 
     if (!name || !name.trim()) {
@@ -87,17 +84,12 @@ export async function POST(req: NextRequest) {
     if (!metal_type || !VALID_METAL_TYPES.includes(metal_type)) {
       return NextResponse.json({ error: `Metal type must be one of: ${VALID_METAL_TYPES.join(', ')}` }, { status: 400 });
     }
-    if (form_type && !VALID_FORM_TYPES.includes(form_type)) {
-      return NextResponse.json({ error: `Form type must be one of: ${VALID_FORM_TYPES.join(', ')}` }, { status: 400 });
-    }
     if (price === undefined || price === null || Number(price) <= 0) {
       return NextResponse.json({ error: 'Price must be greater than 0' }, { status: 400 });
     }
     if (image_url && !/^https?:\/\//.test(image_url.trim())) {
       return NextResponse.json({ error: 'Image URL must start with http:// or https://' }, { status: 400 });
     }
-
-    const slug = providedSlug?.trim() || generateSlug(name);
 
     logger.log('Creating product:', name);
 
@@ -109,21 +101,20 @@ export async function POST(req: NextRequest) {
         metal_type,
         weight: weight?.trim() || null,
         purity: purity?.trim() || null,
-        category: category || metal_type,
+        category: category || null,
         form_type: form_type || null,
         brand: brand?.trim() || null,
         price: Number(price),
         stock: stock ?? true,
         image_url: image_url?.trim() || null,
-        slug,
       })
       .select()
       .single();
 
     if (error) {
       logger.error('Error creating product:', error);
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'A product with this slug already exists' }, { status: 409 });
+      if (error.code === '23514') {
+        return NextResponse.json({ error: 'Invalid metal type. Must be XAU, XAG, XPT, or XPD' }, { status: 400 });
       }
       return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
     }

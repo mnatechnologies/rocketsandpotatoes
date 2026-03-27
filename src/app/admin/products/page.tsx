@@ -17,11 +17,15 @@ interface Product {
   price: number;
   stock: boolean;
   image_url: string | null;
-  slug: string | null;
-  created_at: string;
 }
 
-const METAL_TYPES = ['gold', 'silver', 'platinum', 'palladium'];
+const METAL_TYPES = [
+  { value: 'XAU', label: 'Gold' },
+  { value: 'XAG', label: 'Silver' },
+  { value: 'XPT', label: 'Platinum' },
+  { value: 'XPD', label: 'Palladium' },
+];
+
 
 function formatUSD(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -43,18 +47,21 @@ function StockBadge({ inStock }: { inStock: boolean }) {
 
 function MetalBadge({ metal }: { metal: string }) {
   const colors: Record<string, string> = {
-    gold: 'bg-yellow-50 text-yellow-800 border-yellow-200',
-    silver: 'bg-gray-50 text-gray-700 border-gray-300',
-    platinum: 'bg-blue-50 text-blue-700 border-blue-200',
-    palladium: 'bg-purple-50 text-purple-700 border-purple-200',
+    XAU: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+    XAG: 'bg-gray-50 text-gray-700 border-gray-300',
+    XPT: 'bg-blue-50 text-blue-700 border-blue-200',
+    XPD: 'bg-purple-50 text-purple-700 border-purple-200',
+  };
+  const labels: Record<string, string> = {
+    XAU: 'Gold', XAG: 'Silver', XPT: 'Platinum', XPD: 'Palladium',
   };
   return (
     <span
-      className={`text-xs font-medium px-2.5 py-0.5 rounded-full border capitalize ${
+      className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${
         colors[metal] || 'bg-muted text-muted-foreground border-border'
       }`}
     >
-      {metal}
+      {labels[metal] || metal}
     </span>
   );
 }
@@ -168,8 +175,8 @@ export default function AdminProductsPage() {
         >
           <option value="all">All Metals</option>
           {METAL_TYPES.map((m) => (
-            <option key={m} value={m} className="capitalize">
-              {m.charAt(0).toUpperCase() + m.slice(1)}
+            <option key={m.value} value={m.value}>
+              {m.label} ({m.value})
             </option>
           ))}
         </select>
@@ -245,8 +252,8 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">{product.name}</div>
-                    {product.slug && (
-                      <div className="text-xs text-muted-foreground font-mono">{product.slug}</div>
+                    {product.brand && (
+                      <div className="text-xs text-muted-foreground">{product.brand}</div>
                     )}
                   </td>
                   <td className="px-4 py-3">
