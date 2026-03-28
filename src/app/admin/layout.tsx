@@ -7,7 +7,6 @@ import { BreadcrumbItem } from '@/components/Breadcrumb';
 
 // Define breadcrumb mappings for admin routes
 const breadcrumbMap: Record<string, string> = {
-  '/admin': 'Dashboard',
   '/admin/document-verification': 'Document Verification',
   '/admin/reviews': 'Transaction Reviews',
   '/admin/edd-investigations': 'EDD Investigations',
@@ -104,7 +103,6 @@ export default function AdminLayout({
 
             {/* Quick Navigation */}
             <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-              <span className="text-muted-foreground hidden sm:inline">•</span>
               <Link
                 href="/admin/customers"
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"

@@ -15,29 +15,15 @@ interface Customer {
   occupation: string | null;
   employer: string | null;
   verification_status: string;
+  verification_level: string | null;
   monitoring_level: string | null;
   requires_enhanced_dd: boolean;
-  created_at: string;
-}
-
-interface BeneficialOwner {
-  id: string;
-  full_name: string;
-  ownership_percentage: number;
   is_pep: boolean;
-  screening_status: string;
-}
-
-interface BusinessCustomer {
-  id: string;
-  abn: string | null;
-  acn: string | null;
-  entity_type: string | null;
-  business_name: string | null;
-  trading_name: string | null;
-  verification_status: string;
+  is_sanctioned: boolean;
+  risk_score: number | null;
+  risk_level: string | null;
+  customer_type: string | null;
   created_at: string;
-  beneficial_owners: BeneficialOwner[];
 }
 
 interface Transaction {
@@ -69,15 +55,17 @@ interface EddInvestigation {
 
 interface SanctionsScreening {
   id: string;
-  is_pep: boolean;
-  is_sanctioned: boolean;
+  is_match: boolean;
   match_score: number | null;
+  screened_name: string;
+  screening_service: string | null;
+  status: string;
+  screening_type: string | null;
   created_at: string;
 }
 
 interface CustomerDetail {
   customer: Customer;
-  business: BusinessCustomer | null;
   transactions: Transaction[];
   identity_verifications: IdentityVerification[];
   edd_investigations: EddInvestigation[];
@@ -194,7 +182,7 @@ export default function AdminCustomerDetailPage() {
     );
   }
 
-  const { customer, business, transactions, identity_verifications, edd_investigations, sanctions_screenings } = data;
+  const { customer, transactions, identity_verifications, edd_investigations, sanctions_screenings } = data;
   const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.email;
   const latestScreening = sanctions_screenings[0] || null;
   const latestEdd = edd_investigations[0] || null;
@@ -219,13 +207,6 @@ export default function AdminCustomerDetailPage() {
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-3 mb-1">
           <h1 className="text-3xl font-bold text-foreground">{fullName}</h1>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
-            business
-              ? 'bg-blue-100 text-blue-800 border-blue-200'
-              : 'bg-gray-100 text-gray-600 border-gray-200'
-          }`}>
-            {business ? 'Business Account' : 'Individual'}
-          </span>
           <VerificationBadge status={customer.verification_status} />
         </div>
         <p className="text-muted-foreground text-sm">
@@ -313,35 +294,43 @@ export default function AdminCustomerDetailPage() {
                   : 'No'
               }
             />
+            <InfoRow
+              label="PEP Status"
+              value={
+                customer.is_pep
+                  ? <span className="text-red-600 font-medium">PEP Identified</span>
+                  : 'Not a PEP'
+              }
+            />
+            <InfoRow
+              label="Sanctions Status"
+              value={
+                customer.is_sanctioned
+                  ? <span className="text-red-600 font-medium">Sanctioned</span>
+                  : 'Clear'
+              }
+            />
+            <InfoRow
+              label="Risk Score"
+              value={customer.risk_score !== null ? `${customer.risk_score}/100 (${customer.risk_level || 'low'})` : 'Not assessed'}
+            />
             {latestScreening && (
               <>
                 <InfoRow
-                  label="PEP Status"
-                  value={
-                    latestScreening.is_pep
-                      ? <span className="text-red-600 font-medium">PEP Identified</span>
-                      : 'No match'
-                  }
-                />
-                <InfoRow
-                  label="Sanctions"
-                  value={
-                    latestScreening.is_sanctioned
-                      ? <span className="text-red-600 font-medium">Sanctioned</span>
-                      : 'Clear'
-                  }
+                  label="Last Screening"
+                  value={`${latestScreening.screening_service || 'Unknown'} — ${latestScreening.is_match ? 'Match found' : 'Clear'} (${latestScreening.status})`}
                 />
                 {latestScreening.match_score !== null && (
                   <InfoRow label="Match Score" value={`${latestScreening.match_score}%`} />
                 )}
                 <InfoRow
-                  label="Last Screened"
+                  label="Screened At"
                   value={new Date(latestScreening.created_at).toLocaleDateString('en-AU')}
                 />
               </>
             )}
             {!latestScreening && (
-              <InfoRow label="Sanctions Screening" value={<span className="text-muted-foreground italic">Not screened</span>} />
+              <InfoRow label="Sanctions Screening" value={<span className="text-muted-foreground italic">Not screened yet</span>} />
             )}
             <InfoRow
               label="EDD Status"
@@ -370,9 +359,10 @@ export default function AdminCustomerDetailPage() {
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
                       <th className="text-left px-3 py-2 font-medium text-muted-foreground">Date</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">PEP</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Sanctioned</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Service</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Match</th>
                       <th className="text-left px-3 py-2 font-medium text-muted-foreground">Score</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -381,9 +371,10 @@ export default function AdminCustomerDetailPage() {
                         <td className="px-3 py-2 text-muted-foreground text-xs">
                           {new Date(s.created_at).toLocaleDateString('en-AU')}
                         </td>
-                        <td className="px-3 py-2">{s.is_pep ? 'Yes' : 'No'}</td>
-                        <td className="px-3 py-2">{s.is_sanctioned ? 'Yes' : 'No'}</td>
+                        <td className="px-3 py-2 text-xs">{s.screening_service || '—'}</td>
+                        <td className="px-3 py-2">{s.is_match ? 'Yes' : 'No'}</td>
                         <td className="px-3 py-2">{s.match_score ?? '—'}</td>
+                        <td className="px-3 py-2 text-xs capitalize">{s.status}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -392,63 +383,6 @@ export default function AdminCustomerDetailPage() {
             </details>
           )}
         </SectionCard>
-
-        {/* Business section — only shown for business accounts */}
-        {business && (
-          <SectionCard title="Business Details">
-            <dl className="mb-4">
-              <InfoRow label="Business Name" value={business.business_name} />
-              <InfoRow label="Trading Name" value={business.trading_name} />
-              <InfoRow label="Entity Type" value={business.entity_type} />
-              <InfoRow label="ABN" value={business.abn ? <span className="font-mono">{business.abn}</span> : null} />
-              <InfoRow label="ACN" value={business.acn ? <span className="font-mono">{business.acn}</span> : null} />
-              <InfoRow label="Verification" value={<VerificationBadge status={business.verification_status} />} />
-            </dl>
-
-            {business.beneficial_owners.length > 0 && (
-              <>
-                <h3 className="text-sm font-medium text-foreground mb-2">Beneficial Owners</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/50">
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Name</th>
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Ownership</th>
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">PEP</th>
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Screening</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {business.beneficial_owners.map((bo) => (
-                        <tr key={bo.id} className="border-b border-border last:border-0">
-                          <td className="px-3 py-2 font-medium">{bo.full_name}</td>
-                          <td className="px-3 py-2">{bo.ownership_percentage}%</td>
-                          <td className="px-3 py-2">
-                            {bo.is_pep
-                              ? <span className="text-red-600 font-medium text-xs">PEP</span>
-                              : <span className="text-muted-foreground text-xs">No</span>
-                            }
-                          </td>
-                          <td className="px-3 py-2">
-                            <StatusBadge
-                              status={bo.screening_status || 'not_screened'}
-                              colorMap={{
-                                clear: 'bg-green-100 text-green-800',
-                                matched: 'bg-red-100 text-red-800',
-                                pending: 'bg-yellow-100 text-yellow-800',
-                                not_screened: 'bg-gray-100 text-gray-600',
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </SectionCard>
-        )}
 
         {/* Orders */}
         <SectionCard title={`Orders (${transactions.length})`}>

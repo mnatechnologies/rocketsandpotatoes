@@ -21,30 +21,19 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const rawSearch = searchParams.get('search') || '';
-    // Sanitize search to prevent PostgREST filter injection (strip special chars used in filter syntax)
     const search = rawSearch.replace(/[.,()!]/g, '');
-    const VALID_FILTERS = ['all', 'verified', 'pending', 'unverified', 'business'] as const;
+    const VALID_FILTERS = ['all', 'verified', 'pending', 'unverified'] as const;
     const filterParam = searchParams.get('filter') || 'all';
     const filter = VALID_FILTERS.includes(filterParam as typeof VALID_FILTERS[number]) ? filterParam : 'all';
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.min(100, parseInt(searchParams.get('limit') || '50', 10));
     const offset = (page - 1) * limit;
 
+    // Fetch customers (no embedded join — business_customers FK not discoverable by PostgREST)
     let query = supabase
       .from('customers')
       .select(
-        `
-        id,
-        clerk_user_id,
-        email,
-        first_name,
-        last_name,
-        verification_status,
-        monitoring_level,
-        requires_enhanced_dd,
-        created_at,
-        business_customers(id, business_name)
-        `,
+        `id, clerk_user_id, email, first_name, last_name, verification_status, monitoring_level, requires_enhanced_dd, created_at`,
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -63,7 +52,6 @@ export async function GET(req: NextRequest) {
     } else if (filter === 'unverified') {
       query = query.eq('verification_status', 'unverified');
     }
-    // 'business' filter handled post-fetch since it requires join inspection
 
     const { data, error, count } = await query;
 
@@ -72,32 +60,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 });
     }
 
-    let customers = (data || []).map((c) => {
-      const bizArr = Array.isArray(c.business_customers) ? c.business_customers : [];
-      const biz = bizArr[0] || null;
-      return {
-        id: c.id,
-        clerk_user_id: c.clerk_user_id,
-        email: c.email,
-        first_name: c.first_name,
-        last_name: c.last_name,
-        verification_status: c.verification_status,
-        monitoring_level: c.monitoring_level,
-        requires_enhanced_dd: c.requires_enhanced_dd,
-        created_at: c.created_at,
-        is_business: !!biz,
-        business_name: biz?.business_name || null,
-      };
-    });
+    const customerIds = (data || []).map((c) => c.id);
 
-    if (filter === 'business') {
-      customers = customers.filter((c) => c.is_business);
-    }
-
-    // Fetch transaction aggregates for these customer IDs
-    const customerIds = customers.map((c) => c.id);
-
-    let txData: Array<{ customer_id: string; order_count: number; total_aud: number }> = [];
+    // Fetch transaction aggregates
+    const txAggMap = new Map<string, { order_count: number; total_aud: number }>();
     if (customerIds.length > 0) {
       const { data: txRows, error: txError } = await supabase
         .from('transactions')
@@ -110,34 +76,33 @@ export async function GET(req: NextRequest) {
         logger.error('Error fetching transaction aggregates:', txError);
       }
 
-      if (txRows) {
-        const aggMap = new Map<string, { order_count: number; total_aud: number }>();
-        for (const row of txRows) {
-          const existing = aggMap.get(row.customer_id) || { order_count: 0, total_aud: 0 };
-          aggMap.set(row.customer_id, {
-            order_count: existing.order_count + 1,
-            total_aud: existing.total_aud + (row.amount_aud || 0),
-          });
-        }
-        txData = Array.from(aggMap.entries()).map(([customer_id, agg]) => ({
-          customer_id,
-          ...agg,
-        }));
+      for (const row of txRows || []) {
+        const existing = txAggMap.get(row.customer_id) || { order_count: 0, total_aud: 0 };
+        txAggMap.set(row.customer_id, {
+          order_count: existing.order_count + 1,
+          total_aud: existing.total_aud + (row.amount_aud || 0),
+        });
       }
     }
 
-    const txMap = new Map(txData.map((t) => [t.customer_id, t]));
-    const enriched = customers.map((c) => {
-      const tx = txMap.get(c.id);
+    const enriched = (data || []).map((c) => {
+      const tx = txAggMap.get(c.id);
       return {
-        ...c,
+        id: c.id,
+        clerk_user_id: c.clerk_user_id,
+        email: c.email,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        verification_status: c.verification_status,
+        monitoring_level: c.monitoring_level,
+        requires_enhanced_dd: c.requires_enhanced_dd,
+        created_at: c.created_at,
         order_count: tx?.order_count || 0,
         total_spent_aud: tx?.total_aud || 0,
       };
     });
 
-    // For business filter applied post-fetch, use filtered count instead of DB count
-    const total = filter === 'business' ? enriched.length : (count ?? enriched.length);
+    const total = count ?? enriched.length;
 
     return NextResponse.json({
       data: enriched,

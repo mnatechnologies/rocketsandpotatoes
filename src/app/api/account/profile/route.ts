@@ -33,10 +33,9 @@ export async function GET(req: NextRequest) {
         occupation,
         employer,
         verification_status,
-        created_at,
-        account_type,
-        business_name,
-        abn
+        verification_level,
+        customer_type,
+        created_at
       `)
       .eq('clerk_user_id', userId)
       .single();

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       .from('audit_logs')
       .select('action_type, description, metadata, created_at')
       .eq('entity_type', 'system')
-      .eq('entity_id', 'db-backup')
+      .in('action_type', ['db_backup_completed', 'db_backup_failed'])
       .order('created_at', { ascending: false })
       .limit(10);
 

@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     const { error: auditError } = await supabase.from('audit_logs').insert({
       action_type: 'db_backup_completed',
       entity_type: 'system',
-      entity_id: 'db-backup',
+      entity_id: null,
       description: `Daily DB backup completed: ${successCount} tables exported to S3`,
       metadata: {
         date: result.date,

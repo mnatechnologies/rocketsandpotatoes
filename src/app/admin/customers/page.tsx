@@ -13,20 +13,17 @@ interface CustomerRow {
   monitoring_level: string | null;
   requires_enhanced_dd: boolean;
   created_at: string;
-  is_business: boolean;
-  business_name: string | null;
   order_count: number;
   total_spent_aud: number;
 }
 
-type Filter = 'all' | 'verified' | 'pending' | 'unverified' | 'business';
+type Filter = 'all' | 'verified' | 'pending' | 'unverified';
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'verified', label: 'Verified' },
   { key: 'pending', label: 'Pending' },
   { key: 'unverified', label: 'Unverified' },
-  { key: 'business', label: 'Business' },
 ];
 
 function VerificationBadge({ status }: { status: string }) {
@@ -194,7 +191,6 @@ export default function AdminCustomersPage() {
               <tr className="border-b border-border bg-muted/50">
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Email</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Type</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Verification</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Risk Level</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Orders</th>
@@ -214,20 +210,8 @@ export default function AdminCustomersPage() {
                       ? `${c.first_name || ''} ${c.last_name || ''}`.trim()
                       : <span className="text-muted-foreground italic">No name</span>
                     }
-                    {c.is_business && c.business_name && (
-                      <div className="text-xs text-muted-foreground">{c.business_name}</div>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
-                      c.is_business
-                        ? 'bg-blue-100 text-blue-800 border-blue-200'
-                        : 'bg-gray-100 text-gray-600 border-gray-200'
-                    }`}>
-                      {c.is_business ? 'Business' : 'Individual'}
-                    </span>
-                  </td>
                   <td className="px-4 py-3">
                     <VerificationBadge status={c.verification_status} />
                   </td>

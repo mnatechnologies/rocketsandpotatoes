@@ -27,7 +27,7 @@ interface Customer {
   first_name: string;
   last_name: string;
   verification_status: string;
-  account_type: string;
+  customer_type: string;
   created_at: string;
 }
 
@@ -213,10 +213,10 @@ export default function AccountDashboard() {
               {verificationLabel[verificationStatus] || verificationStatus}
             </p>
           </div>
-          {customer?.account_type && (
+          {customer?.customer_type && (
             <div>
               <p className="text-sm text-muted-foreground">Account Type</p>
-              <p className="font-semibold text-foreground capitalize">{customer.account_type}</p>
+              <p className="font-semibold text-foreground capitalize">{customer.customer_type}</p>
             </div>
           )}
           <div>

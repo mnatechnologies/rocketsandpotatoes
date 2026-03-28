@@ -42,8 +42,14 @@ export async function GET(
         occupation,
         employer,
         verification_status,
+        verification_level,
         monitoring_level,
         requires_enhanced_dd,
+        is_pep,
+        is_sanctioned,
+        risk_score,
+        risk_level,
+        customer_type,
         created_at
         `
       )
@@ -57,35 +63,11 @@ export async function GET(
 
     // Parallel fetches for all related data
     const [
-      businessResult,
       transactionsResult,
       verificationsResult,
       eddResult,
       sanctionsResult,
     ] = await Promise.all([
-      supabase
-        .from('business_customers')
-        .select(
-          `
-          id,
-          abn,
-          acn,
-          entity_type,
-          business_name,
-          trading_name,
-          verification_status,
-          created_at,
-          beneficial_owners(
-            id,
-            full_name,
-            ownership_percentage,
-            is_pep,
-            screening_status
-          )
-          `
-        )
-        .eq('customer_id', id),
-
       supabase
         .from('transactions')
         .select(
@@ -118,24 +100,13 @@ export async function GET(
 
       supabase
         .from('sanctions_screenings')
-        .select('id, is_pep, is_sanctioned, match_score, created_at')
+        .select('id, is_match, match_score, screened_name, screening_service, status, screening_type, created_at')
         .eq('customer_id', id)
         .order('created_at', { ascending: false }),
     ]);
 
-    // Extract business data (1:1 via FK, but returns array)
-    const bizArr = businessResult.data || [];
-    const biz = bizArr[0] || null;
-    const businessData = biz
-      ? {
-          ...biz,
-          beneficial_owners: Array.isArray(biz.beneficial_owners) ? biz.beneficial_owners : [],
-        }
-      : null;
-
     return NextResponse.json({
       customer,
-      business: businessData,
       transactions: transactionsResult.data || [],
       identity_verifications: verificationsResult.data || [],
       edd_investigations: eddResult.data || [],

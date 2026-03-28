@@ -13,10 +13,8 @@ interface Customer {
   occupation: string | null;
   employer: string | null;
   verification_status: string;
-  monitoring_level: string | null;
-  account_type: string | null;
-  business_name: string | null;
-  abn: string | null;
+  verification_level: string | null;
+  customer_type: string | null;
   created_at: string;
 }
 
@@ -95,7 +93,6 @@ export default function SettingsPage() {
   if (!user) return null;
 
   const verificationStatus = customer?.verification_status || 'unverified';
-  const isBusinessAccount = customer?.account_type === 'business';
 
   return (
     <div className="max-w-2xl">
@@ -146,29 +143,6 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Business Details (if applicable) */}
-      {isBusinessAccount && (
-        <section className="bg-card border border-border rounded-lg mb-6">
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-foreground">Business Details</h2>
-          </div>
-          <div className="px-5 py-5 divide-y divide-border">
-            {customer?.business_name && (
-              <div className="pb-4">
-                <p className="text-xs text-muted-foreground mb-1">Business Name</p>
-                <p className="text-sm font-medium text-foreground">{customer.business_name}</p>
-              </div>
-            )}
-            {customer?.abn && (
-              <div className="pt-4">
-                <p className="text-xs text-muted-foreground mb-1">ABN</p>
-                <p className="text-sm font-mono font-medium text-foreground">{customer.abn}</p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
       {/* Account Status */}
       <section className="bg-card border border-border rounded-lg mb-6">
         <div className="px-5 py-4 border-b border-border">
@@ -179,7 +153,7 @@ export default function SettingsPage() {
             <div>
               <p className="text-xs text-muted-foreground mb-1">Account Type</p>
               <p className="text-sm font-medium text-foreground capitalize">
-                {customer?.account_type || 'Individual'}
+                {customer?.customer_type || 'Individual'}
               </p>
             </div>
             <div>
