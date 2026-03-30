@@ -51,7 +51,6 @@ export async function GET(
         risk_score,
         risk_level,
         customer_type,
-        metadata,
         created_at
         `
       )
@@ -69,6 +68,7 @@ export async function GET(
       verificationsResult,
       eddResult,
       sanctionsResult,
+      adminNotesResult,
     ] = await Promise.all([
       supabase
         .from('transactions')
@@ -105,6 +105,14 @@ export async function GET(
         .select('id, is_match, match_score, screened_name, screening_service, status, screening_type, created_at')
         .eq('customer_id', id)
         .order('created_at', { ascending: false }),
+
+      supabase
+        .from('audit_logs')
+        .select('id, description, metadata, created_at')
+        .eq('entity_type', 'customer')
+        .eq('entity_id', id)
+        .eq('action_type', 'admin_note_added')
+        .order('created_at', { ascending: false }),
     ]);
 
     return NextResponse.json({
@@ -113,6 +121,11 @@ export async function GET(
       identity_verifications: verificationsResult.data || [],
       edd_investigations: eddResult.data || [],
       sanctions_screenings: sanctionsResult.data || [],
+      admin_notes: (adminNotesResult.data || []).map((n) => ({
+        text: n.description,
+        admin_id: (n.metadata as Record<string, unknown>)?.admin_clerk_id || 'unknown',
+        created_at: n.created_at,
+      })),
     });
   } catch (error) {
     logger.error('Unexpected error:', error);
@@ -150,7 +163,7 @@ export async function PATCH(
     // Verify customer exists
     const { data: customer, error: fetchError } = await supabase
       .from('customers')
-      .select('id, first_name, last_name, metadata')
+      .select('id, first_name, last_name')
       .eq('id', id)
       .single();
 
@@ -258,38 +271,23 @@ export async function PATCH(
         return NextResponse.json({ error: 'Note content is required' }, { status: 400 });
       }
 
-      const existingNotes: Array<{ text: string; admin_id: string; created_at: string }> =
-        (customer.metadata as { admin_notes?: Array<{ text: string; admin_id: string; created_at: string }> })?.admin_notes || [];
-
-      const updatedNotes = [
-        ...existingNotes,
-        { text: note.trim(), admin_id: adminCheck.userId!, created_at: new Date().toISOString() },
-      ];
-
-      const existingMetadata = (customer.metadata as Record<string, unknown>) || {};
-      const { error: updateError } = await supabase
-        .from('customers')
-        .update({ metadata: { ...existingMetadata, admin_notes: updatedNotes } })
-        .eq('id', id);
-
-      if (updateError) {
-        logger.error('Failed to add admin note:', updateError);
-        return NextResponse.json({ error: 'Failed to save note' }, { status: 500 });
-      }
-
-      await supabase.from('audit_logs').insert({
+      const { error: insertError } = await supabase.from('audit_logs').insert({
         action_type: 'admin_note_added',
         entity_type: 'customer',
         entity_id: id,
-        description: `Admin note added`,
+        description: note.trim(),
         metadata: {
           admin_clerk_id: adminCheck.userId,
-          note_preview: note.trim().slice(0, 100),
         },
         created_at: new Date().toISOString(),
       });
 
-      return NextResponse.json({ success: true, notes: updatedNotes });
+      if (insertError) {
+        logger.error('Failed to add admin note:', insertError);
+        return NextResponse.json({ error: 'Failed to save note' }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });

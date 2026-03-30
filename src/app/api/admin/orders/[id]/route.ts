@@ -87,7 +87,7 @@ export async function GET(
 
       supabase
         .from('audit_logs')
-        .select('id, action, entity_type, entity_id, metadata, created_at')
+        .select('id, action_type, entity_type, entity_id, description, metadata, created_at')
         .eq('entity_id', id)
         .order('created_at', { ascending: false })
         .limit(50),

@@ -29,7 +29,6 @@ interface Customer {
   risk_score: number | null;
   risk_level: string | null;
   customer_type: string | null;
-  metadata: { admin_notes?: AdminNote[] } | null;
   created_at: string;
 }
 
@@ -77,6 +76,7 @@ interface CustomerDetail {
   identity_verifications: IdentityVerification[];
   edd_investigations: EddInvestigation[];
   sanctions_screenings: SanctionsScreening[];
+  admin_notes: AdminNote[];
 }
 
 function VerificationBadge({ status }: { status: string }) {
@@ -159,10 +159,12 @@ interface RescreenResult {
 function AdminActionsPanel({
   customerId,
   customer,
+  adminNotes: initialNotes,
   onRefresh,
 }: {
   customerId: string;
   customer: Customer;
+  adminNotes: AdminNote[];
   onRefresh: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -184,7 +186,7 @@ function AdminActionsPanel({
   // Notes state
   const [note, setNote] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
-  const adminNotes = customer.metadata?.admin_notes || [];
+  const adminNotes = initialNotes;
 
   async function patch(body: Record<string, unknown>) {
     const res = await fetch(`/api/admin/customers/${customerId}`, {
@@ -453,7 +455,7 @@ export default function AdminCustomerDetailPage() {
     );
   }
 
-  const { customer, transactions, identity_verifications, edd_investigations, sanctions_screenings } = data;
+  const { customer, transactions, identity_verifications, edd_investigations, sanctions_screenings, admin_notes } = data;
   const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.email;
   const latestScreening = sanctions_screenings[0] || null;
   const latestEdd = edd_investigations[0] || null;
@@ -488,7 +490,7 @@ export default function AdminCustomerDetailPage() {
 
       <div className="space-y-4">
         {/* Admin Actions */}
-        <AdminActionsPanel customerId={id} customer={customer} onRefresh={fetchCustomer} />
+        <AdminActionsPanel customerId={id} customer={customer} adminNotes={admin_notes} onRefresh={fetchCustomer} />
 
         {/* Profile */}
         <SectionCard title="Profile">

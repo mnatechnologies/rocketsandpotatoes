@@ -66,9 +66,10 @@ interface BankTransfer {
 
 interface AuditLog {
   id: string;
-  action: string;
+  action_type: string;
   entity_type: string;
   entity_id: string;
+  description: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;
 }
@@ -674,7 +675,7 @@ export default function AdminOrderDetailPage() {
                         <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                           {formatDateTime(log.created_at)}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-foreground">{log.action}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-foreground">{log.action_type}</td>
                         <td className="px-4 py-3 text-muted-foreground">{log.entity_type}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">
                           {log.metadata ? JSON.stringify(log.metadata) : '—'}
