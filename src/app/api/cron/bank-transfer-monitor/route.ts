@@ -9,6 +9,7 @@ import {
   sendBankTransferExpiredEmail,
 } from '@/lib/email/sendBankTransferEmails';
 import { matchBankTransfers } from '@/lib/xero/bank-matching';
+import { calculateBulkPricing, applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
 
 const logger = createLogger('BANK_TRANSFER_MONITOR');
 
@@ -134,10 +135,50 @@ export async function GET(req: NextRequest) {
           ? order.transactions[0]
           : order.transactions;
 
-        // Calculate market loss (using locked price for now — no live price fetch)
+        // Fetch live spot prices to calculate current order value
+        let currentTotalAud = transaction.amount_aud;
+        try {
+          const items: Array<{ productId?: string; id?: string; quantity?: number }> =
+            transaction.product_details?.items ?? [];
+          const productIds = items
+            .map((i) => i.productId ?? i.id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+          if (productIds.length > 0) {
+            const { data: products } = await supabase
+              .from('products')
+              .select('id, metal_type, weight, weight_grams, name, category, brand')
+              .in('id', productIds);
+
+            if (products && products.length > 0) {
+              const currentPrices = await calculateBulkPricing(products);
+              let liveTotal = 0;
+              for (const item of items) {
+                const pid = item.productId ?? item.id;
+                const qty = item.quantity ?? 1;
+                const unitPrice = currentPrices.get(pid ?? '');
+                if (unitPrice !== undefined) {
+                  const { discountedUnitPrice } = applyVolumeDiscount(unitPrice, qty);
+                  liveTotal += discountedUnitPrice * qty;
+                }
+              }
+              if (liveTotal > 0) {
+                currentTotalAud = liveTotal;
+              }
+            }
+          }
+        } catch (priceErr) {
+          logger.warn(
+            `Failed to fetch live prices for order ${order.reference_code}, skipping market loss check:`,
+            priceErr
+          );
+          // Use locked price so market loss = $0 rather than blocking expiry
+          currentTotalAud = transaction.amount_aud;
+        }
+
         const result = calculateMarketLoss({
           lockedTotalAud: transaction.amount_aud,
-          currentTotalAud: transaction.amount_aud, // TODO: fetch live spot prices
+          currentTotalAud,
           depositAmountAud: order.deposit_amount_aud,
           cancellationFeePercentage: settings.cancellation_fee_percentage,
         });

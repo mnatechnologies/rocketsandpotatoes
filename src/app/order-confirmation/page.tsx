@@ -267,6 +267,16 @@ function OrderConfirmationContent() {
               <span>Orders are typically ready for pickup within 1-2 business days</span>
             </div>
           </div>
+          {order.payment_status === 'awaiting_bank_transfer' && (
+            <div className="mt-6 pt-4 border-t border-border">
+              <Link
+                href={`/order/${order.id}/invoice`}
+                className="inline-block w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground hover:opacity-90 font-semibold rounded-lg text-center transition-opacity"
+              >
+                View Invoice &amp; Bank Details
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

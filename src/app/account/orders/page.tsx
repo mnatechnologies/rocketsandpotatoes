@@ -199,7 +199,7 @@ function OrderRow({ order }: { order: Order }) {
                 <p className="text-sm font-mono font-semibold text-foreground">{btOrder.reference_code}</p>
               </div>
               <Link
-                href={`/order/${order.id}`}
+                href={`/order/${order.id}/invoice`}
                 className="text-sm text-primary hover:text-primary/80 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >

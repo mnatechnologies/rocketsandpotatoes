@@ -12,18 +12,23 @@ interface CustomerRow {
   verification_status: string;
   monitoring_level: string | null;
   requires_enhanced_dd: boolean;
+  is_pep: boolean;
+  risk_level: string | null;
   created_at: string;
   order_count: number;
   total_spent_aud: number;
 }
 
-type Filter = 'all' | 'verified' | 'pending' | 'unverified';
+type Filter = 'all' | 'verified' | 'pending' | 'unverified' | 'pep' | 'high_risk' | 'edd';
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'verified', label: 'Verified' },
   { key: 'pending', label: 'Pending' },
   { key: 'unverified', label: 'Unverified' },
+  { key: 'pep', label: 'PEP' },
+  { key: 'high_risk', label: 'High Risk' },
+  { key: 'edd', label: 'EDD' },
 ];
 
 function VerificationBadge({ status }: { status: string }) {
@@ -216,7 +221,14 @@ export default function AdminCustomersPage() {
                     <VerificationBadge status={c.verification_status} />
                   </td>
                   <td className="px-4 py-3">
-                    <RiskBadge level={c.monitoring_level} enhanced={c.requires_enhanced_dd} />
+                    <div className="flex flex-wrap gap-1">
+                      <RiskBadge level={c.monitoring_level} enhanced={c.requires_enhanced_dd} />
+                      {c.is_pep && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                          PEP
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{c.order_count}</td>
                   <td className="px-4 py-3 font-medium">

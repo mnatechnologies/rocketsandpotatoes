@@ -5,6 +5,12 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+interface AdminNote {
+  text: string;
+  admin_id: string;
+  created_at: string;
+}
+
 interface Customer {
   id: string;
   clerk_user_id: string | null;
@@ -23,6 +29,7 @@ interface Customer {
   risk_score: number | null;
   risk_level: string | null;
   customer_type: string | null;
+  metadata: { admin_notes?: AdminNote[] } | null;
   created_at: string;
 }
 
@@ -136,6 +143,270 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+interface ScreeningMatch {
+  name: string;
+  matchScore: number;
+  source: string;
+}
+
+interface RescreenResult {
+  isMatch: boolean;
+  matches: ScreeningMatch[];
+  screenedAt: string;
+  screenedName: string;
+}
+
+function AdminActionsPanel({
+  customerId,
+  customer,
+  onRefresh,
+}: {
+  customerId: string;
+  customer: Customer;
+  onRefresh: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // KYC override state
+  const [kycStatus, setKycStatus] = useState(customer.verification_status);
+  const [kycReason, setKycReason] = useState('');
+  const [kycSaving, setKycSaving] = useState(false);
+
+  // Risk level state
+  const [riskLevel, setRiskLevel] = useState(customer.risk_level || 'low');
+  const [riskReason, setRiskReason] = useState('');
+  const [riskSaving, setRiskSaving] = useState(false);
+
+  // Rescreen state
+  const [rescreening, setRescreening] = useState(false);
+  const [rescreenResult, setRescreenResult] = useState<RescreenResult | null>(null);
+
+  // Notes state
+  const [note, setNote] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const adminNotes = customer.metadata?.admin_notes || [];
+
+  async function patch(body: Record<string, unknown>) {
+    const res = await fetch(`/api/admin/customers/${customerId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || 'Request failed');
+    }
+    return res.json();
+  }
+
+  async function handleKycSave() {
+    if (!kycReason.trim()) { toast.error('Reason is required'); return; }
+    setKycSaving(true);
+    try {
+      await patch({ action: 'update_verification', value: kycStatus, reason: kycReason });
+      toast.success('KYC status updated');
+      setKycReason('');
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update');
+    } finally {
+      setKycSaving(false);
+    }
+  }
+
+  async function handleRiskSave() {
+    if (!riskReason.trim()) { toast.error('Reason is required'); return; }
+    setRiskSaving(true);
+    try {
+      await patch({ action: 'update_risk_level', value: riskLevel, reason: riskReason });
+      toast.success('Risk level updated');
+      setRiskReason('');
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update');
+    } finally {
+      setRiskSaving(false);
+    }
+  }
+
+  async function handleRescreen() {
+    setRescreening(true);
+    setRescreenResult(null);
+    try {
+      const data = await patch({ action: 'rescreen' });
+      setRescreenResult(data.result as RescreenResult);
+      toast.success('Re-screen complete');
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Re-screen failed');
+    } finally {
+      setRescreening(false);
+    }
+  }
+
+  async function handleNoteSave() {
+    if (!note.trim()) { toast.error('Note cannot be empty'); return; }
+    setNoteSaving(true);
+    try {
+      await patch({ action: 'add_note', note });
+      toast.success('Note saved');
+      setNote('');
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save note');
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-amber-100/60 transition-colors"
+      >
+        <h2 className="text-base font-semibold text-amber-900">Admin Actions</h2>
+        <svg
+          className={`w-4 h-4 text-amber-700 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-6">
+          {/* KYC Override */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-900 mb-2">Override KYC Status</h3>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <select
+                value={kycStatus}
+                onChange={(e) => setKycStatus(e.target.value)}
+                className="px-3 py-1.5 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="verified">Verified</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+                <option value="unverified">Unverified</option>
+              </select>
+            </div>
+            <input
+              type="text"
+              value={kycReason}
+              onChange={(e) => setKycReason(e.target.value)}
+              placeholder="Reason (required)"
+              className="w-full max-w-md px-3 py-1.5 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+            />
+            <button
+              onClick={handleKycSave}
+              disabled={kycSaving}
+              className="px-4 py-1.5 text-sm bg-amber-700 text-white rounded-md hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            >
+              {kycSaving ? 'Saving...' : 'Save KYC Status'}
+            </button>
+          </div>
+
+          <div className="border-t border-amber-200" />
+
+          {/* Risk Level */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-900 mb-2">Change Risk Level</h3>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <select
+                value={riskLevel}
+                onChange={(e) => setRiskLevel(e.target.value)}
+                className="px-3 py-1.5 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <input
+              type="text"
+              value={riskReason}
+              onChange={(e) => setRiskReason(e.target.value)}
+              placeholder="Reason (required)"
+              className="w-full max-w-md px-3 py-1.5 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+            />
+            <button
+              onClick={handleRiskSave}
+              disabled={riskSaving}
+              className="px-4 py-1.5 text-sm bg-amber-700 text-white rounded-md hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            >
+              {riskSaving ? 'Saving...' : 'Save Risk Level'}
+            </button>
+          </div>
+
+          <div className="border-t border-amber-200" />
+
+          {/* Sanctions Re-screen */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-900 mb-2">Sanctions Re-screen</h3>
+            <button
+              onClick={handleRescreen}
+              disabled={rescreening}
+              className="px-4 py-1.5 text-sm bg-amber-700 text-white rounded-md hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            >
+              {rescreening ? 'Screening...' : 'Run Sanctions Screen'}
+            </button>
+            {rescreenResult && (
+              <div className={`mt-3 p-3 rounded-md text-sm border ${rescreenResult.isMatch ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+                <p className="font-medium mb-1">
+                  {rescreenResult.isMatch ? `Match found (${rescreenResult.matches.length} result${rescreenResult.matches.length !== 1 ? 's' : ''})` : 'Clear — no matches found'}
+                </p>
+                {rescreenResult.matches.length > 0 && (
+                  <ul className="text-xs space-y-1">
+                    {rescreenResult.matches.map((m, i) => (
+                      <li key={i}>{m.name} — {m.source} ({Math.round(m.matchScore * 100)}% match)</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-amber-200" />
+
+          {/* Admin Notes */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-900 mb-2">Internal Compliance Notes</h3>
+            {adminNotes.length > 0 && (
+              <div className="mb-3 space-y-2">
+                {adminNotes.map((n, i) => (
+                  <div key={i} className="text-sm bg-white border border-amber-200 rounded p-2">
+                    <p className="text-foreground whitespace-pre-wrap">{n.text}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(n.created_at).toLocaleString('en-AU')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add internal note..."
+              rows={3}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary mb-2 resize-y"
+            />
+            <button
+              onClick={handleNoteSave}
+              disabled={noteSaving}
+              className="px-4 py-1.5 text-sm bg-amber-700 text-white rounded-md hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            >
+              {noteSaving ? 'Saving...' : 'Add Note'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminCustomerDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -216,6 +487,9 @@ export default function AdminCustomerDetailPage() {
       </div>
 
       <div className="space-y-4">
+        {/* Admin Actions */}
+        <AdminActionsPanel customerId={id} customer={customer} onRefresh={fetchCustomer} />
+
         {/* Profile */}
         <SectionCard title="Profile">
           <dl>

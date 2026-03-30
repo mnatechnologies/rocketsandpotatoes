@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser, UserProfile } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Customer {
   id: string;
@@ -171,6 +172,22 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               {verificationDescription[verificationStatus] || ''}
             </p>
+            {verificationStatus === 'rejected' && (
+              <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                <Link
+                  href="/kyc-requirements"
+                  className="inline-block px-4 py-2 bg-primary text-primary-foreground hover:opacity-90 font-medium rounded-lg text-sm text-center transition-opacity"
+                >
+                  Re-attempt Verification
+                </Link>
+                <Link
+                  href="/contact"
+                  className="inline-block px-4 py-2 bg-muted text-muted-foreground hover:bg-muted/80 font-medium rounded-lg text-sm text-center transition-colors"
+                >
+                  Contact Support
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>

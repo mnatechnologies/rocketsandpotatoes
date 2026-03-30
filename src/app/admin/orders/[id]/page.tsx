@@ -196,6 +196,218 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+function OrderAdminActionsPanel({
+  orderId,
+  transaction,
+  onRefresh,
+}: {
+  orderId: string;
+  transaction: Transaction;
+  onRefresh: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Flag state
+  const [flagging, setFlagging] = useState(false);
+
+  // Notes state
+  const [note, setNote] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+
+  // Payment status override state
+  const ALLOWED_FROM: Record<string, string[]> = {
+    pending: ['failed'],
+    awaiting_bank_transfer: ['failed'],
+    requires_action: ['failed', 'pending'],
+  };
+  const allowedTargets = ALLOWED_FROM[transaction.payment_status] || [];
+  const [newPaymentStatus, setNewPaymentStatus] = useState(allowedTargets[0] || '');
+  const [overrideReason, setOverrideReason] = useState('');
+  const [overrideSaving, setOverrideSaving] = useState(false);
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
+
+  async function patch(body: Record<string, unknown>) {
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || 'Request failed');
+    }
+    return res.json();
+  }
+
+  async function handleToggleFlag() {
+    setFlagging(true);
+    try {
+      await patch({ action: 'flag_review', flagged: !transaction.flagged_for_review });
+      toast.success(transaction.flagged_for_review ? 'Order unflagged' : 'Order flagged for review');
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update flag');
+    } finally {
+      setFlagging(false);
+    }
+  }
+
+  async function handleNoteSave() {
+    if (!note.trim()) { toast.error('Note cannot be empty'); return; }
+    setNoteSaving(true);
+    try {
+      await patch({ action: 'add_note', note });
+      toast.success('Note saved');
+      setNote('');
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save note');
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
+  async function handleOverride() {
+    if (!overrideReason.trim()) { toast.error('Reason is required'); return; }
+    setOverrideSaving(true);
+    try {
+      await patch({ action: 'override_payment_status', payment_status: newPaymentStatus, reason: overrideReason });
+      toast.success('Payment status updated');
+      setOverrideReason('');
+      setShowOverrideConfirm(false);
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update status');
+    } finally {
+      setOverrideSaving(false);
+    }
+  }
+
+  return (
+    <div className="lg:col-span-2 bg-amber-50 border border-amber-200 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-amber-100/60 transition-colors"
+      >
+        <h2 className="text-sm font-semibold text-amber-900 uppercase tracking-wide">Admin Actions</h2>
+        <svg
+          className={`w-4 h-4 text-amber-700 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-6">
+          {/* Flag for review */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-900 mb-2">Review Flag</h3>
+            <button
+              onClick={handleToggleFlag}
+              disabled={flagging}
+              className={`px-4 py-1.5 text-sm rounded-md transition-colors disabled:opacity-50 ${
+                transaction.flagged_for_review
+                  ? 'bg-green-700 text-white hover:bg-green-800'
+                  : 'bg-red-700 text-white hover:bg-red-800'
+              }`}
+            >
+              {flagging
+                ? 'Updating...'
+                : transaction.flagged_for_review
+                ? 'Remove Review Flag'
+                : 'Flag for Review'
+              }
+            </button>
+          </div>
+
+          <div className="border-t border-amber-200" />
+
+          {/* Admin Note */}
+          <div>
+            <h3 className="text-sm font-semibold text-amber-900 mb-2">Add Admin Note</h3>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Internal note..."
+              rows={3}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary mb-2 resize-y"
+            />
+            <button
+              onClick={handleNoteSave}
+              disabled={noteSaving}
+              className="px-4 py-1.5 text-sm bg-amber-700 text-white rounded-md hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            >
+              {noteSaving ? 'Saving...' : 'Add Note'}
+            </button>
+          </div>
+
+          {allowedTargets.length > 0 && (
+            <>
+              <div className="border-t border-amber-200" />
+
+              {/* Payment Status Override */}
+              <div>
+                <h3 className="text-sm font-semibold text-amber-900 mb-1">Override Payment Status</h3>
+                <p className="text-xs text-amber-700 mb-2">
+                  Current: <strong>{transaction.payment_status}</strong>. Only specific transitions are allowed.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <select
+                    value={newPaymentStatus}
+                    onChange={(e) => setNewPaymentStatus(e.target.value)}
+                    className="px-3 py-1.5 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {allowedTargets.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => setShowOverrideConfirm(true)}
+                    className="px-4 py-1.5 text-sm bg-red-700 text-white rounded-md hover:bg-red-800 transition-colors"
+                  >
+                    Override Status
+                  </button>
+                </div>
+
+                {showOverrideConfirm && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-800 mb-2">
+                      This will change payment status to <strong>{newPaymentStatus}</strong>. This action is logged and irreversible. Provide a reason:
+                    </p>
+                    <input
+                      type="text"
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                      placeholder="Reason (required)"
+                      className="w-full max-w-md px-3 py-1.5 border border-border rounded-md bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleOverride}
+                        disabled={overrideSaving}
+                        className="px-4 py-1.5 text-sm bg-red-700 text-white rounded-md hover:bg-red-800 disabled:opacity-50 transition-colors"
+                      >
+                        {overrideSaving ? 'Saving...' : 'Confirm Override'}
+                      </button>
+                      <button
+                        onClick={() => { setShowOverrideConfirm(false); setOverrideReason(''); }}
+                        className="px-4 py-1.5 text-sm border border-border rounded-md hover:bg-muted transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<OrderDetail | null>(null);
@@ -268,6 +480,9 @@ export default function AdminOrderDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Admin Actions */}
+        <OrderAdminActionsPanel orderId={id} transaction={tx} onRefresh={fetchOrder} />
+
         {/* Customer */}
         <Card title="Customer">
           {customer ? (

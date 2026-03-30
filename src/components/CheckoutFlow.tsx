@@ -37,7 +37,7 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
   const { getLockedPriceForProduct } = useCart();
 
 
-  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked' | 'business_verification' | 'payment_method' | 'payment' | 'bank_transfer_hold' | 'coming_soon'>('validate');
+  const [step, setStep] = useState<'validate' | 'review' | 'kyc' | 'sof' | 'blocked' | 'business_verification' | 'payment_method' | 'payment' | 'bank_transfer_hold' | 'coming_soon' | 'sales_halted'>('validate');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -128,6 +128,10 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
           setStep('business_verification');
           return;
         }
+        if (result.status === 'sales_halted') {
+          setStep('sales_halted');
+          return;
+        }
         setStep('review');
         return;
       }
@@ -142,6 +146,8 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
         setStep('review');
       } else if (result.status === 'business_verification_required') {
         setStep('business_verification');
+      } else if (result.status === 'sales_halted') {
+        setStep('sales_halted');
       } else if (result.status === 'approved') {
         setStep('payment_method');
       }
@@ -491,6 +497,25 @@ export function CheckoutFlow({ customerId, amount, productDetails, cartItems, cu
           <p className="text-xs text-center text-muted-foreground">
             Estimated time: 5-10 minutes
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'sales_halted') {
+    return (
+      <div className="max-w-md mx-auto p-6 bg-amber-500/10 rounded-lg border border-amber-500/20">
+        <h2 className="text-xl font-bold text-amber-600 dark:text-amber-400 mb-3">Sales Temporarily Halted</h2>
+        <p className="text-amber-600 dark:text-amber-400 mb-6">
+          {validationResult?.message || 'Sales are temporarily halted. Please try again later.'}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => window.location.href = '/products'}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-6 rounded-lg transition-colors"
+          >
+            Return to Products
+          </button>
         </div>
       </div>
     );

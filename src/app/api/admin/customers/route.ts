@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const rawSearch = searchParams.get('search') || '';
     const search = rawSearch.replace(/[.,()!]/g, '');
-    const VALID_FILTERS = ['all', 'verified', 'pending', 'unverified'] as const;
+    const VALID_FILTERS = ['all', 'verified', 'pending', 'unverified', 'pep', 'high_risk', 'edd'] as const;
     const filterParam = searchParams.get('filter') || 'all';
     const filter = VALID_FILTERS.includes(filterParam as typeof VALID_FILTERS[number]) ? filterParam : 'all';
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from('customers')
       .select(
-        `id, clerk_user_id, email, first_name, last_name, verification_status, monitoring_level, requires_enhanced_dd, created_at`,
+        `id, clerk_user_id, email, first_name, last_name, verification_status, monitoring_level, requires_enhanced_dd, is_pep, risk_level, created_at`,
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -51,6 +51,12 @@ export async function GET(req: NextRequest) {
       query = query.eq('verification_status', 'pending');
     } else if (filter === 'unverified') {
       query = query.eq('verification_status', 'unverified');
+    } else if (filter === 'pep') {
+      query = query.eq('is_pep', true);
+    } else if (filter === 'high_risk') {
+      query = query.eq('risk_level', 'high');
+    } else if (filter === 'edd') {
+      query = query.eq('requires_enhanced_dd', true);
     }
 
     const { data, error, count } = await query;
@@ -96,6 +102,8 @@ export async function GET(req: NextRequest) {
         verification_status: c.verification_status,
         monitoring_level: c.monitoring_level,
         requires_enhanced_dd: c.requires_enhanced_dd,
+        is_pep: c.is_pep,
+        risk_level: c.risk_level,
         created_at: c.created_at,
         order_count: tx?.order_count || 0,
         total_spent_aud: tx?.total_aud || 0,

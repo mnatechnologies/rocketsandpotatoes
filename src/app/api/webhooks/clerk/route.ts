@@ -98,6 +98,15 @@ export async function POST(req: NextRequest) {
 
       logger.log('Customer record created/updated successfully:', data);
 
+      // Screen new customers against sanctions list
+      if (eventType === 'user.created' && data[0]?.id) {
+        try {
+          await screenCustomer(data[0].id);
+          logger.log('Sanctions screening completed for new customer:', data[0].id);
+        } catch (screenErr) {
+          logger.error('Sanctions screening failed for new customer (non-fatal):', screenErr);
+        }
+      }
 
       // Log audit event
       await supabase.from('audit_logs').insert({

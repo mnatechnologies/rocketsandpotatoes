@@ -212,6 +212,14 @@ export default function AccountDashboard() {
             <p className={`font-semibold ${verificationColor[verificationStatus] || 'text-foreground'}`}>
               {verificationLabel[verificationStatus] || verificationStatus}
             </p>
+            {verificationStatus === 'unverified' && (
+              <Link
+                href="/kyc-requirements"
+                className="mt-1 inline-block text-xs text-primary hover:text-primary/80 font-medium underline transition-colors"
+              >
+                Verify Your Identity
+              </Link>
+            )}
           </div>
           {customer?.customer_type && (
             <div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/auth/admin';
 import { createLogger } from '@/lib/utils/logger';
+import { screenCustomer } from '@/lib/compliance/screening';
 
 const logger = createLogger('ADMIN_CUSTOMER_DETAIL');
 
@@ -50,6 +51,7 @@ export async function GET(
         risk_score,
         risk_level,
         customer_type,
+        metadata,
         created_at
         `
       )
@@ -114,6 +116,185 @@ export async function GET(
     });
   } catch (error) {
     logger.error('Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+const VALID_VERIFICATION_STATUSES = ['verified', 'pending', 'rejected', 'unverified'] as const;
+const VALID_RISK_LEVELS = ['low', 'medium', 'high'] as const;
+const VALID_ACTIONS = ['update_verification', 'update_risk_level', 'rescreen', 'add_note'] as const;
+
+type PatchAction = typeof VALID_ACTIONS[number];
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck.authorized) return adminCheck.error;
+
+  const { id } = await params;
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 });
+  }
+
+  try {
+    const body = await req.json() as { action: PatchAction; value?: string; reason?: string; note?: string };
+    const { action, value, reason, note } = body;
+
+    if (!action || !VALID_ACTIONS.includes(action)) {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+
+    // Verify customer exists
+    const { data: customer, error: fetchError } = await supabase
+      .from('customers')
+      .select('id, first_name, last_name, metadata')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !customer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
+    if (action === 'update_verification') {
+      if (!value || !VALID_VERIFICATION_STATUSES.includes(value as typeof VALID_VERIFICATION_STATUSES[number])) {
+        return NextResponse.json({ error: 'Invalid verification_status value' }, { status: 400 });
+      }
+      if (!reason?.trim()) {
+        return NextResponse.json({ error: 'Reason is required' }, { status: 400 });
+      }
+
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ verification_status: value })
+        .eq('id', id);
+
+      if (updateError) {
+        logger.error('Failed to update verification_status:', updateError);
+        return NextResponse.json({ error: 'Failed to update customer' }, { status: 500 });
+      }
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'admin_kyc_override',
+        entity_type: 'customer',
+        entity_id: id,
+        description: `KYC status overridden to '${value}' by admin`,
+        metadata: {
+          new_status: value,
+          reason,
+          admin_clerk_id: adminCheck.userId,
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'update_risk_level') {
+      if (!value || !VALID_RISK_LEVELS.includes(value as typeof VALID_RISK_LEVELS[number])) {
+        return NextResponse.json({ error: 'Invalid risk_level value' }, { status: 400 });
+      }
+      if (!reason?.trim()) {
+        return NextResponse.json({ error: 'Reason is required' }, { status: 400 });
+      }
+
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ risk_level: value })
+        .eq('id', id);
+
+      if (updateError) {
+        logger.error('Failed to update risk_level:', updateError);
+        return NextResponse.json({ error: 'Failed to update customer' }, { status: 500 });
+      }
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'admin_risk_level_override',
+        entity_type: 'customer',
+        entity_id: id,
+        description: `Risk level overridden to '${value}' by admin`,
+        metadata: {
+          new_risk_level: value,
+          reason,
+          admin_clerk_id: adminCheck.userId,
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'rescreen') {
+      const result = await screenCustomer(id);
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'admin_sanctions_rescreen',
+        entity_type: 'customer',
+        entity_id: id,
+        description: `Sanctions re-screen triggered by admin`,
+        metadata: {
+          is_match: result.isMatch,
+          match_count: result.matches.length,
+          admin_clerk_id: adminCheck.userId,
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        result: {
+          isMatch: result.isMatch,
+          matches: result.matches,
+          screenedAt: result.screenedAt,
+          screenedName: result.screenedName,
+        },
+      });
+    }
+
+    if (action === 'add_note') {
+      if (!note?.trim()) {
+        return NextResponse.json({ error: 'Note content is required' }, { status: 400 });
+      }
+
+      const existingNotes: Array<{ text: string; admin_id: string; created_at: string }> =
+        (customer.metadata as { admin_notes?: Array<{ text: string; admin_id: string; created_at: string }> })?.admin_notes || [];
+
+      const updatedNotes = [
+        ...existingNotes,
+        { text: note.trim(), admin_id: adminCheck.userId!, created_at: new Date().toISOString() },
+      ];
+
+      const existingMetadata = (customer.metadata as Record<string, unknown>) || {};
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ metadata: { ...existingMetadata, admin_notes: updatedNotes } })
+        .eq('id', id);
+
+      if (updateError) {
+        logger.error('Failed to add admin note:', updateError);
+        return NextResponse.json({ error: 'Failed to save note' }, { status: 500 });
+      }
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'admin_note_added',
+        entity_type: 'customer',
+        entity_id: id,
+        description: `Admin note added`,
+        metadata: {
+          admin_clerk_id: adminCheck.userId,
+          note_preview: note.trim().slice(0, 100),
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({ success: true, notes: updatedNotes });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (error) {
+    logger.error('Unexpected error in PATCH:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -158,3 +158,158 @@ export async function GET(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+const VALID_ORDER_ACTIONS = ['flag_review', 'add_note', 'override_payment_status'] as const;
+type OrderAction = typeof VALID_ORDER_ACTIONS[number];
+
+// Allowed payment status transitions for manual override
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  pending: ['failed'],
+  awaiting_bank_transfer: ['failed'],
+  requires_action: ['failed', 'pending'],
+};
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck.authorized) return adminCheck.error;
+
+  const { id } = await params;
+  if (!UUID_REGEX.test(id)) {
+    return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
+  }
+
+  try {
+    const body = await req.json() as {
+      action: OrderAction;
+      flagged?: boolean;
+      note?: string;
+      payment_status?: string;
+      reason?: string;
+    };
+    const { action, flagged, note, payment_status, reason } = body;
+
+    if (!action || !VALID_ORDER_ACTIONS.includes(action)) {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+
+    // Verify transaction exists
+    const { data: tx, error: fetchError } = await supabase
+      .from('transactions')
+      .select('id, payment_status, flagged_for_review, review_notes')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !tx) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    if (action === 'flag_review') {
+      if (typeof flagged !== 'boolean') {
+        return NextResponse.json({ error: 'flagged boolean is required' }, { status: 400 });
+      }
+
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({ flagged_for_review: flagged })
+        .eq('id', id);
+
+      if (updateError) {
+        logger.error('Failed to update flagged_for_review:', updateError);
+        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+      }
+
+      await supabase.from('audit_logs').insert({
+        action_type: flagged ? 'admin_order_flagged' : 'admin_order_unflagged',
+        entity_type: 'transaction',
+        entity_id: id,
+        description: flagged ? 'Order flagged for review by admin' : 'Order unflagged by admin',
+        metadata: { admin_clerk_id: adminCheck.userId },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'add_note') {
+      if (!note?.trim()) {
+        return NextResponse.json({ error: 'Note content is required' }, { status: 400 });
+      }
+
+      const existingNotes = tx.review_notes ? `${tx.review_notes}\n\n` : '';
+      const timestamp = new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' });
+      const newNotes = `${existingNotes}[${timestamp} — Admin] ${note.trim()}`;
+
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({ review_notes: newNotes })
+        .eq('id', id);
+
+      if (updateError) {
+        logger.error('Failed to add review note:', updateError);
+        return NextResponse.json({ error: 'Failed to save note' }, { status: 500 });
+      }
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'admin_order_note_added',
+        entity_type: 'transaction',
+        entity_id: id,
+        description: 'Admin note added to order',
+        metadata: { admin_clerk_id: adminCheck.userId, note_preview: note.trim().slice(0, 100) },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({ success: true, review_notes: newNotes });
+    }
+
+    if (action === 'override_payment_status') {
+      if (!payment_status) {
+        return NextResponse.json({ error: 'payment_status is required' }, { status: 400 });
+      }
+      if (!reason?.trim()) {
+        return NextResponse.json({ error: 'Reason is required for payment status override' }, { status: 400 });
+      }
+
+      const allowed = ALLOWED_TRANSITIONS[tx.payment_status] || [];
+      if (!allowed.includes(payment_status)) {
+        return NextResponse.json(
+          { error: `Cannot transition from '${tx.payment_status}' to '${payment_status}'` },
+          { status: 422 }
+        );
+      }
+
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({ payment_status })
+        .eq('id', id);
+
+      if (updateError) {
+        logger.error('Failed to override payment_status:', updateError);
+        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+      }
+
+      await supabase.from('audit_logs').insert({
+        action_type: 'admin_payment_status_override',
+        entity_type: 'transaction',
+        entity_id: id,
+        description: `Payment status manually overridden from '${tx.payment_status}' to '${payment_status}'`,
+        metadata: {
+          previous_status: tx.payment_status,
+          new_status: payment_status,
+          reason,
+          admin_clerk_id: adminCheck.userId,
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (error) {
+    logger.error('Unexpected error in PATCH:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

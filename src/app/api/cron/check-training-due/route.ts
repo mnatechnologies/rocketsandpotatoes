@@ -14,9 +14,15 @@ const supabase = createClient(
 // Should be called daily via cron
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret
+    // Verify cron authorization
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const cronSecret = process.env.CRON_SECRET;
+    const isVercelCron = request.headers.get('x-vercel-cron') === '1';
+
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!cronSecret && !isVercelCron && process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
