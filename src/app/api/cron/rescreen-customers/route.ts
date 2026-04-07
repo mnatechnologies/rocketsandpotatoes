@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { rescreenAllCustomers } from '@/lib/compliance/screening';
-import { generateSMR } from '@/lib/compliance/smr-generator';
 import { sendSanctionsMatchAlert } from '@/lib/email/sendComplianceAlert';
 import { createLogger } from '@/lib/utils/logger';
 
@@ -39,7 +38,8 @@ export async function GET(req: NextRequest) {
     // Perform re-screening of all customers
     const result = await rescreenAllCustomers();
 
-    // For each new match, generate SMR and send alert
+    // For each new match, create a PENDING REVIEW record (not auto-filed SMR)
+    // and send alert to AMLCO for review
     for (const customerId of result.matchedCustomerIds) {
       try {
         // Get customer details for alert
@@ -53,13 +53,18 @@ export async function GET(req: NextRequest) {
           ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
           : 'Unknown';
 
-        // Generate SMR for the match
-        await generateSMR({
-          customerId,
-          suspicionType: 'sanctions_match',
-          indicators: ['Matched during weekly re-screening'],
-          narrative: `Customer ${customerName} matched against sanctions list during periodic re-screening. Requires immediate review.`,
-        });
+        // Create pending review record — AMLCO must review and decide whether to file SMR
+        await supabase
+          .from('suspicious_activity_reports')
+          .insert({
+            customer_id: customerId,
+            report_type: 'SMR',
+            suspicion_category: 'sanctions_match',
+            description: `SYSTEM FLAG — AWAITING AMLCO REVIEW\n\nCustomer ${customerName} matched against sanctions list during periodic re-screening.\n\nThis is an automated flag. The AMLCO must review the match, form a suspicion if warranted, and approve filing.`,
+            status: 'pending_review',
+            flagged_by_system: true,
+            submission_deadline: null, // Deadline starts when AMLCO confirms suspicion
+          });
 
         // Get the latest screening result for alert details
         const { data: screeningResult } = await supabase
@@ -80,7 +85,7 @@ export async function GET(req: NextRequest) {
           source: firstMatch?.source || 'Unknown',
         });
 
-        logger.log(`SMR generated and alert sent for customer ${customerId}`);
+        logger.log(`Sanctions match flag created and alert sent for customer ${customerId} — awaiting AMLCO review`);
       } catch (alertError) {
         logger.error(`Failed to process new match for customer ${customerId}:`, alertError);
       }

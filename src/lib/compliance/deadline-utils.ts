@@ -65,37 +65,87 @@ function isSameDay(date1: Date, date2: Date): boolean {
 }
 
 /**
- * Australian public holidays
- * Includes fixed holidays and moveable Easter holidays
+ * Get the Nth occurrence of a given weekday in a month.
+ * weekday: 0=Sunday, 1=Monday, ... 6=Saturday
+ */
+function getNthWeekdayOfMonth(year: number, month: number, weekday: number, n: number): Date {
+  const first = new Date(year, month, 1);
+  const firstDay = first.getDay();
+  let dayOfMonth = 1 + ((weekday - firstDay + 7) % 7) + (n - 1) * 7;
+  return new Date(year, month, dayOfMonth);
+}
+
+/**
+ * Get the substitute day when a holiday falls on a weekend.
+ * Saturday → following Monday. Sunday → following Monday.
+ * If Boxing Day (Dec 26) also falls on Monday (because Christmas was Sunday),
+ * Boxing Day moves to Tuesday.
+ */
+function getSubstituteDay(date: Date, isBoxingDay = false): Date {
+  const dayOfWeek = date.getDay();
+  if (dayOfWeek === 6) {
+    // Saturday → Monday
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 2);
+  }
+  if (dayOfWeek === 0) {
+    // Sunday → Monday (or Tuesday for Boxing Day if Christmas sub is already Monday)
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + (isBoxingDay ? 2 : 1));
+  }
+  return date;
+}
+
+/**
+ * Australian public holidays — national + NSW state holidays.
+ * Includes substitute-day rules for weekends.
  */
 function isAustralianPublicHoliday(date: Date): boolean {
   const year = date.getFullYear();
-  const month = date.getMonth(); // 0-indexed
-  const day = date.getDate();
 
-  // Fixed holidays (simplified - doesn't account for state variations)
-  const fixedHolidays = [
-    { month: 0, day: 1 },   // New Year's Day
-    { month: 0, day: 26 },  // Australia Day
-    { month: 3, day: 25 },  // ANZAC Day
-    { month: 11, day: 25 }, // Christmas Day
-    { month: 11, day: 26 }, // Boxing Day
-  ];
+  const holidays: Date[] = [];
 
-  // Check fixed holidays
-  if (fixedHolidays.some(h => h.month === month && h.day === day)) {
-    return true;
+  // --- National fixed holidays with substitute-day logic ---
+  const newYears = new Date(year, 0, 1);
+  holidays.push(getSubstituteDay(newYears));
+
+  const australiaDay = new Date(year, 0, 26);
+  holidays.push(getSubstituteDay(australiaDay));
+
+  const anzacDay = new Date(year, 3, 25);
+  // ANZAC Day: substitute only if Sunday (Saturday is observed on Saturday per convention)
+  if (anzacDay.getDay() === 0) {
+    holidays.push(new Date(year, 3, 26)); // Monday
+  } else {
+    holidays.push(anzacDay);
   }
 
-  // Check Easter holidays (Good Friday and Easter Monday)
-  const goodFriday = getGoodFriday(year);
-  const easterMonday = getEasterMonday(year);
+  const christmas = new Date(year, 11, 25);
+  const boxingDay = new Date(year, 11, 26);
+  const christmasSub = getSubstituteDay(christmas);
+  holidays.push(christmasSub);
+  // Boxing Day: if Christmas was Sunday (sub Monday), Boxing Day goes to Tuesday
+  const isChristmasSunday = christmas.getDay() === 0;
+  holidays.push(getSubstituteDay(boxingDay, isChristmasSunday));
 
-  if (isSameDay(date, goodFriday) || isSameDay(date, easterMonday)) {
-    return true;
-  }
+  // --- Easter (moveable) ---
+  holidays.push(getGoodFriday(year));
+  holidays.push(new Date(getEasterSunday(year).getTime() - 86400000)); // Easter Saturday
+  holidays.push(getEasterMonday(year));
 
-  return false;
+  // --- NSW state holidays ---
+  // Queen's Birthday: second Monday of June
+  holidays.push(getNthWeekdayOfMonth(year, 5, 1, 2));
+
+  // Bank Holiday: first Monday of August
+  holidays.push(getNthWeekdayOfMonth(year, 7, 1, 1));
+
+  // Labour Day (NSW): first Monday of October
+  holidays.push(getNthWeekdayOfMonth(year, 9, 1, 1));
+
+  // Reconciliation Day: 27 May (substitute if weekend) — national from 2026
+  const reconciliation = new Date(year, 4, 27);
+  holidays.push(getSubstituteDay(reconciliation));
+
+  return holidays.some(h => isSameDay(date, h));
 }
 
 /**
@@ -142,12 +192,25 @@ export function calculateSMRDeadline(suspicionDate: Date): Date {
 export function getBusinessDaysRemaining(deadline: Date): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const deadlineDate = new Date(deadline);
   deadlineDate.setHours(0, 0, 0, 0);
 
-  if (deadlineDate <= today) {
-    return 0;
+  if (deadlineDate.getTime() === today.getTime()) {
+    return 0; // Due today
+  }
+
+  if (deadlineDate < today) {
+    // Overdue — count negative business days
+    let overdueDays = 0;
+    const current = new Date(deadlineDate);
+    while (current < today) {
+      current.setDate(current.getDate() + 1);
+      if (isBusinessDay(current)) {
+        overdueDays++;
+      }
+    }
+    return -overdueDays;
   }
 
   let businessDays = 0;

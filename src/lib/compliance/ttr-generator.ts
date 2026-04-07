@@ -16,7 +16,7 @@ interface TTRData {
 export interface TTRRecord {
   transaction_date: string;
   transaction_type: string;
-  transaction_amount: string;
+  transaction_amount: number;
   original_amount: number;
   original_currency: string;
   customer_type?: string;
@@ -425,15 +425,16 @@ export function exportTTRsAsCSV(ttrRecords: TTRRecord[]): string {
   const headers = [
     'Transaction Date',
     'Transaction Type',
-    'Amount',
-    'Currency',
+    'Amount (AUD)',
+    'Original Amount',
+    'Original Currency',
     'Customer Name',
     'Date of Birth',
     'Address',
     'Occupation',
     'Source of Funds',
     'Employer',
-    'Verification Level',
+    'Verification Method',
     'ID Document Type',
     'Internal Reference',
     'TTR Reference',

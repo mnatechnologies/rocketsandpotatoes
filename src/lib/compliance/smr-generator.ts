@@ -25,6 +25,26 @@ export async function generateSMR(data: {
     }
   );
 
+  // Idempotency: check for existing SMR with same trigger within 24 hours
+  const dedupeWindow = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const dedupeQuery = supabase
+    .from('suspicious_activity_reports')
+    .select('id, status, created_at')
+    .eq('customer_id', data.customerId)
+    .eq('suspicion_category', data.suspicionType)
+    .gte('created_at', dedupeWindow);
+
+  if (data.transactionId) {
+    dedupeQuery.eq('transaction_id', data.transactionId);
+  }
+
+  const { data: existingSmr } = await dedupeQuery.maybeSingle();
+
+  if (existingSmr) {
+    logger.log(`Duplicate SMR prevented — existing SMR ${existingSmr.id} created at ${existingSmr.created_at}`);
+    return existingSmr;
+  }
+
   let transactionAmountAUD = data.transactionAmount;
   let originalAmount: number | undefined;
   let originalCurrency: string | undefined;

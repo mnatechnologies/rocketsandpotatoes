@@ -1,7 +1,7 @@
-// DON'T ASK ME NOTHING BOUT THIS FILE. 
-
 import { createClient } from "@supabase/supabase-js";
 import { createLogger } from '@/lib/utils/logger';
+import { jaroWinklerSimilarity, phoneticMatch, expandNameVariants } from './phonetic';
+import { screenCustomerPep } from './pep-screening';
 
 const logger = createLogger('SCREENING_FUNCTIONALITY')
 
@@ -110,8 +110,6 @@ async function checkExactMatch(supabase: any, fullName: string) {
   }))
 }
 
-// jacking this shit yo
-
 async function checkFuzzyMatch(
   supabase: any,
   fullName: string,
@@ -173,43 +171,39 @@ async function checkFuzzyMatch(
   return matches;
 }
 
+/**
+ * Composite match score using Jaro-Winkler (70%) + Double Metaphone phonetic (30%).
+ * Also checks transliteration variants (Muhammad/Mohamed/Mohamad, etc.)
+ * This replaces the old Levenshtein-only scoring which missed transliterated names.
+ */
 function calculateMatchScore(str1: string, str2: string): number {
   const normalized1 = normalizeName(str1);
   const normalized2 = normalizeName(str2);
 
-  const distance = levenshteinDistance(normalized1, normalized2);
-  const maxLength = Math.max(normalized1.length, normalized2.length);
+  if (normalized1.length === 0 || normalized2.length === 0) return 0;
+  if (normalized1 === normalized2) return 1.0;
 
-  // Convert distance to similarity score (0-1)
-  return 1 - (distance / maxLength);
-}
+  // Composite: Jaro-Winkler (better for short names) + phonetic matching
+  const jwScore = jaroWinklerSimilarity(normalized1, normalized2);
+  const phonScore = phoneticMatch(normalized1, normalized2);
+  const compositeScore = 0.7 * jwScore + 0.3 * phonScore;
 
-function levenshteinDistance(str1: string, str2: string): number {
-  const matrix: number[][] = [];
+  // Also check transliteration variants
+  const variants1 = expandNameVariants(normalized1);
+  const variants2 = expandNameVariants(normalized2);
 
-  for (let i = 0; i <= str2.length; i++) {
-    matrix[i] = [i];
-  }
-
-  for (let j = 0; j <= str1.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= str2.length; i++) {
-    for (let j = 1; j <= str1.length; j++) {
-      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
-        );
+  let bestVariantScore = compositeScore;
+  for (const v1 of variants1) {
+    for (const v2 of variants2) {
+      if (v1 === v2) return 1.0;
+      const vScore = 0.7 * jaroWinklerSimilarity(v1, v2) + 0.3 * phoneticMatch(v1, v2);
+      if (vScore > bestVariantScore) {
+        bestVariantScore = vScore;
       }
     }
   }
 
-  return matrix[str2.length][str1.length];
+  return Math.min(1.0, bestVariantScore);
 }
 
 /**
@@ -277,6 +271,13 @@ export async function screenCustomer(customerId: string): Promise<ScreeningResul
     })
     .eq('id', customerId);
 
+  // Also run PEP screening (AML/CTF Rules Part 4.13)
+  try {
+    await screenCustomerPep(customerId);
+  } catch (pepErr) {
+    logger.error('PEP screening failed (sanctions screening still valid):', pepErr);
+  }
+
   return result;
 }
 
@@ -312,11 +313,11 @@ export async function rescreenAllCustomers(): Promise<RescreeningResult> {
     matchedCustomerIds: [],
   };
 
-  // Get all customers who are not already flagged as sanctioned
+  // Re-screen ALL customers — including previously flagged ones
+  // Previously flagged customers must be re-evaluated for delisting
   const { data: customers, error } = await supabase
     .from('customers')
-    .select('id, first_name, last_name, date_of_birth, is_sanctioned')
-    .eq('is_sanctioned', false);
+    .select('id, first_name, last_name, date_of_birth, is_sanctioned');
 
   if (error) {
     logger.error('Failed to fetch customers for re-screening:', error);
@@ -349,18 +350,36 @@ export async function rescreenAllCustomers(): Promise<RescreeningResult> {
 
       result.screened++;
 
-      // If new match found
       if (screeningResult.isMatch) {
-        result.newMatches++;
-        result.matchedCustomerIds.push(customer.id);
+        if (!customer.is_sanctioned) {
+          // Newly flagged customer
+          result.newMatches++;
+          result.matchedCustomerIds.push(customer.id);
 
-        // Update customer as sanctioned
-        await supabase
-          .from('customers')
-          .update({ is_sanctioned: true })
-          .eq('id', customer.id);
+          await supabase
+            .from('customers')
+            .update({ is_sanctioned: true })
+            .eq('id', customer.id);
 
-        logger.log(`⚠️ NEW MATCH: Customer ${customer.id} - ${customer.first_name} ${customer.last_name}`);
+          logger.log(`⚠️ NEW MATCH: Customer ${customer.id} - ${customer.first_name} ${customer.last_name}`);
+        }
+        // Previously flagged and still matching — no change needed
+      } else if (customer.is_sanctioned) {
+        // Previously flagged but NO LONGER matching — queue for delisting review
+        // Do NOT auto-clear: create a review record for manual AMLCO assessment
+        await supabase.from('audit_logs').insert({
+          action_type: 'sanctions_delisting_review_needed',
+          entity_type: 'customer',
+          entity_id: customer.id,
+          description: `Previously sanctioned customer ${customer.first_name} ${customer.last_name} no longer matches any sanctions list. Manual delisting review required.`,
+          metadata: {
+            customer_id: customer.id,
+            previous_status: 'sanctioned',
+            screening_type: 'periodic_rescreen',
+          },
+        });
+
+        logger.log(`📋 DELISTING REVIEW: Customer ${customer.id} - ${customer.first_name} ${customer.last_name} no longer matches sanctions list`);
       }
     } catch (err) {
       logger.error(`Error screening customer ${customer.id}:`, err);

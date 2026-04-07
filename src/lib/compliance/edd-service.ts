@@ -34,7 +34,7 @@ export async function createEDDInvestigation({
         .select('id, investigation_number')
         .eq('customer_id', customerId)
         .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
-        .single();
+        .maybeSingle();
 
     if (existing) {
         // If transaction provided, link it to existing investigation

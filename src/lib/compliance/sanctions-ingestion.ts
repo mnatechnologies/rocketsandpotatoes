@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { XMLParser } from 'fast-xml-parser';
 import { read, utils } from 'xlsx';
 import { createLogger } from '@/lib/utils/logger';
+import { sendComplianceAlert } from '@/lib/email/sendComplianceAlert';
 
 const logger = createLogger('SANCTIONS_INGESTION');
 
@@ -371,34 +372,92 @@ async function upsertSource(
 ): Promise<{ inserted: number; deleted: number }> {
   const supabase = makeSupabaseClient();
 
-  // Delete all existing rows for this source
-  const { error: deleteError, count: deleteCount } = await supabase
+  // Sanity check: get current count before modifying anything
+  const { count: currentCount } = await supabase
     .from('sanctioned_entities')
-    .delete({ count: 'exact' })
+    .select('*', { count: 'exact', head: true })
     .eq('source', source);
 
-  if (deleteError) {
-    throw new Error(`Failed to delete ${source} entries: ${deleteError.message}`);
+  const previousCount = currentCount ?? 0;
+
+  // Abort if new data is suspiciously small compared to previous
+  // (protects against empty/corrupt upstream responses)
+  if (previousCount > 50 && rows.length < previousCount * 0.5) {
+    const msg = `${source} sanity check failed: parsed ${rows.length} rows but expected ~${previousCount}. ` +
+      `Refusing to replace — upstream data may be corrupt or truncated.`;
+    logger.error(msg);
+    throw new Error(msg);
   }
 
-  const deleted = deleteCount ?? 0;
+  if (rows.length === 0) {
+    throw new Error(`${source}: parsed 0 rows. Refusing to delete existing data.`);
+  }
 
-  // Bulk insert in batches
+  // Insert all new rows first (before deleting old ones) to ensure we have valid data
+  // Use a unique batch marker to identify the new rows
+  const batchMarker = `${source}_staging_${Date.now()}`;
   let inserted = 0;
+
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE);
+    const batch = rows.slice(i, i + BATCH_SIZE).map(row => ({
+      ...row,
+      listing_info: row.listing_info
+        ? `${row.listing_info}\n__batch:${batchMarker}`
+        : `__batch:${batchMarker}`,
+    }));
+
     const { error: insertError } = await supabase
       .from('sanctioned_entities')
       .insert(batch);
 
     if (insertError) {
+      // Rollback: delete any rows we've already inserted in this batch
+      await supabase
+        .from('sanctioned_entities')
+        .delete()
+        .like('listing_info', `%__batch:${batchMarker}%`);
+
       throw new Error(
-        `Failed to insert ${source} batch at offset ${i}: ${insertError.message}`
+        `Failed to insert ${source} batch at offset ${i}: ${insertError.message}. ` +
+        `Rolled back staged rows. Existing data preserved.`
       );
     }
     inserted += batch.length;
   }
 
+  // All inserts succeeded — now safe to delete the old rows
+  const { error: deleteError, count: deleteCount } = await supabase
+    .from('sanctioned_entities')
+    .delete({ count: 'exact' })
+    .eq('source', source)
+    .not('listing_info', 'like', `%__batch:${batchMarker}%`);
+
+  if (deleteError) {
+    logger.error(`Failed to delete old ${source} entries (new data preserved):`, deleteError);
+  }
+
+  // Clean up batch markers from new rows
+  const { data: stagedRows } = await supabase
+    .from('sanctioned_entities')
+    .select('id, listing_info')
+    .like('listing_info', `%__batch:${batchMarker}%`);
+
+  if (stagedRows) {
+    for (let i = 0; i < stagedRows.length; i += BATCH_SIZE) {
+      const batch = stagedRows.slice(i, i + BATCH_SIZE);
+      for (const row of batch) {
+        const cleanedInfo = row.listing_info
+          ?.replace(`\n__batch:${batchMarker}`, '')
+          ?.replace(`__batch:${batchMarker}`, '') || null;
+        await supabase
+          .from('sanctioned_entities')
+          .update({ listing_info: cleanedInfo })
+          .eq('id', row.id);
+      }
+    }
+  }
+
+  const deleted = deleteCount ?? 0;
   return { inserted, deleted };
 }
 
@@ -433,6 +492,30 @@ export async function refreshSanctionsList(
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`${source} ingestion error:`, err);
     errors.push(message);
+
+    // LOUD failure: email alert + audit log for ingestion failures
+    // Screening against an incomplete list is a compliance risk
+    try {
+      await sendComplianceAlert({
+        type: 'sanctions_ingestion_failure',
+        severity: 'critical',
+        title: `${source} sanctions list ingestion failed`,
+        description: `The ${source} sanctions list failed to refresh. ` +
+          `Screening may be operating against stale data.\n\n` +
+          `Error: ${message}\n\n` +
+          `Action required: Investigate and re-trigger ingestion manually.`,
+      });
+    } catch (alertErr) {
+      logger.error('Failed to send ingestion failure alert:', alertErr);
+    }
+
+    const supabase = makeSupabaseClient();
+    await supabase.from('audit_logs').insert({
+      action_type: 'sanctions_ingestion_failed',
+      entity_type: 'system',
+      description: `CRITICAL: ${source} sanctions list ingestion failed: ${message}`,
+      metadata: { source, error: message },
+    });
   }
 
   return { inserted, deleted, errors };

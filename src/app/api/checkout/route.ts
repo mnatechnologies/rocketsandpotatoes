@@ -6,7 +6,6 @@ import { createClient } from "@supabase/supabase-js";
 import { createLogger } from '@/lib/utils/logger';
 // import { createServerSupabase } from "@/lib/supabase/server";
 import { screenCustomer } from "@/lib/compliance/screening";
-import { generateSMR } from "@/lib/compliance/smr-generator";
 import { sendSanctionsMatchAlert } from "@/lib/email/sendComplianceAlert";
 import { fetchFxRate } from '@/lib/metals-api/metalsApi';
 import { applyVolumeDiscount } from '@/lib/pricing/priceCalculations';
@@ -207,14 +206,18 @@ export async function POST(req: NextRequest) {
       // BLOCK TRANSACTION IMMEDIATELY
       logger.log('⛔ Sanctions match detected!', sanctionsResult);
 
-      await generateSMR({
-        customerId,
-        suspicionType: 'sanctions_match',
-        indicators: sanctionsResult.matches.map(m =>
-          `Match: ${m.name} (${m.source}) - Score: ${m.matchScore}`
-        ),
-        narrative: `Customer matched against ${sanctionsResult.matches[0].source} sanctions list. Reference: ${sanctionsResult.matches[0].referenceNumber}`,
-      });
+      // Create pending review record — AMLCO must review before SMR is filed
+      await supabase
+        .from('suspicious_activity_reports')
+        .insert({
+          customer_id: customerId,
+          report_type: 'SMR',
+          suspicion_category: 'sanctions_match',
+          description: `SYSTEM FLAG — AWAITING AMLCO REVIEW\n\nReal-time sanctions match during checkout.\nMatches: ${sanctionsResult.matches.map(m => `${m.name} (${m.source}, score: ${m.matchScore})`).join('; ')}\n\nTransaction was blocked automatically. AMLCO must review and decide whether to file SMR.`,
+          status: 'pending_review',
+          flagged_by_system: true,
+          submission_deadline: null,
+        });
 
       await supabase.from('audit_logs').insert({
         action_type: 'sanctions_match_blocked',
@@ -423,7 +426,7 @@ export async function POST(req: NextRequest) {
         .select('id, investigation_number, status')
         .eq('customer_id', customerId)
         .in('status', ['open', 'awaiting_customer_info', 'under_review', 'escalated'])
-        .single();
+        .maybeSingle();
 
     if (!existingInvestigation) {
       // Create new investigation using shared service

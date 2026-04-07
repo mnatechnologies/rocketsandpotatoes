@@ -72,9 +72,9 @@ async function checkTTRDeadlines(): Promise<{ alertsSent: number; errors: string
       const deadline = new Date(ttr.ttr_submission_deadline);
       const daysRemaining = getBusinessDaysRemaining(deadline);
 
-      // Send alerts at specific thresholds: 5, 2, 1 days
-      // Check if we should send an alert based on days remaining
-      const shouldAlert = daysRemaining <= 5 && daysRemaining >= 0;
+      // Alert for approaching deadlines AND overdue items
+      // Overdue (negative) = CRITICAL, 0 = due today, 1-5 = approaching
+      const shouldAlert = daysRemaining <= 5;
 
       if (!shouldAlert) continue;
 
@@ -120,13 +120,17 @@ async function checkTTRDeadlines(): Promise<{ alertsSent: number; errors: string
         alertsSent++;
         
         // Log that we sent an alert
+        const urgency = daysRemaining < 0 ? 'OVERDUE' : daysRemaining === 0 ? 'DUE_TODAY' : 'approaching';
         await supabase.from('audit_logs').insert({
-          action_type: 'ttr_deadline_alert',
+          action_type: daysRemaining < 0 ? 'ttr_deadline_overdue' : 'ttr_deadline_alert',
           entity_type: 'transaction',
           entity_id: ttr.id,
-          description: `TTR deadline alert sent: ${daysRemaining} days remaining`,
+          description: daysRemaining < 0
+            ? `OVERDUE: TTR is ${Math.abs(daysRemaining)} business days past deadline`
+            : `TTR deadline alert sent: ${daysRemaining} days remaining`,
           metadata: {
             days_remaining: daysRemaining,
+            urgency,
             deadline: ttr.ttr_submission_deadline,
           },
         });
@@ -189,8 +193,8 @@ async function checkSMRDeadlines(): Promise<{ alertsSent: number; errors: string
       const deadline = new Date(smr.submission_deadline);
       const daysRemaining = getBusinessDaysRemaining(deadline);
 
-      // SMRs have a 3-day deadline, so alert at 2, 1, 0 days
-      const shouldAlert = daysRemaining <= 2 && daysRemaining >= 0;
+      // SMRs have a 3-day deadline — alert at 2, 1, 0 days AND overdue
+      const shouldAlert = daysRemaining <= 2;
 
       if (!shouldAlert) continue;
 
@@ -234,13 +238,17 @@ async function checkSMRDeadlines(): Promise<{ alertsSent: number; errors: string
         alertsSent++;
         
         // Log that we sent an alert
+        const smrUrgency = daysRemaining < 0 ? 'OVERDUE' : daysRemaining === 0 ? 'DUE_TODAY' : 'approaching';
         await supabase.from('audit_logs').insert({
-          action_type: 'smr_deadline_alert',
+          action_type: daysRemaining < 0 ? 'smr_deadline_overdue' : 'smr_deadline_alert',
           entity_type: 'suspicious_activity_report',
           entity_id: smr.id,
-          description: `SMR deadline alert sent: ${daysRemaining} days remaining`,
+          description: daysRemaining < 0
+            ? `OVERDUE: SMR is ${Math.abs(daysRemaining)} business days past deadline`
+            : `SMR deadline alert sent: ${daysRemaining} days remaining`,
           metadata: {
             days_remaining: daysRemaining,
+            urgency: smrUrgency,
             deadline: smr.submission_deadline,
             suspicion_type: smr.suspicion_category,
           },

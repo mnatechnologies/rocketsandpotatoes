@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
 
     // Filter by status
     if (status === 'pending') {
-      query = query.in('status', ['pending', 'under_review']);
+      query = query.in('status', ['pending', 'pending_review', 'under_review']);
     } else if (status === 'submitted') {
       query = query.eq('status', 'reported');
     } else if (status === 'dismissed') {
