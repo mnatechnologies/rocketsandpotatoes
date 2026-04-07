@@ -30,6 +30,8 @@ export default function SMRReportsPage() {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
   const [austracReference, setAustracReference] = useState('');
   const [dismissNotes, setDismissNotes] = useState('');
+  const [suspicionRationale, setSuspicionRationale] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const fetchSMRRecords = useCallback(async () => {
     setLoading(true);
@@ -168,6 +170,8 @@ export default function SMRReportsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'pending_review':
+        return 'bg-purple-500/10 text-purple-600 dark:text-purple-400';
       case 'pending':
         return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400';
       case 'under_review':
@@ -178,6 +182,48 @@ export default function SMRReportsPage() {
         return 'bg-muted text-muted-foreground';
       default:
         return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const handleConfirmSuspicion = async () => {
+    if (selectedRecords.size === 0) {
+      alert('Please select at least one record');
+      return;
+    }
+    if (!suspicionRationale.trim()) {
+      alert('You must document your rationale for forming the suspicion');
+      return;
+    }
+    if (!confirm(
+      `You are confirming that you have reviewed ${selectedRecords.size} flag(s) and formed a suspicion.\n\n` +
+      `This starts the 3-business-day filing deadline.\n\n` +
+      `Rationale: "${suspicionRationale}"\n\nProceed?`
+    )) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/smr-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smrIds: Array.from(selectedRecords),
+          action: 'confirm_suspicion',
+          suspicionRationale,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to confirm suspicion');
+
+      alert(data.message);
+      setSelectedRecords(new Set());
+      setSuspicionRationale('');
+      setShowConfirmModal(false);
+      fetchSMRRecords();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to confirm suspicion';
+      alert(message);
     }
   };
 
@@ -262,19 +308,39 @@ export default function SMRReportsPage() {
                 </button>
                 {statusFilter === 'pending' && (
                   <>
+                    {/* Show Confirm Suspicion for pending_review items */}
+                    {smrRecords.some(r => r.status === 'pending_review' && selectedRecords.has(r.id)) && (
+                      <button
+                        onClick={() => setShowConfirmModal(true)}
+                        disabled={selectedRecords.size === 0}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        Confirm Suspicion
+                      </button>
+                    )}
                     <button
                       onClick={() => handleAction('mark_under_review')}
                       disabled={selectedRecords.size === 0}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      👁️ Mark Under Review
+                      Mark Under Review
                     </button>
+                    {/* Only allow "Mark as Submitted" for items that have a deadline (not pending_review) */}
                     <button
-                      onClick={() => handleAction('mark_submitted')}
+                      onClick={() => {
+                        const selectedPendingReview = smrRecords.filter(
+                          r => selectedRecords.has(r.id) && r.status === 'pending_review'
+                        );
+                        if (selectedPendingReview.length > 0) {
+                          alert('Cannot mark as submitted: some selected items are still awaiting review. Confirm suspicion first.');
+                          return;
+                        }
+                        handleAction('mark_submitted');
+                      }}
                       disabled={selectedRecords.size === 0}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      ✓ Mark as Submitted
+                      Mark as Submitted
                     </button>
                   </>
                 )}
@@ -371,7 +437,7 @@ export default function SMRReportsPage() {
                           </td>
                           <td className="px-4 py-4">
                             <span className={`px-2 py-1 rounded text-xs font-semibold ${getSeverityColor(record.suspicion_category, record.days_remaining)}`}>
-                              {record.suspicion_category.replace('_', ' ').toUpperCase()}
+                              {record.suspicion_category.replaceAll('_', ' ').toUpperCase()}
                             </span>
                           </td>
                           <td className="px-4 py-4">
@@ -391,21 +457,29 @@ export default function SMRReportsPage() {
                             {new Date(record.created_at).toLocaleDateString('en-AU')}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            {record.submission_deadline ? (
+                            {record.status === 'pending_review' ? (
+                              <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                                Awaiting review
+                              </span>
+                            ) : record.submission_deadline ? (
                               <div>
                                 <div className="text-sm text-card-foreground">
                                   {new Date(record.submission_deadline).toLocaleDateString('en-AU')}
                                 </div>
                                 {record.days_remaining !== null && record.status !== 'reported' && (
                                   <div className={`text-xs font-medium ${
-                                    record.days_remaining <= 1 ? 'text-red-600' : 
+                                    record.days_remaining < 0 ? 'text-red-600 font-bold' :
+                                    record.days_remaining === 0 ? 'text-red-600' :
+                                    record.days_remaining <= 1 ? 'text-red-600' :
                                     record.days_remaining <= 2 ? 'text-orange-600' : 'text-muted-foreground'
                                   }`}>
-                                    {record.days_remaining === 0
-                                      ? '⚠️ Due today!'
-                                      : record.days_remaining === 1
-                                        ? '⚠️ 1 day left'
-                                        : `${record.days_remaining} days left`}
+                                    {record.days_remaining < 0
+                                      ? `OVERDUE by ${Math.abs(record.days_remaining)} day(s)`
+                                      : record.days_remaining === 0
+                                        ? 'Due today!'
+                                        : record.days_remaining === 1
+                                          ? '1 day left'
+                                          : `${record.days_remaining} days left`}
                                   </div>
                                 )}
                               </div>
@@ -415,7 +489,7 @@ export default function SMRReportsPage() {
                           </td>
                           <td className="px-4 py-4">
                             <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadge(record.status)}`}>
-                              {record.status.replace('_', ' ').toUpperCase()}
+                              {record.status.replaceAll('_', ' ').toUpperCase()}
                             </span>
                             {record.austrac_reference && (
                               <div className="text-xs text-muted-foreground mt-1">
@@ -477,19 +551,71 @@ export default function SMRReportsPage() {
 
             {/* Instructions */}
             <div className="mt-6 bg-card border border-border rounded-lg p-4">
-              <h3 className="font-semibold text-card-foreground mb-2">📋 SMR Submission Process</h3>
+              <h3 className="font-semibold text-card-foreground mb-2">AMLCO Review Workflow</h3>
               <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-                <li>Review the SMR details and narrative for accuracy</li>
-                <li>Click &quot;Mark Under Review&quot; while investigating</li>
-                <li>Submit the SMR via AUSTRAC Online within <strong>3 business days</strong></li>
-                <li>Enter the AUSTRAC reference number and click &quot;Mark as Submitted&quot;</li>
-                <li>If determined to be a false positive, provide a reason and dismiss</li>
+                <li><strong>Review system flags</strong> — items with &quot;Pending Review&quot; status are automated flags, not filed SMRs</li>
+                <li><strong>Form suspicion</strong> — if you believe the flag warrants an SMR, click &quot;Confirm Suspicion&quot; with your rationale. This starts the 3-business-day deadline.</li>
+                <li><strong>Dismiss false positives</strong> — provide a reason and dismiss. The flag and your rationale are preserved in the audit trail.</li>
+                <li><strong>File with AUSTRAC</strong> — submit the SMR via AUSTRAC Online, then enter the reference number and click &quot;Mark as Submitted&quot;</li>
               </ol>
-              <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-600 dark:text-yellow-400">
-                <strong>⚠️ Important:</strong> SMRs must be submitted to AUSTRAC within 3 business days of forming a suspicion. 
-                Failure to report may result in regulatory penalties.
+              <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg text-sm text-purple-600 dark:text-purple-400">
+                <strong>Key distinction:</strong> &quot;Pending Review&quot; = system flag awaiting your assessment.
+                &quot;Pending&quot; = you have confirmed a suspicion and the 3-business-day filing clock is ticking.
+                The deadline does NOT start until you confirm the suspicion.
+              </div>
+              <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-600 dark:text-yellow-400">
+                <strong>Filing obligation:</strong> Once you confirm a suspicion, the SMR must be submitted to AUSTRAC within 3 business days.
+                The audit trail records both the system flag timestamp and your suspicion confirmation timestamp separately.
               </div>
             </div>
+
+            {/* Confirm Suspicion Modal */}
+            {showConfirmModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-card border border-border rounded-lg shadow-xl max-w-lg w-full p-6">
+                  <h3 className="text-lg font-bold text-card-foreground mb-2">Confirm Suspicion</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    You are confirming that you have reviewed {selectedRecords.size} system flag(s) and formed a suspicion
+                    that warrants filing an SMR with AUSTRAC. This action starts the <strong>3-business-day filing deadline</strong>.
+                  </p>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-card-foreground mb-1">
+                      Suspicion rationale <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Document why you formed the suspicion. This is recorded in the audit trail.
+                    </p>
+                    <textarea
+                      value={suspicionRationale}
+                      onChange={(e) => setSuspicionRationale(e.target.value)}
+                      rows={4}
+                      placeholder="e.g., Customer has 5 transactions between $4,000-$4,900 over 3 weeks, consistent with structuring to avoid KYC threshold. Pattern is inconsistent with stated occupation (retired)."
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground text-sm"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => {
+                        setShowConfirmModal(false);
+                        setSuspicionRationale('');
+                      }}
+                      className="px-4 py-2 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmSuspicion}
+                      disabled={!suspicionRationale.trim()}
+                      className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      Confirm Suspicion & Start Deadline
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

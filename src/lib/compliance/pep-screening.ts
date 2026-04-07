@@ -12,6 +12,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { createLogger } from '@/lib/utils/logger';
 import { jaroWinklerSimilarity, phoneticMatch, expandNameVariants } from './phonetic';
+import { createEDDInvestigation } from './edd-service';
+import { sendComplianceAlert } from '@/lib/email/sendComplianceAlert';
 
 const logger = createLogger('PEP_SCREENING');
 
@@ -407,7 +409,7 @@ export async function screenCustomerPep(customerId: string): Promise<PepScreenin
     },
   });
 
-  // Update customer record if PEP status changed
+  // Update customer record and trigger EDD if PEP status changed
   if (result.isPep && !customer.is_pep) {
     await supabase
       .from('customers')
@@ -418,6 +420,58 @@ export async function screenCustomerPep(customerId: string): Promise<PepScreenin
       .eq('id', customerId);
 
     logger.log(`⚠️ PEP MATCH: Customer ${customerId} — ${result.matches[0]?.name} (${result.matches[0]?.position})`);
+
+    // FATF R12: PEP identification triggers mandatory EDD + senior management approval
+    // before business relationship proceeds
+    try {
+      await createEDDInvestigation({
+        customerId,
+        triggerReason: `PEP match: ${result.matches[0]?.name} — ${result.matches[0]?.position || 'position unknown'} (${result.pepCategory} PEP, score: ${result.matchScore}). FATF R12 requires EDD and senior management approval.`,
+        triggeredBy: 'system',
+      });
+    } catch (eddErr) {
+      // EDD creation may return { success: false } if investigation already exists — that's expected.
+      // Actual errors (network, DB) need to be visible.
+      logger.error('EDD investigation creation failed for PEP match:', eddErr);
+    }
+
+    // Create pending_review record for AMLCO approval
+    // The business relationship must not proceed until AMLCO signs off
+    const { error: sarError } = await supabase
+      .from('suspicious_activity_reports')
+      .insert({
+        customer_id: customerId,
+        report_type: 'SMR',
+        suspicion_category: 'high_risk',
+        description: `SYSTEM FLAG — PEP MATCH REQUIRES AMLCO APPROVAL\n\n` +
+          `Customer matched as ${result.pepCategory} PEP: ${result.matches[0]?.name}\n` +
+          `Position: ${result.matches[0]?.position || 'Unknown'}\n` +
+          `Match score: ${result.matchScore}\n` +
+          `PEP type: ${result.matches.some(m => m.pepType === 'pep') ? 'PEP' : ''}${result.isRca ? ' RCA' : ''}\n\n` +
+          `FATF R12 requires: (1) EDD, (2) senior management approval before relationship proceeds.\n` +
+          `Review this match and approve/reject the business relationship.`,
+        status: 'pending_review',
+        flagged_by_system: true,
+        submission_deadline: null,
+      });
+
+    if (sarError) {
+      logger.error('CRITICAL: Failed to create PEP review record — AMLCO will not see this match:', sarError);
+      // Still send the alert below so AMLCO is notified even if the DB record failed
+    }
+
+    // Alert AMLCO
+    try {
+      await sendComplianceAlert({
+        type: 'pep_match',
+        severity: 'critical',
+        title: `PEP match requires AMLCO approval — Customer ${customerId}`,
+        description: `${result.matches[0]?.name} (${result.matches[0]?.position || 'unknown position'}) matched as ${result.pepCategory} PEP. ` +
+          `EDD investigation opened. Business relationship blocked pending your approval.`,
+      });
+    } catch (alertErr) {
+      logger.error('Failed to send PEP match alert:', alertErr);
+    }
   }
 
   return result;

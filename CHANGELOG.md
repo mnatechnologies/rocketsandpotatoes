@@ -1,3 +1,149 @@
+Changelog - 2026-04-08 — Audit Review Round 2: Tightening & Admin Review Queue
+
+Fixes from external reviewer feedback and automated auditor re-review (compliance auditor + code reviewer).
+All findings from both auditors confirmed and resolved.
+
+### Reviewer-requested tightening
+
+- **SMR idempotency NULL gap** — `smr-generator.ts`: Added `.is('transaction_id', null)` for customer-level suspicions so dedup works when `transaction_id` is NULL (SQL `NULL = NULL` is false without `IS NULL`). Also switched from `.maybeSingle()` to `.limit(1)` to avoid throwing on 2+ dedupe matches.
+
+- **Sanctions ingestion upper bound** — `sanctions-ingestion.ts`: Added +50% growth check alongside existing -50% drop check. If DFAT/UN suddenly publishes 10x more rows than expected, ingestion aborts for manual review instead of silently loading potentially corrupt data.
+
+- **PEP match → EDD + AMLCO approval chain** — `pep-screening.ts`: PEP match now triggers all four required actions: (1) `createEDDInvestigation()`, (2) `pending_review` SMR record for AMLCO approval, (3) critical email alert, (4) `requires_enhanced_dd = true`. Business relationship blocked until AMLCO signs off. Added error handling on SAR insert and corrected EDD failure log level from `log` to `error`.
+
+### Admin review queue (#17)
+
+- **API: `confirm_suspicion` action** — `admin/smr-reports/route.ts`: New action requires written `suspicionRationale`, calculates 3-business-day deadline from NOW (suspicion formation time), only transitions from `pending_review` status, logs both `system_flagged_at` and `suspicion_formed_at` timestamps in audit trail for regulatory defensibility.
+
+- **API: `mark_submitted` status guard** — Added `.in('status', ['pending', 'under_review'])` so `pending_review` items cannot be filed via direct API call, matching the UI guard.
+
+- **API: Dismiss action fix** — Replaced broken `supabase.rpc('concat_text')` (returns builder object, not SQL expression) with fetch-then-concatenate pattern. Dismissal reason is now properly appended to the SMR description.
+
+- **UI: Review workflow** — `admin/suspicious-reports/page.tsx`: Purple `PENDING REVIEW` badge, "Confirm Suspicion" button with rationale modal, "Mark as Submitted" blocked for unreviewed items, `OVERDUE by N day(s)` for negative deadlines, "Awaiting review" in deadline column, updated workflow instructions explaining two-phase flow.
+
+### Code review fixes
+
+- **`sendSMRCreatedAlert` failure handling** — `smr-generator.ts`: Wrapped in try/catch so email failure doesn't throw after SMR is already created.
+- **Static import cleanup** — `admin/smr-reports/route.ts`: Moved `calculateSMRDeadline` from unnecessary dynamic import to static import (module was already in bundle).
+- **Underscore display bug** — `suspicious-reports/page.tsx`: Changed `.replace('_', ' ')` to `.replaceAll('_', ' ')` so `enhanced_dd_escalation` displays correctly.
+
+### Auditor findings summary
+
+| Auditor | Items verified | Issues found | Fixed |
+|---------|---------------|-------------|-------|
+| Compliance auditor | 5 + 1 extra | mark_submitted API guard missing, audit log missing system_flagged_at | Both fixed |
+| Code reviewer | 5 files, 24 items | 2 high (SAR insert no error handling, broken rpc dismiss), 5 medium | All high/medium fixed |
+
+---
+
+Changelog - 2026-04-07 — AML/CTF Compliance Audit Remediation
+
+Comprehensive fix of 19 findings from external compliance audit prior to AUSTRAC enrolment.
+18 files changed, ~1,700 lines added across compliance modules, consumer routes, and new PEP screening infrastructure.
+
+### Critical fixes (regulatory liability)
+
+- **TTR CSV export misalignment (#1, #2)** — `ttr-generator.ts` had 14 headers mapping to 15 row values, shifting every column from "Customer Name" onward. Fixed header list to match row fields (added "Original Amount" and "Original Currency"). Also fixed `TTRRecord.transaction_amount` type from `string` to `number`.
+
+- **Sanctions ingestion atomicity (#6)** — `sanctions-ingestion.ts` did DELETE-then-INSERT without a transaction. If any batch insert failed, the sanctions list was left partially deleted. Now uses insert-first staging approach with rollback on failure, row count sanity check (aborts if new data drops >50%), and email alerting on ingestion failure.
+
+- **Auto-filed SMRs without human review (#7)** — `structuring-detection.ts` called `generateSMR()` directly, creating filed SMR records with ticking deadlines before any human formed a suspicion. Rewritten to create `pending_review` records. The AMLCO must review and decide whether to file. The 3-business-day deadline starts when the AMLCO confirms suspicion, not when the system flags it. Same fix applied to `checkout/route.ts` (sanctions match) and `cron/rescreen-customers/route.ts` (rescreening match).
+
+- **Incomplete public holiday calculation (#8)** — `deadline-utils.ts` only had 5 fixed national holidays + Easter. Added NSW state holidays (Queen's Birthday, Bank Holiday, Labour Day), Easter Saturday, Reconciliation Day, and full substitute-day logic for weekends. ANZAC Day follows its special rule (Saturday observed on Saturday, Sunday moves to Monday).
+
+- **Deadline checker silent on overdue (#9)** — `getBusinessDaysRemaining()` returned 0 for both "due today" and "3 weeks overdue". Now returns negative values for overdue items. Deadline checker alerts on all overdue items with `OVERDUE` urgency level in audit logs.
+
+### High priority fixes
+
+- **Historical FX conversion (#10)** — `thresholds.ts` used current FX rates for legacy USD transactions in cumulative threshold calculation. Removed entirely. Only uses `amount_aud` locked at transaction time. Legacy transactions excluded with backfill warning.
+
+- **SMR idempotency (#11)** — `smr-generator.ts` had no dedup check. Added 24-hour dedup window on `(customer_id, suspicion_category, transaction_id)`.
+
+- **Rescreening skipped flagged customers (#12)** — `screening.ts` filtered `.eq('is_sanctioned', false)`. Now screens ALL customers. Previously-flagged customers whose match disappears get a delisting review audit record (not auto-cleared).
+
+- **Narrow structuring detection (#13)** — Widened from 7-day window with two hardcoded bands to 30-day rolling window with configurable thresholds for KYC/TTR/EDD bands. Added same-day clustering detection.
+
+- **`.single()` on zero-row queries (#16)** — `edd-service.ts` and `checkout/route.ts` changed to `.maybeSingle()`.
+
+### Sanctions and PEP screening overhaul (#3, #4)
+
+- **Phonetic name matching** — New `phonetic.ts` adapted from IntelliCompli. Double Metaphone + Jaro-Winkler + transliteration variant expansion. `screening.ts` now uses composite scoring (70% JW + 30% phonetic). "Muhammad" vs "Mohamed" scores ~0.85 (was 0.625).
+
+- **PEP screening** — New `pep-screening.ts` adapted from IntelliCompli. Screens against `pep_entities` table (OpenSanctions data) with exact, fuzzy, and former PEP matching (FATF R12: 24-month wind-down). Classifies as foreign/domestic/international_org. Wired into `screenCustomer()`.
+
+- **OpenSanctions import** — New `scripts/import-opensanctions-pep.ts` adapted from IntelliCompli. Streams FTM JSON dataset, filters PEP/RCA entities, batch-upserts, soft-deletes stale entries.
+
+- **Database migration** — `supabase/migrations/20260408000001_create_pep_entities.sql` creates `pep_entities` and `pep_import_log` tables.
+
+### Consumer route updates
+
+- `admin/smr-reports/route.ts` — Added `pending_review` to status filter for admin SMR page.
+- `checkout/route.ts` — Replaced `generateSMR()` with `pending_review` record for sanctions matches. Fixed `.maybeSingle()`.
+- `cron/rescreen-customers/route.ts` — Replaced `generateSMR()` with `pending_review` record. Removed unused import.
+
+### Files changed (18)
+
+| File | Change |
+|------|--------|
+| `src/lib/compliance/phonetic.ts` | NEW — Double Metaphone, Jaro-Winkler, name variants |
+| `src/lib/compliance/pep-screening.ts` | NEW — PEP screening module |
+| `scripts/import-opensanctions-pep.ts` | NEW — OpenSanctions import script |
+| `supabase/migrations/20260408000001_create_pep_entities.sql` | NEW — PEP tables migration |
+| `src/lib/compliance/screening.ts` | Composite scoring, PEP integration, rescreen all |
+| `src/lib/compliance/structuring-detection.ts` | Rewrite: human review queue, wider detection |
+| `src/lib/compliance/sanctions-ingestion.ts` | Atomic staging, sanity checks, failure alerting |
+| `src/lib/compliance/deadline-utils.ts` | NSW holidays, substitute days, negative overdue |
+| `src/lib/compliance/deadline-checker.ts` | Overdue escalation alerts |
+| `src/lib/compliance/smr-generator.ts` | Idempotency dedup |
+| `src/lib/compliance/thresholds.ts` | Removed current-rate FX conversion |
+| `src/lib/compliance/ttr-generator.ts` | CSV header alignment, type fix |
+| `src/lib/compliance/edd-service.ts` | `.maybeSingle()` fix |
+| `src/app/api/admin/smr-reports/route.ts` | `pending_review` status filter |
+| `src/app/api/checkout/route.ts` | Human review for sanctions, `.maybeSingle()` |
+| `src/app/api/cron/rescreen-customers/route.ts` | Human review for rescreening |
+| `package.json` | Added `double-metaphone` dependency |
+
+### Remaining items (require decisions, not code)
+
+- **#14** — No linked-customer aggregation for structuring. Document as known control gap.
+- **#15** — Service-role key auth model. Confirmed routes have Clerk auth; verify cron `CRON_SECRET`.
+- **#17** — Admin UI needs `pending_review` status handling. Backend ready.
+- **#18** — TTR/SMR submission is manual CSV upload to AUSTRAC Online.
+- **#19** — Reconcile code thresholds against Hindsight Legal's AML/CTF program document.
+
+---
+
+Changelog - 2026-04-04
+
+### Product Management Refactor
+- **Metal type standardization** (`6b2b492`) — Replaced free-text metal type strings with standardized code-value pairs (ISO codes: `XAU`, `XAG`, `XPT`, `XPD`) across product admin UI and APIs. Removed slug handling from product create/edit flows. Simplified form validation.
+  - `admin/products/[id]/edit/page.tsx`, `admin/products/new/page.tsx`, `admin/products/page.tsx`
+  - `api/admin/products/[id]/route.ts`, `api/admin/products/route.ts`
+
+### Business Account Removal
+- **Removed business account handling** (`5821910`) — Stripped business-specific filters, join queries, and transformations from customer API endpoints. Removed `business_name`, `beneficial_owners`, and related fields from customer detail and account settings UI. Standardized on `customer_type` instead of `account_type`. Simplified transaction aggregate calculations.
+  - `account/page.tsx`, `account/settings/page.tsx`
+  - `admin/customers/[id]/page.tsx`, `admin/customers/page.tsx`
+  - `api/admin/customers/[id]/route.ts`, `api/admin/customers/route.ts`
+  - `api/account/profile/route.ts`
+
+### Sanctions Refresh Cron & Compliance Workflows
+- **Sanctions refresh endpoint** (`83ececf`) — New `/api/cron/refresh-sanctions` for weekly DFAT/UN sanctions list refresh with secure auth and audit logging. Integrated post-refresh customer re-screening.
+- **Sanctions ingestion module** — New `src/lib/compliance/sanctions-ingestion.ts` with DFAT Excel and UN XML parsers, batch upsert logic, and error reporting.
+- **Admin compliance filters** — Added customer filters for `pep`, `high_risk`, and `edd` in admin customer list. Added sanctions screening on customer creation via Clerk webhook.
+- **Vercel cron schedules** — Added cron entries in `vercel.json` for sanctions refresh and maintenance tasks.
+- **Order/checkout enhancements** — Updated checkout and order flows for sales halt handling. Added order confirmation page. Enhanced bank transfer monitor error handling.
+
+### Admin Notes Refactor
+- **Dedicated admin notes** (`fc4e510`) — Replaced `metadata.admin_notes` with dedicated `adminNotes` array fetched directly from audit logs. Updated customer and order detail pages for cleaner state management. Enhanced audit log schema with `action_type`, `description`, and admin clerk metadata.
+
+### Housekeeping
+- Admin breadcrumb fix (`b52a91c`) — Added dashboard breadcrumb entry, removed duplicate nav link.
+- Breadcrumb cleanup (`68fbf6e`) — Removed unused breadcrumb entry.
+- Backup status UI improvements (`93d3d10`) — New admin backup page with real-time status. Replaced computed `retention_expires_at` with trigger-based approach for Postgres compatibility.
+
+---
+
 Changelog - 2026-03-27
 
 Customer Account Dashboard

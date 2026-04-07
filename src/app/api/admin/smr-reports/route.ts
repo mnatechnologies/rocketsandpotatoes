@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/auth/admin';
 import { createLogger } from '@/lib/utils/logger';
-import { getBusinessDaysRemaining, formatDeadline } from '@/lib/compliance/deadline-utils';
+import { getBusinessDaysRemaining, formatDeadline, calculateSMRDeadline } from '@/lib/compliance/deadline-utils';
 
 const logger = createLogger('SMR_REPORTS_API');
 
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
   if (!adminCheck.authorized) return adminCheck.error;
 
   try {
-    const { smrIds, action, austracReference, notes } = await req.json();
+    const { smrIds, action, austracReference, notes, suspicionRationale } = await req.json();
 
     if (!smrIds || !Array.isArray(smrIds) || smrIds.length === 0) {
       return NextResponse.json(
@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'mark_submitted') {
       // Mark as submitted to AUSTRAC
+      // Guard: only AMLCO-confirmed SMRs can be filed (not pending_review)
       const { error } = await supabase
         .from('suspicious_activity_reports')
         .update({
@@ -155,7 +156,8 @@ export async function POST(req: NextRequest) {
           austrac_submitted_at: new Date().toISOString(),
           austrac_reference: austracReference || null,
         })
-        .in('id', smrIds);
+        .in('id', smrIds)
+        .in('status', ['pending', 'under_review']);
 
       if (error) {
         logger.error('Error marking SMRs as submitted:', error);
@@ -179,6 +181,65 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `${smrIds.length} SMR(s) marked as submitted`,
+      });
+    }
+
+    // AMLCO confirms suspicion: transitions pending_review → pending with deadline
+    // This is the critical human-in-the-loop step: the 3-business-day clock starts NOW
+    if (action === 'confirm_suspicion') {
+      if (!suspicionRationale?.trim()) {
+        return NextResponse.json(
+          { error: 'Suspicion rationale is required — document why you formed the suspicion' },
+          { status: 400 }
+        );
+      }
+
+      // Calculate deadline: 3 business days from NOW (when suspicion is formed)
+      const deadline = calculateSMRDeadline(new Date());
+
+      const { error } = await supabase
+        .from('suspicious_activity_reports')
+        .update({
+          status: 'pending',
+          submission_deadline: deadline.toISOString(),
+        })
+        .in('id', smrIds)
+        .in('status', ['pending_review']); // Only transition from pending_review
+
+      if (error) {
+        logger.error('Error confirming suspicion:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      // Audit log with both timestamps for regulatory defensibility
+      // Self-contained: includes system flag time so audit trail doesn't require cross-referencing
+      for (const smrId of smrIds) {
+        // Fetch the original SMR created_at for the system flag timestamp
+        const { data: smrRecord } = await supabase
+          .from('suspicious_activity_reports')
+          .select('created_at')
+          .eq('id', smrId)
+          .single();
+
+        await supabase.from('audit_logs').insert({
+          action_type: 'smr_suspicion_confirmed',
+          entity_type: 'suspicious_activity_report',
+          entity_id: smrId,
+          description: `AMLCO confirmed suspicion. Rationale: ${suspicionRationale}. Filing deadline: ${deadline.toISOString()}`,
+          metadata: {
+            confirmed_by: adminCheck.userId,
+            suspicion_rationale: suspicionRationale,
+            system_flagged_at: smrRecord?.created_at || null,
+            suspicion_formed_at: new Date().toISOString(),
+            submission_deadline: deadline.toISOString(),
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Suspicion confirmed for ${smrIds.length} SMR(s). Filing deadline: ${deadline.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`,
+        deadline: deadline.toISOString(),
       });
     }
 
@@ -207,23 +268,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const { error } = await supabase
-        .from('suspicious_activity_reports')
-        .update({
-          status: 'dismissed',
-          description: supabase.rpc('concat_text', {
-            original: 'description',
-            append: `\n\n--- DISMISSED ---\nReason: ${notes}`,
-          }),
-        })
-        .in('id', smrIds);
+      // Fetch current descriptions, append dismissal reason, then update
+      for (const smrId of smrIds) {
+        const { data: current } = await supabase
+          .from('suspicious_activity_reports')
+          .select('description')
+          .eq('id', smrId)
+          .single();
 
-      if (error) {
-        // Fallback if RPC doesn't exist - just update status
+        const updatedDescription = (current?.description || '') +
+          `\n\n--- DISMISSED ---\nReason: ${notes}`;
+
         await supabase
           .from('suspicious_activity_reports')
-          .update({ status: 'dismissed' })
-          .in('id', smrIds);
+          .update({
+            status: 'dismissed',
+            description: updatedDescription,
+          })
+          .eq('id', smrId);
       }
 
       // Log audit event

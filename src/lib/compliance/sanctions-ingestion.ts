@@ -380,13 +380,21 @@ async function upsertSource(
 
   const previousCount = currentCount ?? 0;
 
-  // Abort if new data is suspiciously small compared to previous
-  // (protects against empty/corrupt upstream responses)
-  if (previousCount > 50 && rows.length < previousCount * 0.5) {
-    const msg = `${source} sanity check failed: parsed ${rows.length} rows but expected ~${previousCount}. ` +
-      `Refusing to replace — upstream data may be corrupt or truncated.`;
-    logger.error(msg);
-    throw new Error(msg);
+  // Abort if new data deviates >50% from previous in either direction
+  // Protects against empty/corrupt responses AND unexpected format changes
+  if (previousCount > 50) {
+    if (rows.length < previousCount * 0.5) {
+      const msg = `${source} sanity check failed: parsed ${rows.length} rows but expected ~${previousCount}. ` +
+        `Refusing to replace — upstream data may be corrupt or truncated.`;
+      logger.error(msg);
+      throw new Error(msg);
+    }
+    if (rows.length > previousCount * 1.5) {
+      const msg = `${source} sanity check warning: parsed ${rows.length} rows but expected ~${previousCount} (+${Math.round((rows.length / previousCount - 1) * 100)}%). ` +
+        `Refusing to auto-load — possible format change or data corruption. Manual review required.`;
+      logger.error(msg);
+      throw new Error(msg);
+    }
   }
 
   if (rows.length === 0) {

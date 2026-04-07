@@ -36,9 +36,17 @@ export async function generateSMR(data: {
 
   if (data.transactionId) {
     dedupeQuery.eq('transaction_id', data.transactionId);
+  } else {
+    // Customer-level suspicions (no transaction): explicitly match
+    // NULL transaction_id only (SQL NULL = NULL is false without IS NULL)
+    dedupeQuery.is('transaction_id', null);
   }
 
-  const { data: existingSmr } = await dedupeQuery.maybeSingle();
+  const { data: existingSmrs } = await dedupeQuery
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const existingSmr = existingSmrs?.[0] || null;
 
   if (existingSmr) {
     logger.log(`Duplicate SMR prevented — existing SMR ${existingSmr.id} created at ${existingSmr.created_at}`);
@@ -125,20 +133,24 @@ export async function generateSMR(data: {
     ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown'
     : 'Unknown';
 
-  // Send compliance alert
-  await sendSMRCreatedAlert({
-    smrId: smr.id,
-    customerId: data.customerId,
-    customerName,
-    suspicionType: data.suspicionType,
-    transactionAmount: data.transactionAmount,
-    deadline: deadline.toLocaleDateString('en-AU', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+  // Send compliance alert — don't throw if email fails (SMR is already created)
+  try {
+    await sendSMRCreatedAlert({
+      smrId: smr.id,
+      customerId: data.customerId,
+      customerName,
+      suspicionType: data.suspicionType,
+      transactionAmount: data.transactionAmount,
+      deadline: deadline.toLocaleDateString('en-AU', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
     }),
   });
+  } catch (alertErr) {
+    logger.error('Failed to send SMR alert (SMR was created successfully):', alertErr);
+  }
 
   return smr;
 }
