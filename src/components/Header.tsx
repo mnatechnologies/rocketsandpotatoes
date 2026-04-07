@@ -8,7 +8,6 @@ import {
   SignUpButton,
   SignedIn,
   SignedOut,
-  UserButton,
   useUser,
 } from '@clerk/nextjs';
 import { ShoppingCartIcon, ChevronDown, UserCircle } from "lucide-react";
@@ -265,7 +264,6 @@ export default function Header() {
                 >
                   <UserCircle className="h-[18px] w-[18px]" />
                 </Link>
-                <UserButton />
               </SignedIn>
             </div>
 
@@ -388,9 +386,6 @@ export default function Header() {
                       <UserCircle className="h-4 w-4" />
                       My Account
                     </Link>
-                    <div className="flex justify-center">
-                      <UserButton />
-                    </div>
                   </SignedIn>
                 </div>
               </div>
